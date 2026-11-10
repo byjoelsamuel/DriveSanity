@@ -1,0 +1,87 @@
+name: Android
+
+# Every push: run the unit tests and build the APK, attached to the run as an artifact.
+# On main, with the signing secrets set: if gradle.properties' appVersion has no release yet,
+# publish one (tag v<appVersion>) with DriveSanity.apk. Releasing is "bump the version, merge".
+# A manual run on main re-uploads the APK to the current version's release.
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Set in the repo's Settings → Secrets and variables → Actions. Without them only a
+      # debug APK is built and nothing is released.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unpack signing key
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "SIGNED=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No signing key in this repo's secrets, so only a debug APK is built and nothing is released."
+          fi
+
+      - name: Test and build
+        run: |
+          tasks="testDebugUnitTest assembleDebug"
+          if [ "$SIGNED" = true ]; then tasks="$tasks assembleRelease"; fi
+          ./gradlew --no-daemon $tasks
+
+      - name: Name the APK
+        run: |
+          mkdir -p out
+          if [ "$SIGNED" = true ]; then
+            cp app/build/outputs/apk/release/app-release.apk out/DriveSanity.apk
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk out/DriveSanity-debug.apk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DriveSanity-apk
+          path: out/
+
+      - name: Publish release
+        if: env.SIGNED == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(grep '^appVersion=' gradle.properties | cut -d= -f2)
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+              gh release upload "$tag" out/DriveSanity.apk --clobber
+            else
+              echo "$tag is already released. Bump appVersion in gradle.properties to publish a new one."
+            fi
+          else
+            gh release create "$tag" out/DriveSanity.apk \
+              --title "DriveSanity $version" \
+              --notes "Install DriveSanity.apk on your phone. Installing over an older version keeps your settings and recordings." \
+              --target "$GITHUB_SHA"
+          fi
