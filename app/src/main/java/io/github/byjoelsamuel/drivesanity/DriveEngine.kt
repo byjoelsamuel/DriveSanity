@@ -12,6 +12,8 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
+import io.github.byjoelsamuel.drivesanity.obd.Obd
+import io.github.byjoelsamuel.drivesanity.obd.Pid
 import java.io.File
 
 /** What the screens draw, taken in one go. */
@@ -24,8 +26,16 @@ data class Snapshot(
     val calibrating: Boolean,
     val recording: Boolean,
     val gpsOn: Boolean,
-    /** Engine speed; null until an OBD2 adapter is connected. */
+    // From OBD2; null until an adapter is connected and the car answers.
     val rpm: Float? = null,
+    val coolantC: Float? = null,
+    val intakeC: Float? = null,
+    val volts: Float? = null,
+    val fuelPct: Float? = null,
+    val obdLive: Boolean = false,
+    /** Whether the car reports fuel level at all (known once connected). */
+    val fuelSupported: Boolean = true,
+    val tripM: Double = 0.0,
 )
 
 /**
@@ -71,10 +81,6 @@ object DriveEngine : SensorEventListener, LocationListener {
     var gpsAccelG: Float? = null
         private set
 
-    /** Set by the OBD2 reader once there is one. */
-    var rpm: Float? = null
-        private set
-
     val stats = TripStats()
     private var log: TripLog? = null
     private var lastLogNs = 0L
@@ -84,7 +90,9 @@ object DriveEngine : SensorEventListener, LocationListener {
     private val freshFix: Location?
         get() = lastFix?.takeIf { SystemClock.elapsedRealtime() - lastFixAtMs < STALE_FIX_MS }
 
-    val speedMps: Float? get() = freshFix?.takeIf { it.hasSpeed() }?.speed
+    /** GPS speed, or the car's own (OBD2) when GPS has dropped out, e.g. in a tunnel. */
+    val speedMps: Float?
+        get() = freshFix?.takeIf { it.hasSpeed() }?.speed ?: Obd.speedKmh?.let { it / 3.6f }
 
     fun snapshot() = Snapshot(
         speedMps = speedMps,
@@ -95,7 +103,14 @@ object DriveEngine : SensorEventListener, LocationListener {
         calibrating = calSamples != null,
         recording = recording,
         gpsOn = gpsOn,
-        rpm = rpm,
+        rpm = Obd.rpm,
+        coolantC = Obd.coolantC,
+        intakeC = Obd.intakeC,
+        volts = Obd.volts,
+        fuelPct = Obd.fuelPct,
+        obdLive = Obd.status.link == Obd.Link.LIVE,
+        fuelSupported = Obd.status.link != Obd.Link.LIVE || Pid.FUEL.code in Obd.supported,
+        tripM = stats.distanceM,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -136,6 +151,7 @@ object DriveEngine : SensorEventListener, LocationListener {
             sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         } ?: run { status = "This phone has no accelerometer" }
         startGps()
+        Obd.start(app)
     }
 
     private fun startGps() {
@@ -151,6 +167,7 @@ object DriveEngine : SensorEventListener, LocationListener {
 
     private fun stop() {
         running = false
+        Obd.stop()
         app.getSystemService(SensorManager::class.java).unregisterListener(this)
         if (gpsOn) {
             app.getSystemService(LocationManager::class.java).removeUpdates(this)

@@ -22,6 +22,8 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import io.github.byjoelsamuel.drivesanity.obd.Obd
+import io.github.byjoelsamuel.drivesanity.obd.showObdPicker
 
 class MainActivity : Activity() {
     private lateinit var statsText: TextView
@@ -61,12 +63,16 @@ class MainActivity : Activity() {
         }
         fun button(label: String, onClick: () -> Unit) = Button(this).apply {
             text = label
+            textSize = 12f
+            minWidth = 0
+            setPadding(dp(2), paddingTop, dp(2), paddingBottom)
             setOnClickListener { onClick() }
             buttons.addView(this, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
         }
         button("Calibrate") { DriveEngine.calibrate() }
         recButton = button("Rec") { DriveEngine.toggleRecording(this); refresh() }
         button("Share") { shareLog() }
+        button("OBD2") { pickObd() }
         button("Reset") { toast("Long-press to reset the trip") }.setOnLongClickListener {
             DriveEngine.stats.reset()
             toast("Trip reset")
@@ -108,20 +114,35 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == BLUETOOTH_REQUEST) {
+            if (Obd.hasBluetoothPermission(this)) showObdPicker(this) else toast("OBD2 needs the Nearby devices permission")
+            return
+        }
         DriveEngine.onPermissionsChanged()
         if (!hasLocationPermission(this)) toast("Without location there's no speed, only g-force")
+    }
+
+    /** Asks for Bluetooth (Android 12+ calls it "Nearby devices") if needed, then lists adapters. */
+    private fun pickObd() {
+        if (Build.VERSION.SDK_INT >= 31 && !Obd.hasBluetoothPermission(this)) {
+            requestPermissions(
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN),
+                BLUETOOTH_REQUEST,
+            )
+            return
+        }
+        showObdPicker(this)
     }
 
     private fun refresh() {
         val u = Prefs.units(this)
         val st = DriveEngine.stats
-        val gpsAccel = DriveEngine.gpsAccelG?.let { "%+.2f g".format(it) } ?: "--"
         statsText.text = buildString {
             appendLine("TRIP   ${oneDecimal(u.distance(st.distanceM))} ${u.distanceLabel}   moving ${hms(st.movingSec)}")
             appendLine("SPEED  avg ${u.speed(st.avgMovingSpeedMps).toInt()}   top ${u.speed(st.topSpeedMps).toInt()} ${u.label}")
             appendLine("PEAK   brake %.2f  accel %.2f  turn %.2f g".format(st.peakBrakeG, st.peakAccelG, st.peakTurnG))
             appendLine("HARD   brakes ${st.hardBrakes.count}  launches ${st.hardLaunches.count}  turns ${st.hardTurns.count}")
-            appendLine("GPS    speed change $gpsAccel")
+            appendLine(Obd.describe())
             append(DriveEngine.recordingFile?.let { "● REC  ${it.name}" } ?: DriveEngine.status)
         }
         recButton.text = if (DriveEngine.recording) "Stop" else "Rec"
@@ -139,6 +160,10 @@ class MainActivity : Activity() {
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
+    private companion object {
+        const val BLUETOOTH_REQUEST = 2
+    }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 }
 

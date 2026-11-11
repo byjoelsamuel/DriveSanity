@@ -1,0 +1,197 @@
+package io.github.byjoelsamuel.drivesanity.obd
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.SystemClock
+import io.github.byjoelsamuel.drivesanity.Prefs
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Keeps a connection to the OBD2 adapter the user picked, on its own thread, and the latest
+ * readings. Once an adapter is picked it connects by itself whenever the app is running, and
+ * keeps retrying every few seconds (the car may be off, or the adapter out of range).
+ */
+@SuppressLint("StaticFieldLeak") // only ever holds the application context
+object Obd {
+    enum class Link { OFF, NOT_SET, NO_PERMISSION, BLUETOOTH_OFF, CONNECTING, LIVE, RETRYING }
+
+    data class Status(val link: Link, val detail: String = "")
+
+    @Volatile var status = Status(Link.OFF)
+        private set
+
+    /** PIDs the car said it supports, once connected. */
+    @Volatile var supported: Set<Int> = emptySet()
+        private set
+
+    private val readings = ConcurrentHashMap<String, Pair<Float, Long>>()
+    private lateinit var app: Context
+    @Volatile private var running = false
+    @Volatile private var worker: Thread? = null
+    @Volatile private var link: ObdTransport? = null
+
+    fun start(context: Context) {
+        app = context.applicationContext
+        if (running) return
+        running = true
+        worker = Thread(::loop, "obd").apply { isDaemon = true; start() }
+    }
+
+    fun stop() {
+        running = false
+        link?.close()
+        worker?.interrupt()
+        worker = null
+        readings.clear()
+        status = Status(Link.OFF)
+    }
+
+    /** After the user picks or forgets an adapter. */
+    fun restart() {
+        if (!running) return
+        stop()
+        start(app)
+    }
+
+    // --- readings ---------------------------------------------------------------------------
+
+    private fun value(key: String, maxAgeMs: Long = 3_000): Float? {
+        val (v, at) = readings[key] ?: return null
+        return if (SystemClock.elapsedRealtime() - at <= maxAgeMs) v else null
+    }
+
+    private fun put(key: String, v: Float?) {
+        if (v != null) readings[key] = v to SystemClock.elapsedRealtime()
+    }
+
+    val rpm get() = value("rpm")
+    val speedKmh get() = value("speed")
+    val coolantC get() = value("coolant", 15_000)
+    val intakeC get() = value("intake", 15_000)
+    val throttlePct get() = value("throttle")
+    val loadPct get() = value("load")
+    val fuelPct get() = value("fuel", 60_000)
+    val volts get() = value("volts", 20_000)
+
+    // --- the connection thread --------------------------------------------------------------
+
+    private fun loop() {
+        while (running) {
+            try {
+                connectAndPoll()
+            } catch (_: InterruptedException) {
+                break
+            } catch (e: Exception) {
+                if (!running) break
+                status = Status(Link.RETRYING, e.message ?: e.javaClass.simpleName)
+                try {
+                    Thread.sleep(5_000)
+                } catch (_: InterruptedException) {
+                    break
+                }
+            } finally {
+                link?.close()
+                link = null
+                supported = emptySet()
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun connectAndPoll() {
+        val saved = Prefs.obdDevice(app)
+        if (saved == null) {
+            status = Status(Link.NOT_SET)
+            Thread.sleep(2_000)
+            return
+        }
+        if (!hasBluetoothPermission(app)) {
+            status = Status(Link.NO_PERMISSION)
+            Thread.sleep(2_000)
+            return
+        }
+        val adapter = app.getSystemService(BluetoothManager::class.java)?.adapter
+        if (adapter == null || !adapter.isEnabled) {
+            status = Status(Link.BLUETOOTH_OFF)
+            Thread.sleep(3_000)
+            return
+        }
+        status = Status(Link.CONNECTING, saved.name)
+        adapter.cancelDiscovery()
+        val device = adapter.getRemoteDevice(saved.address)
+        val t = open(device, saved.ble)
+        link = t
+        val session = ObdSession(t)
+        val id = session.start()
+        supported = session.supported
+        status = Status(Link.LIVE, "${saved.name} · $id")
+        poll(session)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun open(device: BluetoothDevice, ble: Boolean): ObdTransport {
+        if (ble) return BleTransport(app, device)
+        return try {
+            ClassicTransport(device)
+        } catch (e: IOException) {
+            // Some adapters do both; if the classic link won't open, try low energy.
+            if (device.type == BluetoothDevice.DEVICE_TYPE_DUAL) BleTransport(app, device) else throw e
+        }
+    }
+
+    /** RPM every round, one of the others in turn, fuel and battery every 10 s. */
+    private fun poll(s: ObdSession) {
+        val others = listOf(Pid.SPEED, Pid.THROTTLE, Pid.COOLANT, Pid.LOAD, Pid.INTAKE).filter { s.supports(it) }
+        var i = 0
+        var slowAt = 0L
+        var misses = 0
+        while (running) {
+            val rpm = s.read(Pid.RPM)
+            put("rpm", rpm)
+            if (others.isNotEmpty()) {
+                val pid = others[i++ % others.size]
+                put(key(pid), s.read(pid))
+            }
+            val now = SystemClock.elapsedRealtime()
+            if (now >= slowAt) {
+                put("fuel", s.read(Pid.FUEL))
+                put("volts", s.volts())
+                slowAt = now + 10_000
+            }
+            // The adapter stays powered with the engine off; stop hammering a sleeping car.
+            misses = if (rpm == null && s.supports(Pid.RPM)) misses + 1 else 0
+            if (misses >= 5) Thread.sleep(1_000)
+        }
+    }
+
+    private fun key(pid: Pid) = when (pid) {
+        Pid.RPM -> "rpm"
+        Pid.SPEED -> "speed"
+        Pid.COOLANT -> "coolant"
+        Pid.INTAKE -> "intake"
+        Pid.THROTTLE -> "throttle"
+        Pid.LOAD -> "load"
+        Pid.FUEL -> "fuel"
+    }
+
+    fun hasBluetoothPermission(ctx: Context): Boolean =
+        Build.VERSION.SDK_INT < 31 ||
+            ctx.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+
+    /** One line for the screens. */
+    fun describe(): String = when (status.link) {
+        Link.OFF -> "OBD2 off"
+        Link.NOT_SET -> "OBD2: tap OBD2 to pick your adapter"
+        Link.NO_PERMISSION -> "OBD2: allow Bluetooth (tap OBD2)"
+        Link.BLUETOOTH_OFF -> "OBD2: Bluetooth is off"
+        Link.CONNECTING -> "OBD2: connecting to ${status.detail}…"
+        Link.LIVE -> "OBD2: ${status.detail}"
+        Link.RETRYING -> "OBD2: ${status.detail} (retrying)"
+    }
+}

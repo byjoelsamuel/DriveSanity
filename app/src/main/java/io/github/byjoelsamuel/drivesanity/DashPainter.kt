@@ -19,6 +19,8 @@ object Colors {
     val YELLOW = Color.rgb(255, 202, 40)
     val RED = Color.rgb(244, 54, 54)
     val RED_DIM = Color.rgb(84, 34, 36)
+    val BOX = Color.rgb(26, 31, 36)
+    val GREEN = Color.rgb(102, 187, 106)
 
     fun brake(level: BrakeLevel) = when (level) {
         BrakeLevel.NONE -> DIM
@@ -48,9 +50,9 @@ object Colors {
  * Draws the dashboard; the phone and the car screen both use it. Every size comes from the
  * space it's given, so it fits any screen.
  *
- * Wide screens (the car, a phone on its side): braking, a big speed and the RPM bar stacked
- * on the left, a small g-meter on the right. Tall screens: the same stack with the g-meter
- * underneath.
+ * Wide screens (the car, a phone on its side): braking, a big speed, the RPM bar and four
+ * info boxes stacked on the left; a small g-meter and the fuel meter on the right. Tall
+ * screens: the same stack with fuel and the g-meter underneath.
  */
 class DashPainter {
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -73,13 +75,17 @@ class DashPainter {
         var y = inner.top
         fun row(frac: Float) = RectF(inner.left, y, split - pad, y + h * frac).also { y += h * frac }
         drawStatus(c, row(0.07f), s)
-        drawBrake(c, row(0.18f), s)
-        drawSpeed(c, row(0.53f), s, units)
-        drawRpm(c, row(0.22f), s)
+        drawBrake(c, row(0.15f), s)
+        drawSpeed(c, row(0.42f), s, units)
+        drawRpm(c, row(0.19f), s)
+        row(0.02f)
+        drawBoxes(c, row(0.15f), s, units)
 
-        val size = min(inner.right - split, h * 0.80f)
-        val cx = (split + inner.right) / 2f
-        drawGMeter(c, RectF(cx - size / 2, inner.centerY() - size / 2, cx + size / 2, inner.centerY() + size / 2), s)
+        val colLeft = split + pad * 0.5f
+        val size = min(inner.right - colLeft, h * 0.70f)
+        val cx = (colLeft + inner.right) / 2f
+        drawGMeter(c, RectF(cx - size / 2, inner.top, cx + size / 2, inner.top + size), s)
+        drawFuel(c, RectF(colLeft, inner.bottom - h * 0.17f, inner.right, inner.bottom), s)
     }
 
     private fun drawTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
@@ -89,11 +95,15 @@ class DashPainter {
         var y = inner.top
         fun row(frac: Float) = RectF(inner.left, y, inner.right, y + h * frac).also { y += h * frac }
         drawStatus(c, row(0.035f), s)
-        drawBrake(c, row(0.11f), s)
-        drawSpeed(c, row(0.26f), s, units)
-        drawRpm(c, row(0.12f), s)
-        row(0.025f)
-        drawGMeter(c, row(1f - 0.035f - 0.11f - 0.26f - 0.12f - 0.025f), s)
+        drawBrake(c, row(0.10f), s)
+        drawSpeed(c, row(0.20f), s, units)
+        drawRpm(c, row(0.11f), s)
+        row(0.01f)
+        drawBoxes(c, row(0.08f), s, units)
+        row(0.015f)
+        drawFuel(c, row(0.07f), s)
+        row(0.015f)
+        drawGMeter(c, RectF(inner.left, y, inner.right, inner.bottom), s)
     }
 
     /** GPS state on the left, REC on the right. */
@@ -106,7 +116,11 @@ class DashPainter {
             s.accuracyM == null -> "WAITING FOR GPS"
             else -> "GPS ±${s.accuracyM.roundToInt()} m"
         }
-        c.drawText(gps, b.left, b.bottom - b.height() * 0.2f, text)
+        val base = b.bottom - b.height() * 0.2f
+        c.drawText(gps, b.left, base, text)
+        val x = b.left + text.measureText(gps + "   ")
+        text.color = if (s.obdLive) Colors.GREEN else Colors.DIM
+        c.drawText(if (s.obdLive) "OBD2 ●" else "NO OBD2", x, base, text)
         if (s.recording) {
             text.textAlign = Paint.Align.RIGHT
             text.color = Colors.REC
@@ -200,7 +214,7 @@ class DashPainter {
         c.drawText("RPM", b.left, b.top + size, text)
         text.textAlign = Paint.Align.RIGHT
         if (rpm == null) {
-            c.drawText("-- · no OBD2 yet", b.right, b.top + size, text)
+            c.drawText(if (s.obdLive) "--" else "-- · no OBD2", b.right, b.top + size, text)
         } else {
             text.textSize = size
             text.color = Colors.rpm(rpm)
@@ -233,6 +247,104 @@ class DashPainter {
             val x = (b.left + k * 1000f / Revs.MAX * b.width()).coerceIn(b.left + labelSize * 0.3f, b.right - labelSize * 0.3f)
             text.color = if (k * 1000f >= Revs.REDLINE) Colors.RED else Colors.DIM
             c.drawText(k.toString(), x, barTop + barH + labelSize * 1.15f, text)
+        }
+    }
+
+    private data class Box(val label: String, val value: String, val color: Int = Colors.FG)
+
+    /** Four small boxes: coolant, intake air, battery, trip. */
+    private fun drawBoxes(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        fun temp(cel: Float?): String {
+            cel ?: return "--"
+            return if (units == Units.MPH) "${(cel * 9 / 5 + 32).roundToInt()}°F" else "${cel.roundToInt()}°C"
+        }
+        val coolantColor = when {
+            s.coolantC == null -> Colors.FG
+            s.coolantC < 60f -> Colors.ACCEL   // still cold: go easy on the revs
+            s.coolantC > 105f -> Colors.RED    // running hot
+            else -> Colors.FG
+        }
+        val voltColor = when {
+            s.volts == null -> Colors.FG
+            s.volts < 11.8f || s.volts > 15.2f -> Colors.RED
+            s.volts < 12.2f -> Colors.YELLOW
+            else -> Colors.FG
+        }
+        val boxes = listOf(
+            Box("COOLANT", temp(s.coolantC), coolantColor),
+            Box("INTAKE", temp(s.intakeC)),
+            Box("BATTERY", s.volts?.let { "%.1f V".format(it) } ?: "--", voltColor),
+            Box("TRIP", "${oneDecimal(units.distance(s.tripM))} ${units.distanceLabel}"),
+        )
+        val gap = b.width() * 0.025f
+        val w = (b.width() - gap * (boxes.size - 1)) / boxes.size
+        val h = b.height()
+        val labelSize = min(h * 0.24f, w * 0.14f)
+        val valueSize = min(h * 0.42f, w * 0.24f)
+        boxes.forEachIndexed { i, box ->
+            val x = b.left + i * (w + gap)
+            fill.color = Colors.BOX
+            c.drawRoundRect(x, b.top, x + w, b.bottom, h * 0.12f, h * 0.12f, fill)
+            val inset = w * 0.08f
+            text.textAlign = Paint.Align.LEFT
+            text.textSize = labelSize
+            text.color = Colors.DIM
+            c.drawText(box.label, x + inset, b.top + h * 0.12f + labelSize, text)
+            text.textSize = valueSize
+            text.color = if (box.value == "--") Colors.DIM else box.color
+            c.drawText(box.value, x + inset, b.bottom - h * 0.16f, text)
+        }
+    }
+
+    /** Fuel left in the tank, E to F. Amber under a quarter, red under an eighth. */
+    private fun drawFuel(c: Canvas, b: RectF, s: Snapshot) {
+        val pct = s.fuelPct
+        val size = min(b.height() * 0.36f, b.width() * 0.10f)
+        val color = when {
+            pct == null -> Colors.DIM
+            pct < 12.5f -> Colors.RED
+            pct < 25f -> Colors.YELLOW
+            else -> Colors.FG
+        }
+        text.textSize = size * 0.7f
+        text.textAlign = Paint.Align.LEFT
+        text.color = Colors.DIM
+        c.drawText("FUEL", b.left, b.top + size, text)
+        text.textAlign = Paint.Align.RIGHT
+        when {
+            !s.fuelSupported -> c.drawText("car doesn't report it", b.right, b.top + size, text)
+            pct == null -> c.drawText("--", b.right, b.top + size, text)
+            else -> {
+                text.textSize = size
+                text.color = color
+                c.drawText("${pct.roundToInt()}%", b.right, b.top + size, text)
+            }
+        }
+
+        val label = size * 0.6f
+        text.textSize = label
+        val eW = text.measureText("E ")
+        val barTop = b.top + size * 1.45f
+        val barH = min(size * 0.75f, b.bottom - barTop)
+        if (barH <= 0f) return
+        val track = RectF(b.left + eW, barTop, b.right - eW, barTop + barH)
+        text.color = Colors.DIM
+        text.textAlign = Paint.Align.LEFT
+        c.drawText("E", b.left, track.centerY() + label * 0.36f, text)
+        text.textAlign = Paint.Align.RIGHT
+        c.drawText("F", b.right, track.centerY() + label * 0.36f, text)
+        fill.color = Colors.GRID
+        c.drawRoundRect(track, barH / 2, barH / 2, fill)
+        if (pct != null && pct > 0f) {
+            fill.color = color
+            val right = track.left + track.width() * (pct / 100f).coerceIn(0f, 1f)
+            c.drawRoundRect(RectF(track.left, track.top, right, track.bottom), barH / 2, barH / 2, fill)
+        }
+        stroke.color = Colors.BG
+        stroke.strokeWidth = barH * 0.1f
+        for (q in listOf(0.25f, 0.5f, 0.75f)) {
+            val x = track.left + track.width() * q
+            c.drawLine(x, track.top, x, track.bottom, stroke)
         }
     }
 
