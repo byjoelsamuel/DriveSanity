@@ -39,7 +39,8 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private val tick = object : Runnable {
         override fun run() {
             draw()
-            handler.postDelayed(this, 66) // ~15 fps is plenty for a glance
+            // ~15 fps is plenty for gauges; the map moves, so it gets 30.
+            handler.postDelayed(this, if (Prefs.layout(carContext) == Prefs.Layout.MAP) 33 else 66)
         }
     }
 

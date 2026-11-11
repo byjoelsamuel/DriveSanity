@@ -3,15 +3,23 @@
 An Android app that shows live driving data on your phone and on your car's
 Android Auto screen: speed, braking, g-force, RPM, fuel and engine temperatures.
 
+The phone and the car each get their own view:
+
+- **On the phone**, a regular app with three tabs: **Drive** (live numbers in plain words),
+  **Trips** (this trip's stats and your recordings) and **Setup** (calibration, OBD2, units,
+  and which screen the car shows).
+- **In the car**, a full-screen dashboard. Pick one of three in Setup → Car screen:
+
 ![The Android Auto screen, with sample data](docs/car-screen.png)
 
-There are three screens. The button that switches them shows the name of the next one.
-
 - **Gauges** (above): the everyday screen.
-- **Map:** a map with simple navigation.
+- **Map:** a live map with simple navigation.
 - **Retro:** everything in Saab green, after early-2000s dashboards.
 
-![The map screen, with sample data and a made-up map](docs/map-screen.png)
+![The map screen, with sample data](docs/map-screen.png)
+
+*This picture was made where the map server can't be reached, so its streets are a stand-in.
+In the app the map is the real OpenStreetMap.*
 
 ![The retro screen, with sample data](docs/retro-screen.png)
 
@@ -58,11 +66,12 @@ Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
    and install it. Allow location when it asks.
 2. Mount your phone firmly, either facing you or lying flat with its top pointing to the
    front of the car.
-3. Stop on level ground and tap **Calibrate**. The app uses this to work out which way is
-   forward. Do it again if you move the mount.
+3. Stop on level ground and tap **Calibrate** (on the Drive tab the first time, or in Setup).
+   The app uses this to work out which way is forward. Do it again if you move the mount.
 4. Drive.
 
-To record a drive, tap **Rec**, then **Share** afterwards to send the CSV file.
+To record a drive, tap **Start recording** on the Drive tab. Recordings appear in **Trips**,
+where you can share them as a CSV file or delete them.
 
 ## Connecting OBD2
 
@@ -71,7 +80,7 @@ Any ELM327 Bluetooth adapter works, whether it's classic Bluetooth or Bluetooth 
 1. Plug the adapter into the OBD2 port under the dashboard and turn the ignition on.
 2. If it's a classic Bluetooth adapter, pair it in your phone's Bluetooth settings first.
    The PIN is usually 1234 or 0000. Bluetooth LE adapters don't need pairing.
-3. In the app, tap **OBD2** and choose your adapter.
+3. In the app, go to **Setup** → **Choose adapter** and pick it from the list.
 
 You only do this once. After that the app connects by itself whenever it's open. Some cars
 don't report fuel level; if yours doesn't, the fuel meter will say so.
@@ -87,14 +96,19 @@ engine and a bad battery voltage.
 
 ## The map screen
 
-Switch to it with the screen button on the phone or in the car. Tap **Navigate** on the phone
-and type an address to get directions; tap it again to end the route.
+Pick it in Setup → Car screen, or with the button in the car. On the phone, tap **Where to?**
+on the Drive tab and type an address to get directions; the phone then shows a small map
+too. Tap **End route** to stop.
 
-- **Map:** OpenStreetMap, shown dark and turning with the car. It needs mobile data.
-- **Directions:** turn by turn, with the distance and time left. If you leave the route the
-  app finds a new one.
-- **Speed limit:** from OpenStreetMap. Many roads don't have their limit mapped yet, so the
-  sign only shows where one is known. Your speed turns orange when you're more than 5 over.
+- **Map:** OpenStreetMap, shown dark and turning with the car. It needs mobile data. Between
+  GPS fixes (about one a second) the car's position is moved on along its heading, so the map
+  glides instead of jumping.
+- **Directions:** turn by turn, with the distance, time left and arrival time. If you leave the
+  route the app finds a new one.
+- **Speed limit:** from OpenStreetMap. The app downloads every road with a limit within 1.5 km
+  and matches you to the one you're driving along, so the sign changes as soon as you turn.
+  Many roads don't have their limit mapped yet, so the sign only shows where one is known.
+  Your speed turns orange when you're more than 5 over.
 - **Gear:** most cars don't report their gear over OBD2, so the app works it out from speed
   and RPM. It's set up for a 2023 Mazda3 2.5 AWD with the 6-speed automatic. It shows a dash
   while shifting, or when the torque converter is slipping a lot. For another car, change
@@ -153,7 +167,7 @@ Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `DriveMath.kt` | Calibration, braking levels and trip stats |
 | `DriveEngine.kt` | Reads GPS and the motion sensor |
 | `DashPainter.kt` | Draws the dashboard for both the phone and the car |
-| `MainActivity.kt` | The phone screen |
+| `MainActivity.kt`, `ui/` | The phone app (Jetpack Compose) |
 | `car/` | The Android Auto screen |
 | `obd/` | The OBD2 Bluetooth connection |
 | `map/` | Map tiles and drawing the map |

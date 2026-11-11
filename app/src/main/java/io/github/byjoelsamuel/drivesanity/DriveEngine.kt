@@ -9,9 +9,11 @@ import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
+import io.github.byjoelsamuel.drivesanity.map.Geo
 import io.github.byjoelsamuel.drivesanity.map.LatLon
 import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.nav.Nav
@@ -100,6 +102,9 @@ object DriveEngine : SensorEventListener, LocationListener {
     private var log: TripLog? = null
     private var lastLogNs = 0L
     val recording get() = log != null
+    /** When the current recording started (elapsedRealtime), or null. */
+    var recordingSinceMs: Long? = null
+        private set
     val recordingFile: File? get() = log?.file
 
     private val freshFix: Location?
@@ -107,7 +112,32 @@ object DriveEngine : SensorEventListener, LocationListener {
 
     /** GPS speed, or the car's own (OBD2) when GPS has dropped out, e.g. in a tunnel. */
     val speedMps: Float?
-        get() = freshFix?.takeIf { it.hasSpeed() }?.speed ?: Obd.speedKmh?.let { it / 3.6f }
+        get() = freshFix?.takeIf { it.hasSpeed() }?.let(::gpsSpeed) ?: Obd.speedKmh?.let { it / 3.6f }
+
+    /**
+     * GPS reports a little speed even when parked. Anything within its own error margin (or
+     * under 0.5 m/s, about 1 mph) counts as standing still.
+     */
+    private fun gpsSpeed(l: Location): Float {
+        val noise = if (Build.VERSION.SDK_INT >= 26 && l.hasSpeedAccuracy()) l.speedAccuracyMetersPerSecond else 0f
+        return if (l.speed < maxOf(0.5f, noise)) 0f else l.speed
+    }
+
+    /** True once the car is actually rolling; peaks and hard-event counts only count then. */
+    private val moving get() = (speedMps ?: 0f) > 2f
+
+    /**
+     * Where the car is now, not where it was at the last GPS fix: moved on along its heading at
+     * its speed, for up to 1.5 s. Makes the map glide instead of jumping once a second.
+     */
+    private fun livePosition(): LatLon? {
+        val f = lastFix?.takeIf { SystemClock.elapsedRealtime() - lastFixAtMs < 30_000 } ?: return null
+        val here = LatLon(f.latitude, f.longitude)
+        val v = if (f.hasSpeed()) gpsSpeed(f) else 0f
+        if (!f.hasBearing() || v < 2f) return here
+        val dt = ((SystemClock.elapsedRealtime() - lastFixAtMs) / 1000.0).coerceAtMost(1.5)
+        return Geo.offset(here, f.bearing.toDouble(), v * dt)
+    }
 
     fun snapshot() = Snapshot(
         speedMps = speedMps,
@@ -124,9 +154,9 @@ object DriveEngine : SensorEventListener, LocationListener {
         volts = Obd.volts,
         fuelPct = Obd.fuelPct,
         obdLive = Obd.status.link == Obd.Link.LIVE,
-        fuelSupported = Obd.status.link != Obd.Link.LIVE || Pid.FUEL.code in Obd.supported,
+        fuelSupported = Obd.fuelPct != null || Obd.status.link != Obd.Link.LIVE || Pid.FUEL.code in Obd.supported,
         tripM = stats.distanceM,
-        position = lastFix?.takeIf { SystemClock.elapsedRealtime() - lastFixAtMs < 30_000 }?.let { LatLon(it.latitude, it.longitude) },
+        position = livePosition(),
         headingDeg = heading,
         gear = gear,
     )
@@ -234,11 +264,13 @@ object DriveEngine : SensorEventListener, LocationListener {
         if (current != null) {
             current.close()
             log = null
+            recordingSinceMs = null
             status = "Saved ${current.file.name}"
             release(REC)
         } else {
             hold(context, REC)
             log = TripLog.open(app.filesDir)
+            recordingSinceMs = SystemClock.elapsedRealtime()
             lastLogNs = 0L
             status = "Recording"
         }
@@ -275,7 +307,8 @@ object DriveEngine : SensorEventListener, LocationListener {
         val cal = calibration ?: return
         val g = cal.toCar(v)
         carG = g
-        stats.feedG(g)
+        // Parked, the phone gets picked up and bumped; only driving counts towards the trip.
+        if (moving) stats.feedG(g)
         if (e.timestamp - lastTrailNs >= TRAIL_EVERY_NS) {
             trail.addLast(g)
             if (trail.size > TRAIL_POINTS) trail.removeFirst()
@@ -316,10 +349,10 @@ object DriveEngine : SensorEventListener, LocationListener {
                 // Below walking pace GPS drift adds fake distance, so it doesn't count.
                 val moving = loc.speed >= 1f
                 val dist = if (moving && loc.accuracy <= 25f) prev.distanceTo(loc) else 0f
-                stats.feedGps(loc.speed, dist, if (moving) dt else 0f)
+                stats.feedGps(gpsSpeed(loc), dist, if (moving) dt else 0f)
             }
         } else if (loc.hasSpeed()) {
-            stats.feedGps(loc.speed, 0f, 0f)
+            stats.feedGps(gpsSpeed(loc), 0f, 0f)
         }
         lastFix = loc
         lastFixAtMs = SystemClock.elapsedRealtime()
@@ -327,7 +360,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         if (loc.hasBearing() && loc.hasSpeed() && loc.speed > 2f) heading = loc.bearing
         val p = LatLon(loc.latitude, loc.longitude)
         Nav.onLocation(p)
-        SpeedLimit.onLocation(p)
+        SpeedLimit.onLocation(p, heading)
     }
 
     // Older Android versions (before 11) call these and crash if they're missing.
