@@ -42,6 +42,10 @@ object Nav {
 
     val active get() = destination != null
 
+    /** Clock time you'll get there, e.g. "8:52 PM", from the time left on the route. */
+    fun arrivalTime(): String = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT)
+        .format(java.util.Date(System.currentTimeMillis() + (remainingS * 1000).toLong()))
+
     fun search(query: String, near: LatLon?, done: (Result<List<Place>>) -> Unit) {
         var url = SEARCH + URLEncoder.encode(query, "UTF-8")
         // Prefer results near the car, without excluding the rest.

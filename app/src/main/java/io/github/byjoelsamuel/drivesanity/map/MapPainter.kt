@@ -163,7 +163,7 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         val what = TextUtils.ellipsize(step.text, text, b.right - tx - h * 0.15f, TextUtils.TruncateAt.END)
         c.drawText(what, 0, what.length, tx, b.top + h * 0.63f, text)
         label(h * 0.17f, Colors.DIM, Paint.Align.LEFT)
-        val left = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min"
+        val left = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min · ETA ${Nav.arrivalTime()}"
         c.drawText(left, tx, b.top + h * 0.86f, text)
     }
 

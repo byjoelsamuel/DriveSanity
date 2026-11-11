@@ -44,6 +44,24 @@ object Geo {
         return hypot(ax + t * dx, ay + t * dy)
     }
 
+    /** Compass bearing from [a] to [b], 0–360 degrees. */
+    fun bearingDeg(a: LatLon, b: LatLon): Double {
+        val la1 = Math.toRadians(a.lat)
+        val la2 = Math.toRadians(b.lat)
+        val dLon = Math.toRadians(b.lon - a.lon)
+        val y = sin(dLon) * cos(la2)
+        val x = cos(la1) * sin(la2) - sin(la1) * cos(la2) * cos(dLon)
+        return (Math.toDegrees(kotlin.math.atan2(y, x)) + 360) % 360
+    }
+
+    /** The point [meters] from [p] heading [bearingDeg]. Flat-ground maths, fine for short hops. */
+    fun offset(p: LatLon, bearingDeg: Double, meters: Double): LatLon {
+        val b = Math.toRadians(bearingDeg)
+        val dLat = meters * cos(b) / EARTH_R
+        val dLon = meters * sin(b) / (EARTH_R * cos(Math.toRadians(p.lat)))
+        return LatLon(p.lat + Math.toDegrees(dLat), p.lon + Math.toDegrees(dLon))
+    }
+
     /** Metres from [p] to the nearest point of a polyline. */
     fun distanceToLineM(p: LatLon, line: List<LatLon>): Double {
         if (line.size == 1) return distanceM(p, line[0])
