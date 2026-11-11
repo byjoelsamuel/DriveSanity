@@ -265,7 +265,11 @@ object DriveEngine : SensorEventListener, LocationListener {
             lastGearNs = e.timestamp
             val rpm = Obd.rpm
             val kmh = Obd.speedKmh
-            gear = if (rpm != null && kmh != null) gears.feed(kmh, rpm) else null
+            gear = when {
+                rpm == null || kmh == null -> null
+                MY_CAR != null -> MY_CAR.gearFor(kmh, rpm)
+                else -> gears.feed(kmh, rpm)
+            }
         }
 
         val cal = calibration ?: return

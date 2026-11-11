@@ -95,9 +95,11 @@ and type an address to get directions; tap it again to end the route.
   app finds a new one.
 - **Speed limit:** from OpenStreetMap. Many roads don't have their limit mapped yet, so the
   sign only shows where one is known. Your speed turns orange when you're more than 5 over.
-- **Gear:** most cars don't report their gear over OBD2, so the app learns it. Each gear has
-  its own ratio of speed to RPM, and after a few minutes of driving through the gears the app
-  knows which is which. It shows a dash until then, or when the clutch is in.
+- **Gear:** most cars don't report their gear over OBD2, so the app works it out from speed
+  and RPM. It's set up for a 2023 Mazda3 2.5 AWD with the 6-speed automatic. It shows a dash
+  while shifting, or when the torque converter is slipping a lot. For another car, change
+  `MY_CAR` in `DriveMath.kt`, or set it to `null` and the app learns the gears by itself after
+  a few minutes of driving.
 
 The free services this uses ask apps to keep their traffic light, so they suit personal use.
 An app with many users would need its own servers.
