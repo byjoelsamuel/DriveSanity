@@ -84,8 +84,10 @@ class DashPainter(context: Context) {
     }
 
     private val map = MapPainter(labels, numbers)
+    private val retro = RetroPainter(context)
 
     fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
+        if (layout == Prefs.Layout.RETRO) return retro.draw(c, r, s, units)
         fill.color = Colors.BG
         c.drawRect(r, fill)
         val wide = r.width() > r.height() * 1.2f
