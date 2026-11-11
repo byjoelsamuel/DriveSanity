@@ -7,12 +7,16 @@ hard you're braking. Barebones on purpose. It's a first try before adding an OBD
 
 | | Where it comes from |
 |---|---|
-| **Speed** | Phone GPS (about once a second). Tap the dashboard to switch km/h ↔ mph. |
-| **G-force circle** | Phone accelerometer, smoothed over ~0.2 s. The dot is the car's acceleration: up = speeding up, down = braking, left/right = turning. Rings every 0.25 g, with a 2-second trail. |
-| **Braking** | How hard you're slowing down, in g: **light** ≥ 0.10, **moderate** ≥ 0.25, **hard** ≥ 0.40, **very hard** ≥ 0.60. A normal stop is 0.1–0.3 g; an emergency stop in a road car is 0.7–1.0 g. |
+| **Speed** | Phone GPS (about once a second), big in **MPH** with km/h underneath. Tap the phone dashboard to swap them. |
+| **Brake** | How hard you're slowing down, in g: **light** ≥ 0.10, **moderate** ≥ 0.25, **hard** ≥ 0.40, **very hard** ≥ 0.60. A normal stop is 0.1–0.3 g; an emergency stop in a road car is 0.7–1.0 g. |
+| **RPM** | A segmented bar, 0–8,000, white fading to yellow and red from the 6,300 redline. Needs an OBD2 adapter, coming next; until then it shows "no OBD2 yet". Change the range in `Revs` in `DriveMath.kt`. |
+| **G-meter** | Phone accelerometer, smoothed over ~0.2 s. The dot is the car's acceleration: up = speeding up, down = braking, left/right = turning. Rings every 0.25 g, with a 2-second trail. |
 | **Trip** | Distance, moving time, average and top speed, peak brake/accel/turn g, and counts of hard brakes (≥ 0.40 g), hard launches (≥ 0.35 g) and hard turns (≥ 0.40 g). Long-press **Reset** to start over. |
 | **GPS speed change** | Acceleration worked out from GPS speed. A rough cross-check on the accelerometer. |
 | **Recording** | **Rec** writes a CSV row every 0.1 s; **Share** sends the latest one. |
+
+On a wide screen (the car, or the phone on its side) brake, speed and RPM stack on the left
+with a small g-meter on the right. On a tall phone screen the g-meter goes underneath.
 
 CSV columns: `time_s, lat, lon, gps_speed_kmh, gps_accuracy_m, gps_accel_g, long_g, lat_g, brake_g, brake_level`.
 
@@ -28,17 +32,22 @@ CSV columns: `time_s, lat, lon, gps_speed_kmh, gps_accuracy_m, gps_accel_g, long
 
 ## Android Auto
 
-Android Auto only shows apps from the Play Store unless you allow others:
-
-1. On the phone: **Settings → search "Android Auto"** → scroll to the bottom and tap
-   **Version** about 10 times → OK.
-2. **⋮ menu → Developer settings** → tick **Unknown sources**.
-3. Reconnect to the car. DriveSanity shows up in the app launcher (if not, check
-   **Customise launcher** in Android Auto's settings).
-
-On the car screen you get the same dashboard with **Calibrate** and **Rec** buttons. It's
+The car screen shows the same dashboard with **Calibrate** and **Rec** buttons. It's
 registered as a navigation app because that's the only kind Android Auto lets draw its own
-screen. It never starts navigation.
+screen; it never starts navigation.
+
+**Installing from the APK isn't enough.** Android Auto only runs apps built on Google's Car
+App Library (like this one) if Google Play installed them. Its "Unknown sources" developer
+setting covers older media and messaging apps, not this kind, so a sideloaded DriveSanity
+works on the phone but never appears in the car. Two ways round it:
+
+- **Google Play internal testing** (the proper route). Upload the app to a Play Console
+  internal test track (one-time $25 developer fee) and install it from the Play Store as a
+  tester. Android Auto then treats it like any Play app, and Play delivers updates.
+- **[UnknownAuto](https://github.com/GitMag/UnknownAuto)** (free, unofficial, not checked by
+  us). It uses [Shizuku](https://shizuku.rikka.app/) to install the APK so it's recorded as
+  coming from Google Play. Every update has to go through it too: installing a new APK any
+  other way drops the mark and the app disappears from the car again.
 
 ## Good to know
 
