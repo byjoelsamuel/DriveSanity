@@ -4,11 +4,13 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.edit
-import java.util.Locale
 
 enum class Units(val perMps: Float, val label: String) {
     KMH(3.6f, "km/h"),
-    MPH(2.2369363f, "mph");
+    MPH(2.2369363f, "MPH");
+
+    /** The one shown small under the big number. */
+    val other get() = if (this == MPH) KMH else MPH
 
     fun speed(mps: Float) = mps * perMps
     fun distance(m: Double) = if (this == KMH) m / 1000 else m / 1609.344
@@ -22,16 +24,16 @@ object Prefs {
 
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    /** The big speed number's units: MPH unless switched (tap the phone dashboard). km/h shows small underneath. */
     fun units(ctx: Context): Units = units ?: run {
-        val default = if (Locale.getDefault().country in setOf("US", "GB", "LR", "MM")) Units.MPH else Units.KMH
-        val saved = prefs(ctx).getString("units", null)
-        (Units.entries.firstOrNull { it.name == saved } ?: default).also { units = it }
+        val saved = prefs(ctx).getString("primary_units", null)
+        (Units.entries.firstOrNull { it.name == saved } ?: Units.MPH).also { units = it }
     }
 
     fun toggleUnits(ctx: Context) {
-        val next = if (units(ctx) == Units.KMH) Units.MPH else Units.KMH
+        val next = units(ctx).other
         units = next
-        prefs(ctx).edit { putString("units", next.name) }
+        prefs(ctx).edit { putString("primary_units", next.name) }
     }
 
     fun saveRest(ctx: Context, rest: Vec3) {

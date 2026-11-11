@@ -86,4 +86,15 @@ class DriveMathTest {
         repeat(100) { out = lp.feed(Vec3(1f, 0f, 0f), 0.02f) }
         assertEquals(1f, out.x, eps)
     }
+
+    @Test
+    fun `rpm bar stays white low, yellow near the top, red from the redline`() {
+        assertEquals(0f, Revs.heat(2000f), eps)
+        assertEquals(0f, Revs.heat(3400f), eps)
+        assertTrue(Revs.heat(4500f) in 0.1f..0.9f)   // on its way to yellow
+        assertEquals(1f, Revs.heat(5500f), 0.05f)     // yellow
+        assertTrue(Revs.heat(6000f) in 1.1f..1.9f)   // on its way to red
+        assertEquals(2f, Revs.heat(6300f), eps)
+        assertEquals(2f, Revs.heat(8000f), eps)
+    }
 }

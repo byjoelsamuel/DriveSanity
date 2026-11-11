@@ -85,6 +85,27 @@ enum class BrakeLevel(val label: String, val from: Float) {
     }
 }
 
+/** The engine's rev range. Redline at 6,300; the limiter lets it rev to 8,000. */
+object Revs {
+    const val REDLINE = 6300f
+    const val MAX = 8000f
+
+    /**
+     * How "hot" the RPM bar is at [rpm]: 0 is white, 1 is yellow, 2 is red. White up to 55 % of
+     * the redline, fading to yellow by 87 %, then to red at the redline.
+     */
+    fun heat(rpm: Float, redline: Float = REDLINE): Float {
+        val yellowFrom = redline * 0.55f
+        val yellowFull = redline * 0.87f
+        return when {
+            rpm <= yellowFrom -> 0f
+            rpm < yellowFull -> (rpm - yellowFrom) / (yellowFull - yellowFrom)
+            rpm < redline -> 1f + (rpm - yellowFull) / (redline - yellowFull)
+            else -> 2f
+        }
+    }
+}
+
 /** Exponential smoothing with a time constant, so it behaves the same at any sensor rate. */
 class LowPass3(private val tauSec: Float) {
     private var value: Vec3? = null

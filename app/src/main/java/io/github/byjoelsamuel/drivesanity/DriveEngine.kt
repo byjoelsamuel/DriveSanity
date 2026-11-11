@@ -24,6 +24,8 @@ data class Snapshot(
     val calibrating: Boolean,
     val recording: Boolean,
     val gpsOn: Boolean,
+    /** Engine speed; null until an OBD2 adapter is connected. */
+    val rpm: Float? = null,
 )
 
 /**
@@ -69,6 +71,10 @@ object DriveEngine : SensorEventListener, LocationListener {
     var gpsAccelG: Float? = null
         private set
 
+    /** Set by the OBD2 reader once there is one. */
+    var rpm: Float? = null
+        private set
+
     val stats = TripStats()
     private var log: TripLog? = null
     private var lastLogNs = 0L
@@ -89,6 +95,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         calibrating = calSamples != null,
         recording = recording,
         gpsOn = gpsOn,
+        rpm = rpm,
     )
 
     // --- who's using it ---------------------------------------------------------------------
