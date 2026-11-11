@@ -26,7 +26,7 @@ import io.github.byjoelsamuel.drivesanity.Prefs
  * navigation apps, with Calibrate and Rec buttons in the corner.
  */
 class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
-    private val painter = DashPainter()
+    private val painter = DashPainter(carContext)
     private val handler = Handler(Looper.getMainLooper())
     private var surface: Surface? = null
     private var full = Rect()

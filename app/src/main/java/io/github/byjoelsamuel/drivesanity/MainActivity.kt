@@ -6,7 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.RectF
-import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.TabStopSpan
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -50,24 +54,38 @@ class MainActivity : Activity() {
         root.addView(dash, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
 
         statsText = TextView(this).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = Fonts.medium(context)
             textSize = 13f
+            setLineSpacing(0f, 1.15f)
             setTextColor(Colors.FG)
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(20), dp(8), dp(20), dp(10))
         }
         root.addView(statsText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(8), 0, dp(8), dp(8))
+            setPadding(dp(14), 0, dp(14), dp(12))
         }
+        // Flat, rounded buttons in the dashboard's colours.
         fun button(label: String, onClick: () -> Unit) = Button(this).apply {
             text = label
-            textSize = 12f
+            isAllCaps = false
+            typeface = Fonts.medium(context)
+            textSize = 13f
+            setTextColor(Colors.FG)
+            background = GradientDrawable().apply {
+                setColor(Colors.BOX)
+                cornerRadius = dp(10).toFloat()
+            }
+            stateListAnimator = null
             minWidth = 0
-            setPadding(dp(2), paddingTop, dp(2), paddingBottom)
+            minHeight = dp(44)
+            setPadding(dp(2), 0, dp(2), 0)
             setOnClickListener { onClick() }
-            buttons.addView(this, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+            buttons.addView(this, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply {
+                marginStart = dp(3)
+                marginEnd = dp(3)
+            })
         }
         button("Calibrate") { DriveEngine.calibrate() }
         recButton = button("Rec") { DriveEngine.toggleRecording(this); refresh() }
@@ -137,15 +155,26 @@ class MainActivity : Activity() {
     private fun refresh() {
         val u = Prefs.units(this)
         val st = DriveEngine.stats
-        statsText.text = buildString {
-            appendLine("TRIP   ${oneDecimal(u.distance(st.distanceM))} ${u.distanceLabel}   moving ${hms(st.movingSec)}")
-            appendLine("SPEED  avg ${u.speed(st.avgMovingSpeedMps).toInt()}   top ${u.speed(st.topSpeedMps).toInt()} ${u.label}")
-            appendLine("PEAK   brake %.2f  accel %.2f  turn %.2f g".format(st.peakBrakeG, st.peakAccelG, st.peakTurnG))
-            appendLine("HARD   brakes ${st.hardBrakes.count}  launches ${st.hardLaunches.count}  turns ${st.hardTurns.count}")
-            appendLine(Obd.describe())
-            append(DriveEngine.recordingFile?.let { "● REC  ${it.name}" } ?: DriveEngine.status)
+        val out = SpannableStringBuilder()
+        fun row(label: String, value: String) {
+            if (out.isNotEmpty()) out.append("\n")
+            val start = out.length
+            out.append(label)
+            out.setSpan(ForegroundColorSpan(Colors.DIM), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            out.append("\t").append(value)
         }
+        row("Trip", "${oneDecimal(u.distance(st.distanceM))} ${u.distanceLabel}  ·  ${hms(st.movingSec)} moving")
+        row("Speed", "avg ${u.speed(st.avgMovingSpeedMps).toInt()}  ·  top ${u.speed(st.topSpeedMps).toInt()} ${u.label}")
+        row("Peak g", "brake %.2f  ·  accel %.2f  ·  turn %.2f".format(st.peakBrakeG, st.peakAccelG, st.peakTurnG))
+        row("Hard", "${st.hardBrakes.count} brakes  ·  ${st.hardLaunches.count} launches  ·  ${st.hardTurns.count} turns")
+        row("OBD2", Obd.describe().removePrefix("OBD2: "))
+        row("Status", DriveEngine.recordingFile?.let { "Recording ${it.name}" } ?: DriveEngine.status)
+        // Line the values up after the labels.
+        out.setSpan(TabStopSpan.Standard(dp(64)), 0, out.length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        statsText.text = out
+
         recButton.text = if (DriveEngine.recording) "Stop" else "Rec"
+        recButton.setTextColor(if (DriveEngine.recording) Colors.RED else Colors.FG)
     }
 
     private fun shareLog() {
@@ -169,7 +198,7 @@ class MainActivity : Activity() {
 
 /** The phone's dashboard: redraws itself about 30 times a second. Tap it to switch km/h and mph. */
 class DashView(context: Context) : View(context) {
-    private val painter = DashPainter()
+    private val painter = DashPainter(context)
     private val rect = RectF()
 
     override fun onDraw(canvas: Canvas) {
