@@ -5,6 +5,10 @@ Android Auto screen: speed, braking, g-force, RPM, fuel and engine temperatures.
 
 ![The Android Auto screen, with sample data](docs/car-screen.png)
 
+There's also a map screen with simple navigation. Tap **Map** to switch to it.
+
+![The map screen, with sample data and a made-up map](docs/map-screen.png)
+
 ## What you see
 
 - **Speed** in MPH, with km/h underneath.
@@ -13,6 +17,9 @@ Android Auto screen: speed, braking, g-force, RPM, fuel and engine temperatures.
 - **G-meter**: a dot that moves when you speed up, brake or turn.
 - **Fuel**: how much is left in the tank.
 - **Four boxes**: coolant temperature, intake air temperature, battery voltage and trip distance.
+
+The map screen swaps the g-meter for a map, and shows the gear you're in, the speed limit
+and the next turn when you're navigating.
 
 The phone also shows trip stats: distance, average and top speed, peak g-force, and a count
 of hard brakes, launches and turns.
@@ -34,6 +41,8 @@ flowchart LR
 | Speed | Phone GPS. If GPS drops out, for example in a tunnel, the car's own speed from OBD2 |
 | Braking and g-force | The phone's motion sensor |
 | RPM, fuel, temperatures, battery | The OBD2 adapter |
+| Gear | Worked out from speed and RPM (see below) |
+| Map, routes, address search, speed limits | OpenStreetMap, through free public services |
 
 Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
 
@@ -60,6 +69,32 @@ Any ELM327 Bluetooth adapter works, whether it's classic Bluetooth or Bluetooth 
 
 You only do this once. After that the app connects by itself whenever it's open. Some cars
 don't report fuel level; if yours doesn't, the fuel meter will say so.
+
+## The map screen
+
+Tap **Map** on the phone, or in the car, to switch screens. Tap **Navigate** on the phone
+and type an address to get directions; tap it again to end the route.
+
+- **Map:** OpenStreetMap, shown dark and turning with the car. It needs mobile data.
+- **Directions:** turn by turn, with the distance and time left. If you leave the route the
+  app finds a new one.
+- **Speed limit:** from OpenStreetMap. Many roads don't have their limit mapped yet, so the
+  sign only shows where one is known. Your speed turns orange when you're more than 5 over.
+- **Gear:** most cars don't report their gear over OBD2, so the app learns it. Each gear has
+  its own ratio of speed to RPM, and after a few minutes of driving through the gears the app
+  knows which is which. It shows a dash until then, or when the clutch is in.
+
+The free services this uses ask apps to keep their traffic light, so they suit personal use.
+An app with many users would need its own servers.
+
+| Service | Used for |
+|---|---|
+| [OpenStreetMap tiles](https://www.openstreetmap.org) | The map |
+| [Nominatim](https://nominatim.org) | Address search |
+| [OSRM, run by FOSSGIS](https://routing.openstreetmap.de) | Directions |
+| [Overpass API](https://overpass-api.de) | Speed limits |
+
+Map data © OpenStreetMap contributors.
 
 ## Android Auto
 
@@ -104,6 +139,8 @@ Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `MainActivity.kt` | The phone screen |
 | `car/` | The Android Auto screen |
 | `obd/` | The OBD2 Bluetooth connection |
+| `map/` | Map tiles and drawing the map |
+| `nav/` | Address search, directions and speed limits |
 
 The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open
 Font License (see `licenses/Poppins-OFL.txt`).

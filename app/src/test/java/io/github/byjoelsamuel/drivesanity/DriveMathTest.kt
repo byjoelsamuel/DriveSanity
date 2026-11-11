@@ -97,4 +97,28 @@ class DriveMathTest {
         assertEquals(2f, Revs.heat(6300f), eps)
         assertEquals(2f, Revs.heat(8000f), eps)
     }
+
+    @Test
+    fun `learns gears from speed and rpm`() {
+        // A six-speed: km/h per 1,000 rpm in each gear.
+        val ratios = listOf(8.0, 14.0, 20.5, 27.0, 33.5, 40.0)
+        val rng = java.util.Random(1)
+        val g = GearLearner()
+        assertNull(g.feed(50f, 2500f)) // nothing learned yet
+        repeat(3) {
+            for (r in ratios) repeat(60) {
+                val rpm = 1500f + rng.nextFloat() * 3500f
+                val kmh = (r * (1 + rng.nextGaussian() * 0.01) * rpm / 1000).toFloat()
+                g.feed(kmh, rpm)
+            }
+        }
+        assertEquals(6, g.gears().size)
+        assertEquals(3, g.gearFor(41f, 2000f))   // 20.5 km/h per 1,000 rpm
+        assertEquals(6, g.gearFor(100f, 2500f))  // 40
+        assertNull(g.gearFor(30f, 1800f))         // 16.7: between gears (clutch in)
+        assertNull(g.gearFor(5f, 900f))           // too slow to tell
+
+        val copy = GearLearner().apply { load(g.save()) }
+        assertEquals(g.gears().size, copy.gears().size)
+    }
 }

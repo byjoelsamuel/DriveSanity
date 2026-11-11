@@ -36,6 +36,26 @@ object Prefs {
         prefs(ctx).edit { putString("primary_units", next.name) }
     }
 
+    /** Which car/phone dashboard: the gauges, or the map screen. */
+    enum class Layout { GAUGES, MAP }
+
+    @Volatile private var layout: Layout? = null
+
+    fun layout(ctx: Context): Layout = layout ?: run {
+        val saved = prefs(ctx).getString("layout", null)
+        (Layout.entries.firstOrNull { it.name == saved } ?: Layout.GAUGES).also { layout = it }
+    }
+
+    fun toggleLayout(ctx: Context) {
+        val next = if (layout(ctx) == Layout.GAUGES) Layout.MAP else Layout.GAUGES
+        layout = next
+        prefs(ctx).edit { putString("layout", next.name) }
+    }
+
+    fun gears(ctx: Context): String = prefs(ctx).getString("gears", "") ?: ""
+
+    fun saveGears(ctx: Context, saved: String) = prefs(ctx).edit { putString("gears", saved) }
+
     data class ObdDevice(val address: String, val name: String, val ble: Boolean)
 
     fun obdDevice(ctx: Context): ObdDevice? {

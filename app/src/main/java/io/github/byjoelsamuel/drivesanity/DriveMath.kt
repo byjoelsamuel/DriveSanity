@@ -2,6 +2,8 @@ package io.github.byjoelsamuel.drivesanity
 
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -103,6 +105,66 @@ object Revs {
             rpm < redline -> 1f + (rpm - yellowFull) / (redline - yellowFull)
             else -> 2f
         }
+    }
+}
+
+/**
+ * Works out the gear from speed and RPM, with nothing to set up. In each gear, km/h per 1,000
+ * rpm is fixed, so while driving those values pile up in a few clusters, one per gear. The
+ * clusters are numbered from the lowest: 1st, 2nd and so on. It needs a few minutes of driving
+ * through the gears before it shows anything, and a gear it has never seen (say you skip 1st)
+ * shifts the numbers until it has.
+ */
+class GearLearner {
+    private val counts = HashMap<Int, Double>()
+
+    /** Learns from one reading and returns the gear for it, or null if unsure (clutch in, coasting, still learning). */
+    fun feed(speedKmh: Float, rpm: Float): Int? {
+        val ratio = ratio(speedKmh, rpm) ?: return null
+        counts.merge(bin(ratio), 1.0, Double::plus)
+        return gearFor(ratio)
+    }
+
+    fun gearFor(speedKmh: Float, rpm: Float): Int? = ratio(speedKmh, rpm)?.let(::gearFor)
+
+    /** Learned gears as km/h per 1,000 rpm, lowest first. */
+    fun gears(): List<Double> {
+        fun smoothed(b: Int) = (counts[b - 1] ?: 0.0) + (counts[b] ?: 0.0) + (counts[b + 1] ?: 0.0)
+        val peaks = counts.keys.filter { b ->
+            val here = smoothed(b)
+            here >= MIN_SAMPLES && (-GAP..GAP).all { d -> d == 0 || smoothed(b + d) < here || (smoothed(b + d) == here && d > 0) }
+        }
+        return peaks.sorted().map { exp((it + 0.5) * ln(STEP)) }
+    }
+
+    private fun gearFor(ratio: Double): Int? {
+        val g = gears()
+        if (g.size < 3) return null
+        val i = g.indices.minByOrNull { abs(ln(ratio / g[it])) } ?: return null
+        return if (abs(ln(ratio / g[i])) <= ln(1.07)) i + 1 else null
+    }
+
+    /** For saving between drives: "bin:count,…". */
+    fun save(): String = counts.entries.joinToString(",") { "${it.key}:${"%.0f".format(java.util.Locale.US, it.value)}" }
+
+    fun load(saved: String) {
+        counts.clear()
+        for (part in saved.split(',')) {
+            val (b, c) = part.split(':').takeIf { it.size == 2 } ?: continue
+            val bin = b.toIntOrNull() ?: continue
+            counts[bin] = c.toDoubleOrNull() ?: continue
+        }
+    }
+
+    private fun ratio(speedKmh: Float, rpm: Float): Double? =
+        if (rpm < 1_000f || speedKmh < 8f) null else speedKmh / (rpm / 1000.0)
+
+    private fun bin(ratio: Double) = floor(ln(ratio) / ln(STEP)).toInt()
+
+    private companion object {
+        const val STEP = 1.03          // bins 3 % wide
+        const val GAP = 4              // gears are more than ~12 % apart
+        const val MIN_SAMPLES = 25.0   // ~5 s of steady driving in a gear
     }
 }
 

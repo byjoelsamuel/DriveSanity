@@ -12,6 +12,10 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
+import io.github.byjoelsamuel.drivesanity.map.LatLon
+import io.github.byjoelsamuel.drivesanity.map.Tiles
+import io.github.byjoelsamuel.drivesanity.nav.Nav
+import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.obd.Pid
 import java.io.File
@@ -36,6 +40,12 @@ data class Snapshot(
     /** Whether the car reports fuel level at all (known once connected). */
     val fuelSupported: Boolean = true,
     val tripM: Double = 0.0,
+    // For the map screen.
+    val position: LatLon? = null,
+    /** Direction of travel, degrees from north; null when stopped or unknown. */
+    val headingDeg: Float? = null,
+    /** Learned from speed and RPM; null until it knows. */
+    val gear: Int? = null,
 )
 
 /**
@@ -81,6 +91,11 @@ object DriveEngine : SensorEventListener, LocationListener {
     var gpsAccelG: Float? = null
         private set
 
+    private val gears = GearLearner()
+    private var gear: Int? = null
+    private var lastGearNs = 0L
+    private var heading: Float? = null
+
     val stats = TripStats()
     private var log: TripLog? = null
     private var lastLogNs = 0L
@@ -111,6 +126,9 @@ object DriveEngine : SensorEventListener, LocationListener {
         obdLive = Obd.status.link == Obd.Link.LIVE,
         fuelSupported = Obd.status.link != Obd.Link.LIVE || Pid.FUEL.code in Obd.supported,
         tripM = stats.distanceM,
+        position = lastFix?.takeIf { SystemClock.elapsedRealtime() - lastFixAtMs < 30_000 }?.let { LatLon(it.latitude, it.longitude) },
+        headingDeg = heading,
+        gear = gear,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -120,6 +138,8 @@ object DriveEngine : SensorEventListener, LocationListener {
         if (!loaded) {
             loaded = true
             calibration = Prefs.loadRest(app)?.let { Calibration.fromRest(it) }
+            gears.load(Prefs.gears(app))
+            Tiles.init(app)
             status = if (calibration != null) "Calibrated" else "Not calibrated"
         }
         holders += who
@@ -168,6 +188,7 @@ object DriveEngine : SensorEventListener, LocationListener {
     private fun stop() {
         running = false
         Obd.stop()
+        Prefs.saveGears(app, gears.save())
         app.getSystemService(SensorManager::class.java).unregisterListener(this)
         if (gpsOn) {
             app.getSystemService(LocationManager::class.java).removeUpdates(this)
@@ -239,6 +260,14 @@ object DriveEngine : SensorEventListener, LocationListener {
             return
         }
 
+        // Gear, from the car's own speed and RPM, five times a second.
+        if (e.timestamp - lastGearNs >= 200_000_000L) {
+            lastGearNs = e.timestamp
+            val rpm = Obd.rpm
+            val kmh = Obd.speedKmh
+            gear = if (rpm != null && kmh != null) gears.feed(kmh, rpm) else null
+        }
+
         val cal = calibration ?: return
         val g = cal.toCar(v)
         carG = g
@@ -290,6 +319,11 @@ object DriveEngine : SensorEventListener, LocationListener {
         }
         lastFix = loc
         lastFixAtMs = SystemClock.elapsedRealtime()
+        // Below walking pace GPS bearing wanders; keep the last good one.
+        if (loc.hasBearing() && loc.hasSpeed() && loc.speed > 2f) heading = loc.bearing
+        val p = LatLon(loc.latitude, loc.longitude)
+        Nav.onLocation(p)
+        SpeedLimit.onLocation(p)
     }
 
     // Older Android versions (before 11) call these and crash if they're missing.

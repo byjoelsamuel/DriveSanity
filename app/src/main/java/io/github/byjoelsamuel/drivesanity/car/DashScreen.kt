@@ -32,6 +32,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private var full = Rect()
     private var visible = Rect()
     private var shownRecording = false
+    private var shownLayout = Prefs.Layout.GAUGES
 
     private val tick = object : Runnable {
         override fun run() {
@@ -55,6 +56,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
     override fun onGetTemplate(): Template {
         shownRecording = DriveEngine.recording
+        shownLayout = Prefs.layout(carContext)
         val calibrate = Action.Builder()
             .setTitle("Calibrate")
             .setOnClickListener {
@@ -70,8 +72,15 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 invalidate()
             }
             .build()
+        val layout = Action.Builder()
+            .setTitle(if (Prefs.layout(carContext) == Prefs.Layout.MAP) "Gauges" else "Map")
+            .setOnClickListener {
+                Prefs.toggleLayout(carContext)
+                invalidate()
+            }
+            .build()
         return NavigationTemplate.Builder()
-            .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).build())
+            .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build())
             .build()
     }
 
@@ -93,7 +102,8 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     }
 
     private fun draw() {
-        if (DriveEngine.recording != shownRecording) invalidate() // the phone changed it
+        // The phone changed something the buttons show.
+        if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout) invalidate()
 
         val s = surface ?: return
         if (!s.isValid) return
@@ -105,7 +115,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         try {
             canvas.drawColor(io.github.byjoelsamuel.drivesanity.Colors.BG)
             val area = if (visible.isEmpty) full else visible
-            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext))
+            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
         } finally {
             s.unlockCanvasAndPost(canvas)
         }

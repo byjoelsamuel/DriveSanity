@@ -7,6 +7,8 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
+import io.github.byjoelsamuel.drivesanity.map.MapPainter
+import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -24,6 +26,12 @@ object Colors {
     val RED = Color.rgb(201, 96, 90)
     val RED_DIM = Color.rgb(59, 42, 42)
     val REC = RED
+
+    // Quiet tints that tell the four boxes apart.
+    val COOLANT = Color.rgb(160, 140, 184)
+    val INTAKE = Color.rgb(201, 138, 138)
+    val BATTERY = ACCENT
+    val TRIP = GOOD
 
     fun brake(level: BrakeLevel) = when (level) {
         BrakeLevel.NONE -> DIM
@@ -75,10 +83,90 @@ class DashPainter(context: Context) {
         text.letterSpacing = 0f
     }
 
-    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+    private val map = MapPainter(labels, numbers)
+
+    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
         fill.color = Colors.BG
         c.drawRect(r, fill)
-        if (r.width() > r.height() * 1.2f) drawWide(c, r, s, units) else drawTall(c, r, s, units)
+        val wide = r.width() > r.height() * 1.2f
+        when {
+            layout == Prefs.Layout.MAP && wide -> drawMapWide(c, r, s, units)
+            layout == Prefs.Layout.MAP -> drawMapTall(c, r, s, units)
+            wide -> drawWide(c, r, s, units)
+            else -> drawTall(c, r, s, units)
+        }
+    }
+
+    /** The map screen, wide: map | brake, gear, RPM, boxes | speed, fuel. */
+    private fun drawMapWide(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+        val pad = r.height() * 0.05f
+        val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
+        val w = inner.width()
+        val h = inner.height()
+        val mapRight = inner.left + w * 0.34f
+        map.draw(c, RectF(inner.left, inner.top, mapRight, inner.bottom), s, units)
+
+        val mid = RectF(mapRight + pad, inner.top, inner.left + w * 0.72f, inner.bottom)
+        var y = mid.top
+        fun row(frac: Float) = RectF(mid.left, y, mid.right, y + h * frac).also { y += h * frac }
+        drawBrake(c, row(0.16f), s)
+        drawGear(c, row(0.34f), s)
+        drawRpm(c, row(0.25f), s)
+        row(0.04f)
+        drawBoxesWithRec(c, row(0.21f), s, units)
+
+        val right = RectF(mid.right + pad, inner.top, inner.right, inner.bottom)
+        drawSpeed(c, RectF(right.left, right.top + h * 0.06f, right.right, right.top + h * 0.56f), s, units)
+        drawFuel(c, RectF(right.left, inner.bottom - h * 0.36f, right.right, inner.bottom - h * 0.14f), s)
+        drawStatus(c, RectF(right.left, inner.bottom - h * 0.07f, right.right, inner.bottom), s, showRec = false, widthFrac = 0.07f)
+    }
+
+    /** The map screen on a tall phone: map on top, then gear and speed, brake, RPM, boxes, fuel. */
+    private fun drawMapTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+        val pad = r.width() * 0.05f
+        val inner = RectF(r.left + pad, r.top + pad * 0.5f, r.right - pad, r.bottom - pad * 0.5f)
+        val h = inner.height()
+        var y = inner.top
+        fun row(frac: Float) = RectF(inner.left, y, inner.right, y + h * frac).also { y += h * frac }
+        drawStatus(c, row(0.03f), s)
+        row(0.01f)
+        map.draw(c, row(0.42f), s, units)
+        row(0.02f)
+        val top = row(0.17f)
+        drawGear(c, RectF(top.left, top.top, top.left + top.width() * 0.35f, top.bottom), s)
+        drawSpeed(c, RectF(top.left + top.width() * 0.35f, top.top, top.right, top.bottom), s, units)
+        drawBrake(c, row(0.08f), s)
+        drawRpm(c, row(0.10f), s)
+        row(0.01f)
+        drawBoxes(c, row(0.08f), s, units)
+        row(0.01f)
+        drawFuel(c, row(0.07f), s)
+    }
+
+    /** The big gear number in the middle of the map screen. */
+    private fun drawGear(c: Canvas, b: RectF, s: Snapshot) {
+        asLabel()
+        text.textSize = min(b.height() * 0.11f, b.width() * 0.06f)
+        text.textAlign = Paint.Align.LEFT
+        text.color = Colors.DIM
+        c.drawText("GEAR", b.left, b.top + text.textSize, text)
+        asNumber()
+        // Unknown: a small dash rather than a giant bar.
+        text.textSize = min(b.height() * 0.95f, b.width() * 0.8f) * (if (s.gear == null) 0.45f else 1f)
+        text.textAlign = Paint.Align.CENTER
+        text.color = if (s.gear == null) Colors.GRID else Colors.FG
+        c.drawText(s.gear?.toString() ?: "–", b.centerX(), b.top + b.height() * 0.86f, text)
+    }
+
+    /** The four boxes with the REC marker after them, as on the map screen. */
+    private fun drawBoxesWithRec(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val recW = b.width() * 0.17f
+        drawBoxes(c, RectF(b.left, b.top, b.right - recW, b.bottom), s, units)
+        asLabel()
+        text.textSize = min(b.height() * 0.28f, recW * 0.26f)
+        text.textAlign = Paint.Align.RIGHT
+        text.color = if (s.recording) Colors.REC else Colors.GRID
+        c.drawText("● REC", b.right, b.centerY() + text.textSize * 0.35f, text)
     }
 
     private fun drawWide(c: Canvas, r: RectF, s: Snapshot, units: Units) {
@@ -121,9 +209,9 @@ class DashPainter(context: Context) {
     }
 
     /** GPS state on the left, REC on the right. */
-    private fun drawStatus(c: Canvas, b: RectF, s: Snapshot) {
+    private fun drawStatus(c: Canvas, b: RectF, s: Snapshot, showRec: Boolean = true, widthFrac: Float = 0.045f) {
         asLabel()
-        text.textSize = min(b.height() * 0.8f, b.width() * 0.045f)
+        text.textSize = min(b.height() * 0.8f, b.width() * widthFrac)
         text.textAlign = Paint.Align.LEFT
         text.color = if (s.accuracyM != null) Colors.DIM else Colors.REC
         val gps = when {
@@ -136,7 +224,7 @@ class DashPainter(context: Context) {
         val x = b.left + text.measureText(gps + "   ")
         text.color = if (s.obdLive) Colors.GOOD else Colors.DIM
         c.drawText(if (s.obdLive) "OBD2 ●" else "NO OBD2", x, base, text)
-        if (s.recording) {
+        if (s.recording && showRec) {
             text.textAlign = Paint.Align.RIGHT
             text.color = Colors.REC
             c.drawText("● REC", b.right, b.bottom - b.height() * 0.2f, text)
@@ -165,7 +253,15 @@ class DashPainter(context: Context) {
 
         asNumber()
         text.textSize = numSize
-        text.color = if (s.speedMps == null) Colors.DIM else Colors.FG
+        // More than 5 over the posted limit (when one is known): the number turns clay.
+        val over = s.speedMps != null && SpeedLimit.current?.let { l ->
+            if (units == Units.MPH) units.speed(s.speedMps) > l.inMph() + 5 else units.speed(s.speedMps) > l.inKmh() + 8
+        } == true
+        text.color = when {
+            s.speedMps == null -> Colors.DIM
+            over -> Colors.CLAY
+            else -> Colors.FG
+        }
         c.drawText(speed, x, base, text)
         asLabel()
         text.textSize = unitSize
@@ -274,7 +370,7 @@ class DashPainter(context: Context) {
         }
     }
 
-    private data class Box(val label: String, val value: String, val color: Int = Colors.FG)
+    private data class Box(val label: String, val value: String, val color: Int = Colors.FG, val tint: Int = Colors.DIM)
 
     /** Four small boxes: coolant, intake air, battery, trip. */
     private fun drawBoxes(c: Canvas, b: RectF, s: Snapshot, units: Units) {
@@ -295,10 +391,10 @@ class DashPainter(context: Context) {
             else -> Colors.FG
         }
         val boxes = listOf(
-            Box("COOLANT", temp(s.coolantC), coolantColor),
-            Box("INTAKE", temp(s.intakeC)),
-            Box("BATTERY", s.volts?.let { "%.1f V".format(it) } ?: "–", voltColor),
-            Box("TRIP", "${oneDecimal(units.distance(s.tripM))} ${units.distanceLabel}"),
+            Box("COOLANT", temp(s.coolantC), coolantColor, Colors.COOLANT),
+            Box("INTAKE", temp(s.intakeC), tint = Colors.INTAKE),
+            Box("BATTERY", s.volts?.let { "%.1f V".format(it) } ?: "–", voltColor, Colors.BATTERY),
+            Box("TRIP", "${oneDecimal(units.distance(s.tripM))} ${units.distanceLabel}", tint = Colors.TRIP),
         )
         val gap = b.width() * 0.025f
         val w = (b.width() - gap * (boxes.size - 1)) / boxes.size
@@ -314,7 +410,9 @@ class DashPainter(context: Context) {
             asLabel()
             text.textSize = labelSize
             text.color = Colors.DIM
-            c.drawText(box.label, x + inset, b.top + h * 0.12f + labelSize, text)
+            fill.color = box.tint
+            c.drawCircle(x + inset + labelSize * 0.3f, b.top + h * 0.12f + labelSize * 0.62f, labelSize * 0.3f, fill)
+            c.drawText(box.label, x + inset + labelSize * 0.9f, b.top + h * 0.12f + labelSize, text)
             asNumber()
             text.textSize = valueSize
             text.color = if (box.value == "–") Colors.DIM else box.color
@@ -337,6 +435,7 @@ class DashPainter(context: Context) {
         text.textAlign = Paint.Align.LEFT
         text.color = Colors.DIM
         c.drawText("FUEL", b.left, b.top + size, text)
+        drawPump(c, b.left + text.measureText("FUEL ") + size * 0.1f, b.top + size, size * 0.62f)
         text.textAlign = Paint.Align.RIGHT
         when {
             !s.fuelSupported -> c.drawText("car doesn't report it", b.right, b.top + size, text)
@@ -375,6 +474,17 @@ class DashPainter(context: Context) {
             val x = track.left + track.width() * q
             c.drawLine(x, track.top, x, track.bottom, stroke)
         }
+    }
+
+    /** A small fuel-pump outline sitting on [baseline], [h] tall. */
+    private fun drawPump(c: Canvas, x: Float, baseline: Float, h: Float) {
+        stroke.color = Colors.DIM
+        stroke.strokeWidth = h * 0.12f
+        val w = h * 0.6f
+        c.drawRoundRect(x, baseline - h, x + w, baseline, h * 0.08f, h * 0.08f, stroke)
+        c.drawLine(x + w * 0.2f, baseline - h * 0.62f, x + w * 0.8f, baseline - h * 0.62f, stroke)
+        c.drawLine(x + w, baseline - h * 0.75f, x + w * 1.35f, baseline - h * 0.55f, stroke)
+        c.drawLine(x + w * 1.35f, baseline - h * 0.55f, x + w * 1.35f, baseline - h * 0.15f, stroke)
     }
 
     private fun drawGMeter(c: Canvas, b: RectF, s: Snapshot) {
