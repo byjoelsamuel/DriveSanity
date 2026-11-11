@@ -36,6 +36,24 @@ object Prefs {
         prefs(ctx).edit { putString("primary_units", next.name) }
     }
 
+    data class ObdDevice(val address: String, val name: String, val ble: Boolean)
+
+    fun obdDevice(ctx: Context): ObdDevice? {
+        val p = prefs(ctx)
+        val address = p.getString("obd_address", null) ?: return null
+        return ObdDevice(address, p.getString("obd_name", null) ?: address, p.getBoolean("obd_ble", false))
+    }
+
+    fun saveObdDevice(ctx: Context, d: ObdDevice?) {
+        prefs(ctx).edit {
+            if (d == null) {
+                remove("obd_address"); remove("obd_name"); remove("obd_ble")
+            } else {
+                putString("obd_address", d.address); putString("obd_name", d.name); putBoolean("obd_ble", d.ble)
+            }
+        }
+    }
+
     fun saveRest(ctx: Context, rest: Vec3) {
         prefs(ctx).edit { putFloat("rest_x", rest.x); putFloat("rest_y", rest.y); putFloat("rest_z", rest.z) }
     }
