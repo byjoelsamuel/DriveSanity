@@ -121,4 +121,21 @@ class DriveMathTest {
         val copy = GearLearner().apply { load(g.save()) }
         assertEquals(g.gears().size, copy.gears().size)
     }
+
+    @Test
+    fun `mazda3 gears from speed and rpm`() {
+        val car = MY_CAR!!
+        // About 32.5 km/h per 1,000 rpm in 4th (1:1).
+        assertEquals(32.5, car.kmhPer1000Rpm[3], 0.5)
+        fun kmh(gear: Int, rpm: Float, slip: Double = 0.0) = (car.kmhPer1000Rpm[gear - 1] * rpm / 1000 * (1 - slip)).toFloat()
+        for (g in 1..6) assertEquals(g, car.gearFor(kmh(g, 2500f), 2500f))
+        // 6th at 70 mph is about 2,150 rpm.
+        assertEquals(6, car.gearFor(112.7f, 2150f))
+        // Torque converter slipping 10 % in 2nd: still 2nd.
+        assertEquals(2, car.gearFor(kmh(2, 3000f, slip = 0.10), 3000f))
+        // Halfway between 2nd and 3rd (mid-shift): no guess.
+        assertNull(car.gearFor(((car.kmhPer1000Rpm[1] + car.kmhPer1000Rpm[2]) / 2 * 2.0).toFloat(), 2000f))
+        // Stopped, or idling in neutral: nothing.
+        assertNull(car.gearFor(0f, 750f))
+    }
 }

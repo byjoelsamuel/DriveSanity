@@ -109,6 +109,48 @@ object Revs {
 }
 
 /**
+ * The gear from speed and RPM when the gearing is known: in each gear the car covers a fixed
+ * distance per engine turn. Built for an automatic, where the torque converter slips before
+ * it locks up: the engine then spins faster than the gear says, so a reading may sit up to
+ * 14 % below a gear's ratio but only 5 % above it. Outside those bands (shifting, slipping
+ * hard, neutral) it says nothing rather than guess.
+ */
+class GearTable(
+    /** km/h per 1,000 rpm in each gear, 1st first. */
+    val kmhPer1000Rpm: List<Double>,
+) {
+    fun gearFor(speedKmh: Float, rpm: Float): Int? {
+        if (rpm < 900f || speedKmh < 5f) return null
+        val ratio = speedKmh / (rpm / 1000.0)
+        val i = kmhPer1000Rpm.indexOfFirst { ratio in it * 0.86..it * 1.05 }
+        return if (i >= 0) i + 1 else null
+    }
+
+    companion object {
+        /**
+         * km/h per 1,000 rpm from the gearbox ratios, the final drive and the tyre size. The
+         * tyre's rolling circumference is about 3 % less than its unloaded one.
+         */
+        fun fromGearbox(gears: List<Double>, finalDrive: Double, tyreWidthMm: Int, aspect: Int, rimInches: Int): GearTable {
+            val diameterM = (rimInches * 25.4 + 2 * tyreWidthMm * aspect / 100.0) / 1000
+            val rollingM = Math.PI * diameterM * 0.97
+            return GearTable(gears.map { 60 * rollingM / (it * finalDrive) })
+        }
+    }
+}
+
+/**
+ * Joel's car: 2023 Mazda3 2.5 sedan (non-turbo), AWD, SKYACTIV-Drive 6-speed automatic,
+ * on the Premium trim's 215/45R18 tyres. Ratios and the AWD final drive are from Mazda's 2023
+ * spec sheet. For another car, change these (or set this to null to learn the gears instead).
+ */
+val MY_CAR: GearTable? = GearTable.fromGearbox(
+    gears = listOf(3.55, 2.02, 1.35, 1.00, 0.74, 0.60),
+    finalDrive = 3.626,
+    tyreWidthMm = 215, aspect = 45, rimInches = 18,
+)
+
+/**
  * Works out the gear from speed and RPM, with nothing to set up. In each gear, km/h per 1,000
  * rpm is fixed, so while driving those values pile up in a few clusters, one per gear. The
  * clusters are numbered from the lowest: 1st, 2nd and so on. It needs a few minutes of driving
