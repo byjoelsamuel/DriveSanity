@@ -21,17 +21,20 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import io.github.byjoelsamuel.drivesanity.nav.showNavigate
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.obd.showObdPicker
 
 class MainActivity : Activity() {
     private lateinit var statsText: TextView
     private lateinit var recButton: Button
+    private lateinit var layoutButton: Button
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
@@ -89,13 +92,10 @@ class MainActivity : Activity() {
         }
         button("Calibrate") { DriveEngine.calibrate() }
         recButton = button("Rec") { DriveEngine.toggleRecording(this); refresh() }
-        button("Share") { shareLog() }
-        button("OBD2") { pickObd() }
-        button("Reset") { toast("Long-press to reset the trip") }.setOnLongClickListener {
-            DriveEngine.stats.reset()
-            toast("Trip reset")
-            true
-        }
+        layoutButton = button("Map") { Prefs.toggleLayout(this); refresh() }
+        button("Navigate") { showNavigate(this) }
+        lateinit var more: Button
+        more = button("⋯") { showMore(more) }
         root.addView(buttons, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         setContentView(root)
 
@@ -174,7 +174,22 @@ class MainActivity : Activity() {
         statsText.text = out
 
         recButton.text = if (DriveEngine.recording) "Stop" else "Rec"
+        layoutButton.text = if (Prefs.layout(this) == Prefs.Layout.MAP) "Gauges" else "Map"
         recButton.setTextColor(if (DriveEngine.recording) Colors.RED else Colors.FG)
+    }
+
+    /** The less-used actions. */
+    private fun showMore(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add("Share last recording").setOnMenuItemClickListener { shareLog(); true }
+            menu.add("OBD2 adapter").setOnMenuItemClickListener { pickObd(); true }
+            menu.add("Reset trip").setOnMenuItemClickListener {
+                DriveEngine.stats.reset()
+                toast("Trip reset")
+                true
+            }
+            show()
+        }
     }
 
     private fun shareLog() {
@@ -203,7 +218,7 @@ class DashView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        painter.draw(canvas, rect, DriveEngine.snapshot(), Prefs.units(context))
+        painter.draw(canvas, rect, DriveEngine.snapshot(), Prefs.units(context), Prefs.layout(context))
         postInvalidateDelayed(33)
     }
 }

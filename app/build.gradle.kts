@@ -61,4 +61,6 @@ dependencies {
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.core:core-ktx:1.17.0")
     testImplementation("junit:junit:4.13.2")
+    // Android's org.json is a stub in plain unit tests; this is the real one.
+    testImplementation("org.json:json:20240303")
 }
