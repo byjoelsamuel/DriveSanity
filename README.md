@@ -5,9 +5,15 @@ Android Auto screen: speed, braking, g-force, RPM, fuel and engine temperatures.
 
 ![The Android Auto screen, with sample data](docs/car-screen.png)
 
-There's also a map screen with simple navigation. Tap **Map** to switch to it.
+There are three screens. The button that switches them shows the name of the next one.
+
+- **Gauges** (above): the everyday screen.
+- **Map:** a map with simple navigation.
+- **Retro:** everything in Saab green, after early-2000s dashboards.
 
 ![The map screen, with sample data and a made-up map](docs/map-screen.png)
+
+![The retro screen, with sample data](docs/retro-screen.png)
 
 ## What you see
 
@@ -70,9 +76,18 @@ Any ELM327 Bluetooth adapter works, whether it's classic Bluetooth or Bluetooth 
 You only do this once. After that the app connects by itself whenever it's open. Some cars
 don't report fuel level; if yours doesn't, the fuel meter will say so.
 
+## The retro screen
+
+Everything is lit in one green on black, like Saab's instrument lighting. The tachometer is a
+row of bars that get taller toward the redline, like the C4 Corvette's digital dash, and the
+numbers are LCD-style digits with the unlit segments showing faintly. Fuel, coolant, battery
+and intake air each get a small bar gauge, and the labels are kept short. There are no colour
+warnings on this screen, so warnings blink instead: the tach past the redline, low fuel, a hot
+engine and a bad battery voltage.
+
 ## The map screen
 
-Tap **Map** on the phone, or in the car, to switch screens. Tap **Navigate** on the phone
+Switch to it with the screen button on the phone or in the car. Tap **Navigate** on the phone
 and type an address to get directions; tap it again to end the route.
 
 - **Map:** OpenStreetMap, shown dark and turning with the car. It needs mobile data.

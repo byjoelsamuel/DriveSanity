@@ -36,8 +36,14 @@ object Prefs {
         prefs(ctx).edit { putString("primary_units", next.name) }
     }
 
-    /** Which car/phone dashboard: the gauges, or the map screen. */
-    enum class Layout { GAUGES, MAP }
+    /** Which dashboard the car and phone show. The switch button cycles through them. */
+    enum class Layout(val title: String) {
+        GAUGES("Gauges"),
+        MAP("Map"),
+        RETRO("Retro");
+
+        val next get() = entries[(ordinal + 1) % entries.size]
+    }
 
     @Volatile private var layout: Layout? = null
 
@@ -47,7 +53,7 @@ object Prefs {
     }
 
     fun toggleLayout(ctx: Context) {
-        val next = if (layout(ctx) == Layout.GAUGES) Layout.MAP else Layout.GAUGES
+        val next = layout(ctx).next
         layout = next
         prefs(ctx).edit { putString("layout", next.name) }
     }

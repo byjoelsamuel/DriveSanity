@@ -17,9 +17,11 @@ import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
+import io.github.byjoelsamuel.drivesanity.RetroPainter
 
 /**
  * The car screen: the same dashboard as the phone, drawn onto the surface Android Auto gives
@@ -73,7 +75,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             }
             .build()
         val layout = Action.Builder()
-            .setTitle(if (Prefs.layout(carContext) == Prefs.Layout.MAP) "Gauges" else "Map")
+            .setTitle(Prefs.layout(carContext).next.title)
             .setOnClickListener {
                 Prefs.toggleLayout(carContext)
                 invalidate()
@@ -113,7 +115,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             return
         }
         try {
-            canvas.drawColor(io.github.byjoelsamuel.drivesanity.Colors.BG)
+            canvas.drawColor(if (Prefs.layout(carContext) == Prefs.Layout.RETRO) RetroPainter.BG else Colors.BG)
             val area = if (visible.isEmpty) full else visible
             painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
         } finally {

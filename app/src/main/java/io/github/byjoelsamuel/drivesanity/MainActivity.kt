@@ -35,6 +35,9 @@ class MainActivity : Activity() {
     private lateinit var statsText: TextView
     private lateinit var recButton: Button
     private lateinit var layoutButton: Button
+    private lateinit var root: LinearLayout
+    private val allButtons = mutableListOf<Button>()
+    private var themed: Prefs.Layout? = null
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
@@ -47,7 +50,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val root = LinearLayout(this).apply {
+        root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Colors.BG)
         }
@@ -85,6 +88,7 @@ class MainActivity : Activity() {
             minHeight = dp(44)
             setPadding(dp(2), 0, dp(2), 0)
             setOnClickListener { onClick() }
+            allButtons += this
             buttons.addView(this, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply {
                 marginStart = dp(3)
                 marginEnd = dp(3)
@@ -92,7 +96,7 @@ class MainActivity : Activity() {
         }
         button("Calibrate") { DriveEngine.calibrate() }
         recButton = button("Rec") { DriveEngine.toggleRecording(this); refresh() }
-        layoutButton = button("Map") { Prefs.toggleLayout(this); refresh() }
+        layoutButton = button(Prefs.layout(this).next.title) { Prefs.toggleLayout(this); refresh() }
         button("Navigate") { showNavigate(this) }
         lateinit var more: Button
         more = button("⋯") { showMore(more) }
@@ -152,7 +156,26 @@ class MainActivity : Activity() {
         showObdPicker(this)
     }
 
+    /** The retro screen turns the whole phone screen green on black; the others use the usual colours. */
+    private fun applyTheme(layout: Prefs.Layout) {
+        if (themed == layout) return
+        themed = layout
+        val retro = layout == Prefs.Layout.RETRO
+        val bg = if (retro) RetroPainter.BG else Colors.BG
+        val fg = if (retro) RetroPainter.GREEN else Colors.FG
+        root.setBackgroundColor(bg)
+        window.decorView.setBackgroundColor(bg)
+        statsText.setTextColor(fg)
+        for (b in allButtons) {
+            (b.background as? GradientDrawable)?.setColor(if (retro) RetroPainter.GHOST else Colors.BOX)
+            b.setTextColor(fg)
+        }
+    }
+
     private fun refresh() {
+        val layout = Prefs.layout(this)
+        applyTheme(layout)
+        val retro = layout == Prefs.Layout.RETRO
         val u = Prefs.units(this)
         val st = DriveEngine.stats
         val out = SpannableStringBuilder()
@@ -160,7 +183,7 @@ class MainActivity : Activity() {
             if (out.isNotEmpty()) out.append("\n")
             val start = out.length
             out.append(label)
-            out.setSpan(ForegroundColorSpan(Colors.DIM), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            out.setSpan(ForegroundColorSpan(if (retro) RetroPainter.MID else Colors.DIM), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             out.append("\t").append(value)
         }
         row("Trip", "${oneDecimal(u.distance(st.distanceM))} ${u.distanceLabel}  ·  ${hms(st.movingSec)} moving")
@@ -174,8 +197,14 @@ class MainActivity : Activity() {
         statsText.text = out
 
         recButton.text = if (DriveEngine.recording) "Stop" else "Rec"
-        layoutButton.text = if (Prefs.layout(this) == Prefs.Layout.MAP) "Gauges" else "Map"
-        recButton.setTextColor(if (DriveEngine.recording) Colors.RED else Colors.FG)
+        layoutButton.text = layout.next.title
+        recButton.setTextColor(
+            when {
+                retro -> RetroPainter.GREEN
+                DriveEngine.recording -> Colors.RED
+                else -> Colors.FG
+            }
+        )
     }
 
     /** The less-used actions. */
