@@ -104,40 +104,22 @@ class SportPainter(context: Context) {
         val barTop = b.top + h * 0.06f
         val barH = h * 0.36f
         val bar = RectF(x0, barTop, x1, barTop + barH)
-        val round = barH / 2
 
-        // The track, with the red zone tinted.
-        fill.shader = null
-        fill.color = Colors.GRID
-        c.drawRoundRect(bar, round, round, fill)
+        // Thin ticks, close together, like the bars on an old LED tachometer. Each tick has its own colour
+        // for where it sits on the scale (sage, sand, clay, then red past the redline), and the one the
+        // revs are partway through fades in, so it fills smoothly.
         val redAt = (Revs.REDLINE / Revs.MAX).coerceIn(0.5f, 0.99f)
-        val redLeft = x0 + (x1 - x0) * redAt
-        c.save()
-        c.clipRect(redLeft, bar.top, bar.right, bar.bottom)
-        fill.color = Colors.RED_DIM
-        c.drawRoundRect(bar, round, round, fill)
-        c.restore()
-
-        // The fill, coloured by where it is on the scale, so the colour is the same wherever the revs sit.
-        if (rpm != null) {
-            val f = (rpm / Revs.MAX).coerceIn(0f, 1f)
-            val end = x0 + (x1 - x0) * f
-            if (end - x0 > round) {
-                fill.shader = LinearGradient(
-                    x0, 0f, x1, 0f,
-                    intArrayOf(Colors.GOOD, Colors.GOOD, Colors.SAND, Colors.CLAY, Colors.RED),
-                    floatArrayOf(0f, redAt * 0.55f, redAt * 0.82f, redAt, 1f),
-                    Shader.TileMode.CLAMP,
-                )
-                c.drawRoundRect(RectF(x0, bar.top, end, bar.bottom), round, round, fill)
-                fill.shader = null
-            }
-            if (flash) {
-                fill.color = Colors.RED
-                fill.alpha = 90
-                c.drawRoundRect(bar, round, round, fill)
-                fill.alpha = 255
-            }
+        val n = 80
+        val pitch = (x1 - x0) / n
+        val f = if (rpm == null) 0f else (rpm / Revs.MAX).coerceIn(0f, 1f)
+        for (i in 0 until n) {
+            val at = (i + 0.5f) / n
+            val off = if (at >= redAt) Colors.RED_DIM else Colors.GRID
+            val part = (f * n - i).coerceIn(0f, 1f)
+            val on = if (flash) Colors.RED else ribbonColor(at, redAt)
+            fill.color = if (part >= 0.98f) on else if (part > 0.02f) Colors.mix(off, on, part) else off
+            val x = x0 + i * pitch
+            c.drawRect(x + pitch * 0.2f, bar.top, x + pitch * 0.8f, bar.bottom, fill)
         }
 
         // The peak marker: stays where the revs got to, then slowly falls back.
@@ -188,23 +170,17 @@ class SportPainter(context: Context) {
         label(h * 0.095f, Colors.DIM, Paint.Align.CENTER)
         c.drawText(name, b.centerX(), b.top + h * 0.09f, text)
         val bar = RectF(b.left, b.top + h * 0.14f, b.right, b.bottom - h * 0.19f)
-        val round = b.width() * 0.28f
-        fill.shader = null
-        fill.color = Colors.GRID
-        c.drawRoundRect(bar, round, round, fill)
+        // A stack of thin slices filling from the bottom, the same ticks as the rev ribbon turned on end.
+        val n = 28
+        val pitch = bar.height() / n
         val f = (frac ?: 0f).coerceIn(0f, 1f)
-        if (f > 0f) {
-            val top = bar.bottom - bar.height() * f
-            fill.shader = LinearGradient(0f, bar.bottom, 0f, bar.top, colors, floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP)
-            c.save()
-            c.clipRect(bar.left, top, bar.right, bar.bottom)
-            c.drawRoundRect(bar, round, round, fill)
-            c.restore()
-            fill.shader = null
+        for (i in 0 until n) {
+            val part = (f * n - i).coerceIn(0f, 1f)
+            val on = ramp(colors, (i + 0.5f) / n)
+            fill.color = if (part >= 0.98f) on else if (part > 0.02f) Colors.mix(Colors.GRID, on, part) else Colors.GRID
+            val bottom = bar.bottom - i * pitch
+            c.drawRect(bar.left, bottom - pitch * 0.74f, bar.right, bottom - pitch * 0.14f, fill)
         }
-        // Quarter marks.
-        fill.color = Colors.BG
-        for (q in 1..3) c.drawRect(bar.left, bar.top + bar.height() * q / 4f - 1.5f, bar.right, bar.top + bar.height() * q / 4f + 1.5f, fill)
         number(h * 0.13f, if (frac == null) Colors.DIM else PALE, Paint.Align.CENTER)
         c.drawText(value, b.centerX(), b.bottom - h * 0.03f, text)
     }
@@ -377,23 +353,33 @@ class SportPainter(context: Context) {
         // The delta bar: left of the middle is faster than the best lap, right is slower.
         val bx0 = b.left + w * 0.69f
         val bx1 = b.right - pad
-        val mid = (bx0 + bx1) / 2
         val d = lap.deltaMs
         label(h * 0.2f, Colors.DIM, Paint.Align.LEFT)
         c.drawText("DELTA", bx0, b.top + h * 0.3f, text)
         number(h * 0.4f, when { d == null -> Colors.DIM; d <= 0 -> Colors.GOOD; else -> Colors.CLAY }, Paint.Align.RIGHT)
         c.drawText(deltaText(d), bx1, b.top + h * 0.5f, text)
-        val track = RectF(bx0, b.top + h * 0.62f, bx1, b.top + h * 0.82f)
-        fill.color = Colors.GRID
-        c.drawRoundRect(track, track.height() / 2, track.height() / 2, fill)
-        if (d != null) {
-            val f = (d / 2000f).coerceIn(-1f, 1f) // the ends of the bar are two seconds
-            fill.color = if (d <= 0) Colors.GOOD else Colors.CLAY
-            val x = mid + f * (bx1 - bx0) / 2
-            c.drawRoundRect(RectF(min(mid, x), track.top, max(mid, x), track.bottom), track.height() / 2, track.height() / 2, fill)
+        // Ticks either side of a middle mark: sage to the left (ahead of your best lap), clay to the right.
+        val n = 41
+        val mid = n / 2
+        val pitch = (bx1 - bx0) / n
+        val top = b.top + h * 0.6f
+        val bottom = b.top + h * 0.84f
+        val steps = if (d == null) 0f else (abs(d) / 2000f * mid).coerceIn(0f, mid.toFloat()) // the ends are two seconds
+        for (i in 0 until n) {
+            val dist = abs(i - mid)
+            val ahead = i < mid
+            val part = if (dist == 0 || d == null || (d <= 0) != ahead) 0f else (steps - (dist - 1)).coerceIn(0f, 1f)
+            val on = if (ahead) Colors.GOOD else Colors.CLAY
+            fill.color = when {
+                dist == 0 -> PALE
+                part >= 0.98f -> on
+                part > 0.02f -> Colors.mix(Colors.GRID, on, part)
+                else -> Colors.GRID
+            }
+            val x = bx0 + i * pitch
+            val extra = if (dist == 0) h * 0.04f else 0f
+            c.drawRect(x + pitch * 0.2f, top - extra, x + pitch * 0.8f, bottom + extra, fill)
         }
-        fill.color = PALE
-        c.drawRect(mid - 1.5f, track.top - h * 0.04f, mid + 1.5f, track.bottom + h * 0.04f, fill)
     }
 
     private fun runStrip(c: Canvas, b: RectF, run: io.github.byjoelsamuel.drivesanity.track.RunView, units: Units) {
@@ -437,6 +423,18 @@ class SportPainter(context: Context) {
             c.drawText(value ?: "–", x, b.top + h * 0.8f, text)
         }
     }
+
+    /** Colour of a rev tick at [at] (0 to 1) when the red zone starts at [redAt]. */
+    private fun ribbonColor(at: Float, redAt: Float): Int = when {
+        at < redAt * 0.55f -> Colors.GOOD
+        at < redAt * 0.82f -> Colors.mix(Colors.GOOD, Colors.SAND, (at - redAt * 0.55f) / (redAt * 0.27f))
+        at < redAt -> Colors.mix(Colors.SAND, Colors.CLAY, (at - redAt * 0.82f) / (redAt * 0.18f))
+        else -> Colors.mix(Colors.CLAY, Colors.RED, ((at - redAt) / (1f - redAt)).coerceIn(0f, 1f))
+    }
+
+    /** A colour [t] of the way along three stops placed at 0, 0.6 and 1. */
+    private fun ramp(colors: IntArray, t: Float): Int =
+        if (t < 0.6f) Colors.mix(colors[0], colors[1], t / 0.6f) else Colors.mix(colors[1], colors[2], (t - 0.6f) / 0.4f)
 
     private companion object {
         /** Pale, slightly blue off-white, for the numbers that matter. */

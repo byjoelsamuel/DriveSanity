@@ -154,9 +154,8 @@ also shows the speed limit.
 *The map picture was made where the map server can't be reached, so its streets are a
 stand-in. In the app the map is the real OpenStreetMap.*
 
-The dashboards are set in [Oxanium](https://fonts.google.com/specimen/Oxanium), a squared,
-instrument-cluster style typeface with clear figures. The phone's tabs and the Retro screen keep
-Poppins.
+The bars are rows of thin, close-set ticks, like the bars on an old LED tachometer, and the one
+a reading is partway through fades in so they fill smoothly. Everything is set in Poppins.
 
 Everything glides: bars and numbers ease to their new values between readings instead of
 jumping, and the car screen redraws about 30 times a second.
@@ -389,6 +388,5 @@ The built-in demo drive comes from `tools/make_demo.py`; run it to rebuild `demo
 include one that plays the whole demo through the app (`DemoFlowTest`) and checks the laps, the
 delta and the standing start come out.
 
-The fonts are [Oxanium](https://fonts.google.com/specimen/Oxanium) and
-[Poppins](https://fonts.google.com/specimen/Poppins), both used under the SIL Open Font License
-(see `licenses/`).
+The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open Font
+License (see `licenses/Poppins-OFL.txt`).

@@ -586,16 +586,10 @@ internal fun hms(sec: Double): String {
 object Fonts {
     @Volatile private var medium: Typeface? = null
     @Volatile private var semibold: Typeface? = null
-    @Volatile private var dashLabels: Typeface? = null
-    @Volatile private var dashNumbers: Typeface? = null
 
-    /**
-     * The dashboards' own type: Oxanium, a squared, slightly technical face with clean figures, which
-     * reads well at a glance and looks like an instrument cluster. The phone's screens and the Retro
-     * screen keep Poppins.
-     */
-    fun dashLabels(ctx: Context): Typeface = dashLabels ?: load(ctx, R.font.oxanium_medium).also { dashLabels = it }
-    fun dashNumbers(ctx: Context): Typeface = dashNumbers ?: load(ctx, R.font.oxanium_semibold).also { dashNumbers = it }
+    /** The type the dashboards use: Poppins, the same as the rest of the app. */
+    fun dashLabels(ctx: Context): Typeface = medium(ctx)
+    fun dashNumbers(ctx: Context): Typeface = semibold(ctx)
 
     fun medium(ctx: Context): Typeface = medium ?: load(ctx, R.font.poppins_medium).also { medium = it }
     fun semibold(ctx: Context): Typeface = semibold ?: load(ctx, R.font.poppins_semibold).also { semibold = it }

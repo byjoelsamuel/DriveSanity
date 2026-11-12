@@ -164,14 +164,7 @@ class ClusterPainter(context: Context) {
             },
             b.right - inset, y, text,
         )
-        val bar = RectF(b.left + inset, y + h * 0.025f, b.right - inset, y + h * 0.025f + h * 0.04f)
-        fill.color = Colors.GRID
-        c.drawRoundRect(bar, bar.height() / 2, bar.height() / 2, fill)
-        val frac = (brake / 0.8f).coerceIn(0f, 1f)
-        if (frac > 0f) {
-            fill.color = color
-            c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * frac, bar.bottom), bar.height() / 2, bar.height() / 2, fill)
-        }
+        segments(c, RectF(b.left + inset, y + h * 0.025f, b.right - inset, y + h * 0.025f + h * 0.045f), (brake / 0.8f).coerceIn(0f, 1f), 56, { color })
     }
 
     /** The estimated fuel use, as a bar (more bar = thirstier). */
@@ -190,7 +183,7 @@ class ClusterPainter(context: Context) {
         c.drawText(name, b.left, b.top + h * 0.3f, text)
         number(h * 0.5f, if (frac == null) Colors.DIM else Colors.FG, Paint.Align.RIGHT)
         c.drawText(value, b.right, b.top + h * 0.56f, text)
-        segments(c, RectF(b.left, b.top + h * 0.7f, b.right, b.top + h * 0.9f), frac, n, colorOf)
+        segments(c, RectF(b.left, b.top + h * 0.7f, b.right, b.top + h * 0.9f), frac, n * 2, colorOf)
     }
 
     private fun segments(c: Canvas, b: RectF, frac: Float?, n: Int, colorOf: (Float) -> Int) {
@@ -202,7 +195,8 @@ class ClusterPainter(context: Context) {
             val on = colorOf((i + 0.5f) / n)
             fill.color = if (part >= 0.98f) on else if (part > 0.02f) Colors.mix(Colors.GRID, on, part) else Colors.GRID
             val x = b.left + i * seg
-            c.drawRect(x + seg * 0.1f, b.top, x + seg * 0.9f, b.bottom, fill)
+            // Thin, close-set ticks, like the bars on an old LED tachometer.
+            c.drawRect(x + seg * 0.2f, b.top, x + seg * 0.8f, b.bottom, fill)
         }
     }
 
@@ -376,16 +370,17 @@ class ClusterPainter(context: Context) {
         c.drawText("RPM", b.left, b.top + h * 0.28f, text)
         number(h * 0.34f, if (rpm == null) Colors.DIM else Colors.rpm(rpm), Paint.Align.RIGHT)
         c.drawText(rpm?.let { "%,d".format((it / 50f).roundToInt() * 50) } ?: if (s.obdLive) "–" else "no OBD2", b.right, b.top + h * 0.33f, text)
-        val n = (Revs.MAX / 250f).toInt()
+        val step = 125f
+        val n = (Revs.MAX / step).toInt()
         val bar = RectF(b.left, b.top + h * 0.45f, b.right, b.top + h * 0.78f)
         val seg = bar.width() / n
         for (i in 0 until n) {
-            val from = i * 250f
-            val off = if (from + 250f > Revs.REDLINE) Colors.RED_DIM else Colors.GRID
-            val part = if (rpm == null) 0f else ((rpm - from) / 250f).coerceIn(0f, 1f)
-            fill.color = if (part >= 0.98f) Colors.rpm(from + 125f) else if (part > 0.02f) Colors.mix(off, Colors.rpm(from + 125f), part) else off
+            val from = i * step
+            val off = if (from + step > Revs.REDLINE) Colors.RED_DIM else Colors.GRID
+            val part = if (rpm == null) 0f else ((rpm - from) / step).coerceIn(0f, 1f)
+            fill.color = if (part >= 0.98f) Colors.rpm(from + step / 2) else if (part > 0.02f) Colors.mix(off, Colors.rpm(from + step / 2), part) else off
             val x = bar.left + i * seg
-            c.drawRect(x + seg * 0.12f, bar.top, x + seg * 0.88f, bar.bottom, fill)
+            c.drawRect(x + seg * 0.2f, bar.top, x + seg * 0.8f, bar.bottom, fill)
         }
         label(h * 0.17f, Colors.DIM, Paint.Align.CENTER)
         for (k in 0..8) {
@@ -402,14 +397,7 @@ class ClusterPainter(context: Context) {
         c.drawText(name, b.left, b.top + h * 0.38f, text)
         number(h * 0.44f, if (frac == null) Colors.DIM else color, Paint.Align.RIGHT)
         c.drawText(value, b.right, b.top + h * 0.42f, text)
-        val bar = RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f)
-        fill.color = Colors.GRID
-        c.drawRoundRect(bar, bar.height() / 2, bar.height() / 2, fill)
-        val f = (frac ?: 0f).coerceIn(0f, 1f)
-        if (f > 0f) {
-            fill.color = color
-            c.drawRoundRect(RectF(bar.left, bar.top, bar.left + max(bar.height(), bar.width() * f), bar.bottom), bar.height() / 2, bar.height() / 2, fill)
-        }
+        segments(c, RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f), frac, 48, { color })
     }
 
     private fun brakeBar(c: Canvas, b: RectF, s: Snapshot) {
@@ -428,14 +416,7 @@ class ClusterPainter(context: Context) {
             },
             b.right, b.top + h * 0.42f, text,
         )
-        val bar = RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f)
-        fill.color = Colors.GRID
-        c.drawRoundRect(bar, bar.height() / 2, bar.height() / 2, fill)
-        val frac = (brake / 0.8f).coerceIn(0f, 1f)
-        if (frac > 0f) {
-            fill.color = color
-            c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * frac, bar.bottom), bar.height() / 2, bar.height() / 2, fill)
-        }
+        segments(c, RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f), (brake / 0.8f).coerceIn(0f, 1f), 48, { color })
     }
 
     /** Coolant, battery and intake boxes. */
