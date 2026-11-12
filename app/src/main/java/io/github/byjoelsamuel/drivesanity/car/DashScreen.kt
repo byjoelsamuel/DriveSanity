@@ -24,7 +24,10 @@ import androidx.lifecycle.LifecycleOwner
 import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
+import io.github.byjoelsamuel.drivesanity.MusicControls
+import io.github.byjoelsamuel.drivesanity.MusicPainter
 import io.github.byjoelsamuel.drivesanity.Prefs
+import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
@@ -44,6 +47,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private var shownRecording = false
     private var shownLayout = Prefs.Layout.GAUGES
     private var shownArmed = false
+    private var shownPlaying: Boolean? = null
     private val intro = StartupPainter(carContext)
     private var introStartMs: Long? = null
     private var introPlayed = false
@@ -77,11 +81,14 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         shownArmed = Track.armed
         val onDiag = Prefs.layout(carContext) == Prefs.Layout.DIAG
         val onSport = Prefs.layout(carContext) == Prefs.Layout.SPORT
+        val onMusic = Prefs.layout(carContext) == Prefs.Layout.MUSIC
+        shownPlaying = MediaWatcher.now?.playing
         val calibrate = Action.Builder()
             .setTitle(
                 when {
                     onDiag -> "Read codes"
                     onSport -> if (Track.armed) "End laps" else "Set line"
+                    onMusic -> "Swap sides"
                     DriveEngine.snapshot().calibrating -> "Calibrating…"
                     else -> "Calibrate"
                 },
@@ -90,6 +97,8 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 if (onDiag) {
                     Obd.requestReadCodes()
                     CarToast.makeText(carContext, "Reading fault codes…", CarToast.LENGTH_SHORT).show()
+                } else if (onMusic) {
+                    MusicControls.press(carContext, MusicPainter.Control.SWAP)
                 } else if (onSport) {
                     // Lap timing from the car: the line goes where the car is, across the way it's heading.
                     if (Track.armed) {
@@ -141,7 +150,21 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             .build()
         val full = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build()
         val short = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build()
-        val mapStrip = if (Prefs.layout(carContext) == Prefs.Layout.MAP) ActionStrip.Builder().addAction(search).build() else null
+        fun iconAction(res: Int, press: () -> Unit) = Action.Builder()
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, res)).build())
+            .setOnClickListener { press(); invalidate() }
+            .build()
+        val mapStrip = when {
+            // Previous, play or pause, next and search, over the map, where the knob or a tap can reach them.
+            onMusic -> ActionStrip.Builder()
+                .addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
+                .addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
+                .addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
+                .addAction(search)
+                .build()
+            Prefs.layout(carContext) == Prefs.Layout.MAP -> ActionStrip.Builder().addAction(search).build()
+            else -> null
+        }
         // Try everything; a car that takes fewer buttons gets fewer (Sport is still one of the "Show …" screens).
         for (strip in listOf(full, short)) {
             for (withMapStrip in listOf(true, false)) {
@@ -176,6 +199,15 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
     override fun onStableAreaChanged(stableArea: Rect) {}
 
+    /** A tap on the surface: the Music screen's drawn buttons. (The same buttons are also in the map's button strip.) */
+    override fun onClick(x: Float, y: Float) {
+        if (Prefs.layout(carContext) != Prefs.Layout.MUSIC) return
+        painter.musicHit(x, y)?.let {
+            MusicControls.press(carContext, it)
+            invalidate()
+        }
+    }
+
     override fun onSurfaceDestroyed(container: SurfaceContainer) {
         surface = null
     }
@@ -186,7 +218,9 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
     private fun draw() {
         // The phone changed something the buttons show.
-        if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout || Track.armed != shownArmed) invalidate()
+        if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout || Track.armed != shownArmed ||
+            (Prefs.layout(carContext) == Prefs.Layout.MUSIC && MediaWatcher.now?.playing != shownPlaying)
+        ) invalidate()
 
         // The OBD2 screen's extra readings are only asked for while it's showing.
         Obd.wantDiagnostics("car", Prefs.layout(carContext) == Prefs.Layout.DIAG)

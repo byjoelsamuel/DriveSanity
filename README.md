@@ -112,7 +112,7 @@ everything first.
 ## The screens
 
 The phone app has four tabs: **Drive**, **Track** (lap timer and standing starts), **Trips**
-(your recordings) and **Setup**. The car shows one of five
+(your recordings) and **Setup**. The car shows one of six
 full-screen dashboards. Pick it in Setup → Car screen, or with the buttons at the top of the
 car screen.
 
@@ -138,6 +138,22 @@ g when neither is running. It's the top-row button **SPORT** in the car, and on 
 first button becomes **Set line** / **End laps**.
 
 ![The Sport screen with the lap timer running, with sample data](docs/sport-screen.png)
+
+**Music**: only the map and what's playing, and nothing else. The player shows the cover in a
+rounded square, the song, artist and album, how far through the song you are, **previous**,
+**play/pause** and **next**, and the music app's icon in the corner. It reads whatever the phone is
+playing, so YouTube Music, Spotify or a podcast app all work. The player can be on either side with
+the map on the other: the swap button in the card's corner flips it (or **Swap sides** on the car's
+first button, or Setup → Music). The same previous, play/pause and next buttons are also in the map's
+button strip, where the car's knob or a tap can reach them. A tap on the drawn buttons works too, on
+screens that pass taps through.
+
+![The Music screen, with a stand-in song and map](docs/music-screen.png)
+
+To read what's playing, Android needs you to allow DriveSanity under **notification access**
+(Setup → Music → Allow notification access). That's how any app is allowed to see another app's
+playback. The app only looks at what's playing: it doesn't read, keep or send your notifications, and
+nothing leaves the phone.
 
 **Retro**: everything in Saab green, after early-2000s dashboards.
 
@@ -199,16 +215,34 @@ along the drive, and the laps. Older recordings still open.
 
 ## Sharing to Instagram
 
-Open a recording in **Trips** and scroll to **Share**. The app draws a picture of the drive on your
-phone (nothing is uploaded) in two shapes: **Story** (9:16) and **Post** (4:5, for the feed).
+Open a recording in **Trips** and scroll to **Share**. The app draws a picture on your phone (nothing
+is uploaded) in two shapes: **Story** (9:16) and **Post** (4:5, for the feed). You decide what's on it:
 
-- **The drive:** the shape of the path coloured by speed, distance, time, top and average speed,
-  highest revs, and your hardest braking, acceleration and cornering.
-- **The laps** (when you timed some): your best lap big, and every lap as a bar.
-- **A standing start:** on the **Track** tab, **Make a picture** under *Standing start* gives 0–60,
-  0–100 km/h and the quarter mile with its trap speed.
+- **Background:** put your own photo behind it (from your gallery; a copy is kept in the app and
+  **Remove** deletes it), and choose how dark it goes behind the numbers.
+- **Panels:** *Glass*, *Solid* or *None* (just the text, with a soft shadow), and whether the stack sits
+  at the top, middle or bottom. If there's more than fits, the stack shrinks to fit.
+- **What's on it:** blocks grouped by genre, with each genre in one panel. Switch a whole genre on or
+  off, or pick the blocks inside it:
 
-![A drive picture for a Story](docs/share-card.png)
+  | Genre | Blocks |
+  |---|---|
+  | Details | Title, car, date |
+  | Trip | Distance, time, drives |
+  | Route | The path, coloured by speed |
+  | Speed | Top speed, average |
+  | Performance | Braking, acceleration, cornering (peak g) |
+  | Engine | Highest revs |
+  | Laps | Best lap, every lap |
+  | Standing start | 0–60 mph, 0–100 km/h, quarter mile with trap speed |
+
+  A block only appears when there's data for it (no laps, no laps panel). What you chose is
+  remembered for next time.
+- **Source:** *This drive*, or *My profile*, which adds up every recording you have: drives, total
+  distance and time, top speed, hardest braking, acceleration and cornering, highest revs and your best
+  lap. A standing start is shared from the **Track** tab.
+
+![A drive picture with a photo behind it](docs/share-card.png)
 
 **Instagram** opens Instagram with the picture, which then asks whether it's for a Story, a post or
 a message; **Share…** sends it to any app; **Save** puts it in Pictures/DriveSanity (Android 10 or

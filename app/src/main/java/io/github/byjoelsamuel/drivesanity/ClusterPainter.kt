@@ -30,6 +30,7 @@ class ClusterPainter(context: Context) {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val map = MapPainter(labels, numbers)
     private val sport = SportPainter(context)
+    private val music = MusicPainter(context)
     private val speedRoll = RollingNumber()
 
     private fun label(size: Float, color: Int = Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
@@ -172,6 +173,11 @@ class ClusterPainter(context: Context) {
         val frac = s.fuelLper100?.div(20f) ?: s.fuelLph?.div(6f)
         barRow(c, b, "ECONOMY", units.economyText(s.fuelLper100, s.fuelLph), frac, 14, ::rampColor)
     }
+
+    // Music lives in MusicPainter.
+    fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units, map)
+
+    fun musicHit(x: Float, y: Float): MusicPainter.Control? = music.hit(x, y)
 
     // Sport lives in SportPainter.
     fun drawSport(c: Canvas, r: RectF, s: Snapshot, units: Units) = sport.draw(c, r, s, units)
