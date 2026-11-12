@@ -50,6 +50,8 @@ data class Snapshot(
     /** Learned from speed and RPM; null until it knows. */
     val gear: Int? = null,
     val throttlePct: Float? = null,
+    /** Engine load, 0–100: how hard the engine is working. */
+    val loadPct: Float? = null,
     /** Tire pressures in PSI (front left, front right, rear left, rear right); null until the car can tell us. */
     val tires: List<Float?> = listOf(null, null, null, null),
     /** The car has no fixed gears (a CVT). */
@@ -193,6 +195,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         headingDeg = heading,
         gear = gear,
         throttlePct = Obd.pedalPct,
+        loadPct = Obd.loadPct,
         tires = Obd.tirePsi,
         gearless = !profile.hasGears,
         lambda = Obd.lambda,

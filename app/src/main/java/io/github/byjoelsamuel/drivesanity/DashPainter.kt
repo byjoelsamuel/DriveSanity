@@ -112,6 +112,7 @@ class DashPainter(context: Context) {
         return s.copy(
             rpm = smooth.ease("rpm", s.rpm, 0.07f),
             throttlePct = smooth.ease("pedal", s.throttlePct, 0.07f),
+            loadPct = smooth.ease("load", s.loadPct, 0.15f),
             coolantC = smooth.ease("coolant", s.coolantC, 0.5f),
             intakeC = smooth.ease("intake", s.intakeC, 0.5f),
             volts = smooth.ease("volts", s.volts, 0.5f),
@@ -125,8 +126,8 @@ class DashPainter(context: Context) {
 
     /** The shift light along the top edge, and the most important warning as a flashing banner. */
     private fun drawAlerts(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout) {
-        // The Sport screen has shift lights of its own, and Retro keeps to its single colour.
-        if (layout != Prefs.Layout.SPORT && layout != Prefs.Layout.RETRO) {
+        // Retro keeps to its single colour, so it has no coloured strip.
+        if (layout != Prefs.Layout.RETRO) {
             val level = Alerts.shiftLevel(s.rpm, Revs.REDLINE)
             if (level == 1 || (level == 2 && (Alerts.now() / 100) % 2 == 0L)) {
                 fill.color = if (level == 2) Colors.RED else Colors.SAND

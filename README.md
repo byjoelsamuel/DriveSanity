@@ -108,9 +108,12 @@ brake are pressed, and coolant, battery and intake air.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
-**Sport**: the picture at the top. A cluster layout with a huge gear, a thin rev line that
-turns red at the redline, economy, air/fuel and coolant on the left, throttle, brake and
-g-force on the right, and tire pressures in rings.
+**Sport**: performance readings only. RPM, throttle, engine load and the air/fuel ratio on the
+left, a huge gear and the speed in the middle, and g-force, braking and acceleration on the
+right. No temperatures, battery or tires. It's the top-row button **SPORT** in the car, and
+**Exit Sport** takes you back.
+
+![The Sport screen, with sample data](docs/sport-screen.png)
 
 **Retro**: everything in Saab green, after early-2000s dashboards.
 
@@ -201,9 +204,9 @@ or MPG, and as litres or gallons per hour when you're stopped. The trip total is
 
 ## Shift light and alerts
 
-- **Shift light:** on the Sport screen the rev line under the gear turns sand at 92% of the
-  redline, and at 98.5% the line and the gear flash red. Other screens get a thin strip along
-  the top.
+- **Shift light:** the gear turns sand at 92% of the redline, and at 98.5% it flashes red. All
+  screens except Retro also get a thin strip along the top that does the same. The redline is
+  set per car in Setup.
 - **Alerts:** a banner for a hot engine (above 108 °C / 226 °F), low battery (under 11.8 V, or
   12.5 V with the engine running), a flat tire (under 27 psi), low fuel when the car reports
   it, and going 5 mph (8 km/h) over the posted limit.
