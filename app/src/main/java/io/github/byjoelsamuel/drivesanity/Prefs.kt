@@ -15,6 +15,16 @@ enum class Units(val perMps: Float, val label: String) {
     fun speed(mps: Float) = mps * perMps
     fun distance(m: Double) = if (this == KMH) m / 1000 else m / 1609.344
     val distanceLabel get() = if (this == KMH) "km" else "mi"
+
+    /** Fuel use as people in this unit system read it: MPG (US) or litres per 100 km. */
+    fun economy(lPer100: Float): Float = if (this == MPH) 235.215f / maxOf(lPer100, 0.1f) else lPer100
+
+    /** "32 MPG" or "5.9 L/100"; standing still, "0.9 gal/h" or "3.2 L/h"; or "–". */
+    fun economyText(lPer100: Float?, lph: Float?): String = when {
+        lPer100 != null -> if (this == MPH) "%.0f MPG".format(economy(lPer100)) else "%.1f L/100".format(lPer100)
+        lph != null -> if (this == MPH) "%.2f gal/h".format(lph / 3.78541f) else "%.1f L/h".format(lph)
+        else -> "–"
+    }
 }
 
 /** Small things kept between launches: the units, and the calibration (the phone usually stays in its mount). */
@@ -41,7 +51,8 @@ object Prefs {
         GAUGES("Gauges"),
         MAP("Map"),
         RETRO("Retro"),
-        DIAG("OBD2");
+        DIAG("OBD2"),
+        SPORT("Sport");
 
         val next get() = entries[(ordinal + 1) % entries.size]
     }
@@ -72,6 +83,40 @@ object Prefs {
     fun redline(ctx: Context, carId: String): Float? = prefs(ctx).getFloat("redline_$carId", 0f).takeIf { it > 0f }
 
     fun setRedline(ctx: Context, carId: String, rpm: Float) = prefs(ctx).edit { putFloat("redline_$carId", rpm) }
+
+    fun setLayout(ctx: Context, to: Layout) {
+        layout = to
+        prefs(ctx).edit { putString("layout", to.name) }
+    }
+
+    /** The Sport button: jump to the Sport screen, or back to the screen you came from. */
+    fun toggleSport(ctx: Context) {
+        val now = layout(ctx)
+        if (now == Layout.SPORT) {
+            val back = Layout.entries.firstOrNull { it.name == prefs(ctx).getString("sport_back", null) }
+            setLayout(ctx, if (back == null || back == Layout.SPORT) Layout.GAUGES else back)
+        } else {
+            prefs(ctx).edit { putString("sport_back", now.name) }
+            setLayout(ctx, Layout.SPORT)
+        }
+    }
+
+    /** Flashing warnings and the shift light. */
+    fun alerts(ctx: Context): Boolean = prefs(ctx).getBoolean("alerts", true)
+
+    fun setAlerts(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("alerts", on) }
+
+    fun startupSound(ctx: Context): StartupSoundMode {
+        val saved = prefs(ctx).getString("startup_sound", null)
+        return StartupSoundMode.entries.firstOrNull { it.name == saved } ?: StartupSoundMode.VOICE
+    }
+
+    fun setStartupSound(ctx: Context, mode: StartupSoundMode) = prefs(ctx).edit { putString("startup_sound", mode.name) }
+
+    /** The sound file the owner picked, as a content:// address. */
+    fun customSound(ctx: Context): String? = prefs(ctx).getString("custom_sound", null)
+
+    fun setCustomSound(ctx: Context, uri: String?) = prefs(ctx).edit { putString("custom_sound", uri) }
 
     fun startupAnim(ctx: Context): Boolean = prefs(ctx).getBoolean("startup_anim", true)
 

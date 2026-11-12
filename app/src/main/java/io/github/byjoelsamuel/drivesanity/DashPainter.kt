@@ -6,10 +6,12 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.SystemClock
 import androidx.core.content.res.ResourcesCompat
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -89,11 +91,47 @@ class DashPainter(context: Context) {
     private val cluster = ClusterPainter(context)
     private val diag = DiagPainter(context)
 
+    private val appContext = context.applicationContext
+
     fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
+        drawScreen(c, r, s, units, layout)
+        if (Prefs.alerts(appContext)) drawAlerts(c, r, s, units, layout)
+    }
+
+    /** The shift light along the top edge, and the most important warning as a flashing banner. */
+    private fun drawAlerts(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout) {
+        // The Sport screen has shift lights of its own, and Retro keeps to its single colour.
+        if (layout != Prefs.Layout.SPORT && layout != Prefs.Layout.RETRO) {
+            val level = Alerts.shiftLevel(s.rpm, Revs.REDLINE)
+            if (level == 1 || (level == 2 && (Alerts.now() / 100) % 2 == 0L)) {
+                fill.color = if (level == 2) Colors.RED else Colors.SAND
+                c.drawRect(r.left, r.top, r.right, r.top + max(4f, r.height() * 0.014f), fill)
+            }
+        }
+        val alert = Alerts.active(s, units, SpeedLimit.current).firstOrNull() ?: return
+        if (Alerts.now() % 900 > 620) return // the banner flashes
+        val size = r.height() * 0.06f
+        text.typeface = numbers
+        text.letterSpacing = 0.04f
+        text.textSize = size
+        text.textAlign = Paint.Align.CENTER
+        val half = text.measureText(alert.text) / 2 + size * 0.9f
+        val top = r.top + r.height() * 0.025f
+        fill.color = if (alert.severe) Colors.RED else Colors.CLAY
+        c.drawRoundRect(RectF(r.centerX() - half, top, r.centerX() + half, top + size * 1.9f), size, size, fill)
+        text.color = Colors.BG
+        c.drawText(alert.text, r.centerX(), top + size * 1.3f, text)
+    }
+
+    private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout) {
         if (layout == Prefs.Layout.RETRO) return retro.draw(c, r, s, units)
         if (layout == Prefs.Layout.DIAG) return diag.draw(c, r, s, units)
         if (r.width() > r.height() * 1.2f) {
-            if (layout == Prefs.Layout.MAP) cluster.drawMap(c, r, s, units) else cluster.drawGauges(c, r, s, units)
+            when (layout) {
+                Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units)
+                Prefs.Layout.SPORT -> cluster.drawSport(c, r, s, units)
+                else -> cluster.drawGauges(c, r, s, units)
+            }
             return
         }
         fill.color = Colors.BG

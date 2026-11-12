@@ -10,6 +10,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.Alignment
 import io.github.byjoelsamuel.drivesanity.CarProfiles
 import io.github.byjoelsamuel.drivesanity.Revs
+import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -208,6 +209,51 @@ fun SetupTab(
             }
         }
 
+        SectionTitle("Startup sound")
+        InfoCard {
+            val ctx = LocalContext.current
+            val mode = Prefs.startupSound(ctx)
+            Text(
+                when (mode) {
+                    StartupSoundMode.OFF -> "No sound."
+                    StartupSoundMode.CHIME -> "A short rising chime, in the spirit of a Japanese ETC card reader. In the car it plays through the speakers."
+                    StartupSoundMode.VOICE -> "The chime, then \"ETC card inserted\" in Japanese, spoken by your phone's Japanese voice if it has one. Without one you just get the chime."
+                    StartupSoundMode.CUSTOM -> if (Prefs.customSound(ctx) == null) "Choose a sound file below." else "Plays the sound file you chose."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(10.dp))
+            Segments(StartupSoundMode.entries.map { it.title }, mode.ordinal) { actions.setStartupSound(StartupSoundMode.entries[it]) }
+            Spacer(Modifier.height(10.dp))
+            Row {
+                OutlinedButton(onClick = actions::playStartupSound) { Text("Play it") }
+                if (mode == StartupSoundMode.CUSTOM) {
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = actions::chooseSoundFile) { Text("Choose file") }
+                }
+            }
+            Text(
+                "The chime is a sound I made, not a recording of a real reader. To use a real one, record it or find one yourself and choose it under My file.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+
+        SectionTitle("Alerts and shift light")
+        InfoCard {
+            val ctx = LocalContext.current
+            val on = Prefs.alerts(ctx)
+            Text(
+                "A flashing banner for a hot engine, low battery, low tire, low fuel or speeding, and a shift light along the top of the car screen as the revs near the redline.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(10.dp))
+            Segments(listOf("On", "Off"), if (on) 0 else 1) { actions.setAlerts(it == 0) }
+        }
+
         SectionTitle("Car screen")
         InfoCard {
             Text("What Android Auto shows. The phone always uses this app view.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
@@ -221,6 +267,7 @@ fun SetupTab(
                     Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
                     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
                     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
+                    Prefs.Layout.SPORT -> "Shift lights across the top, throttle and brake as pedal bars, a huge gear, the air/fuel ratio and fuel economy. The SPORT button at the top of the car screen jumps straight to it."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,

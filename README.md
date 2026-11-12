@@ -1,15 +1,15 @@
 # DriveSanity
 
 An Android app that shows live driving data on your phone and on your car's
-Android Auto screen: speed, braking, g-force, RPM, fuel and engine temperatures.
+Android Auto screen: speed, braking, g-force, RPM, fuel economy and engine temperatures.
 
 The phone and the car each get their own view:
 
 - **On the phone**, a regular app with three tabs: **Drive** (live numbers in plain words),
   **Trips** (this trip's stats and your recordings) and **Setup** (calibration, OBD2, units,
   and which screen the car shows).
-- **In the car**, a full-screen dashboard. Pick one of four in Setup → Car screen, or with the
-  button at the top of the car screen:
+- **In the car**, a full-screen dashboard. Pick one of five in Setup → Car screen, or with the
+  buttons at the top of the car screen:
 
 **Gauges**: a digital cluster. Bar gauges for RPM, throttle, coolant and fuel on the left, a huge
 gear number and the speed in the middle, g-force, battery, intake air and tire pressures on the
@@ -24,6 +24,14 @@ half. Speed, gear, RPM, brake and the rest are on the right.
 
 *This picture was made where the map server can't be reached, so its streets are a stand-in.
 In the app the map is the real OpenStreetMap.*
+
+**Sport**: the gear is the biggest thing on the screen. A row of shift lights runs along the top
+and fills from both edges toward the redline, then flashes red. Throttle and brake are tall
+pedal bars on either side of the gear, with the air/fuel ratio, fuel economy and coolant on the
+left and g-force, battery, intake air and tire pressures on the right. It's the top-row button
+**SPORT** in the car, and **Exit Sport** takes you back.
+
+![The Sport screen, with sample data](docs/sport-screen.png)
 
 **Retro**: everything in Saab green, after early-2000s dashboards.
 
@@ -43,6 +51,7 @@ the adapter. For parked moments.
 - **Coolant, fuel, battery and intake air**, as bars or boxes. Coolant shows blue while the engine
   is cold.
 - **Gear**, worked out from speed and RPM.
+- **Fuel economy**, an estimate (see below).
 - **G-force**, a dot that moves when you speed up, brake or turn.
 - **Tire pressures**, once the car can tell us (see below).
 
@@ -147,6 +156,33 @@ requests that people have used on other Mazdas, and shows the raw replies under 
 Compare them with the numbers the car's own screen shows (fuel in the cluster, tire pressures in
 Information → Vehicle Status Monitor) and the right decoding can be filled in.
 
+## Fuel economy
+
+The car doesn't give us its fuel level (see above), so the app estimates how much fuel the
+engine is using instead. It takes the air flow the engine reports (MAF), divides by the
+air/fuel ratio (14.7 to 1 for petrol, adjusted by the lambda reading when the car gives one) and
+turns that into litres. Then it shows litres per 100 km or MPG, or litres per hour when you're
+stopped. Coasting with the fuel cut off is counted as zero. The trip total is in **Trips**, and
+resetting the trip resets it.
+
+- It's an estimate. It runs a few percent off in either direction, so use it to compare drives,
+  not to settle an argument with the fuel pump.
+- It's for petrol engines. The Alcazar diesel is left out because the air/fuel maths is different.
+- It needs the car to report air flow. If yours doesn't, the economy shows a dash.
+- If the car's fuel level ever gets decoded (the Diagnostics button above), it will take the
+  fuel gauge's place on the Gauges screen. Until then economy sits there.
+
+## Shift light and alerts
+
+- **Shift light:** 18 lights along the top of the Sport screen, and a thin strip along the top
+  of the other screens. They start filling at 92% of the car's redline and flash red at 98.5%.
+  The redline is set per car in Setup.
+- **Alerts:** a banner appears over the screen for a hot engine (above 108 °C / 226 °F), low
+  battery voltage (under 11.8 V, or under 12.5 V with the engine running), a flat tire (under
+  27 psi), low fuel when the car reports it, and going more than 5 mph (8 km/h) over the posted
+  limit when the map knows it. If several are active, the most important shows first.
+- Both are visual only, and both can be turned off in **Setup → Alerts and shift light**.
+
 ## The OBD2 screen
 
 The fourth car screen. It shows:
@@ -166,10 +202,24 @@ The fault codes are also in **Setup → Fault codes** on the phone.
 
 ## The startup animation
 
-The app opens with a short old-TV power-on: a bright line stretches across the screen, opens
-up into the picture, and the name flickers in under scanlines. It plays on the phone, and again
-in the car when Android Auto connects. Tap to skip, or turn it off in **Setup → Startup
+The app opens with a soft old-TV power-on: a glowing line stretches across the screen, swells
+until light fills it, and the name fades in large over the glow. It plays on the phone, and
+again in the car when Android Auto connects. Tap to skip, or turn it off in **Setup → Startup
 animation**.
+
+## The startup sound
+
+Along with the animation, the app plays a short chime and then says "ETC card inserted" in
+Japanese, like the reader at a Japanese toll gate. In the car it plays through the car's
+speakers. Pick what you want in **Setup → Startup sound**: Off, Chime, Voice (chime and spoken
+line) or My file.
+
+- The chime is a short rising three-note sound I synthesized for this app. It isn't recorded
+  from a real ETC reader: those recordings are copyrighted and I couldn't find a free one.
+- The spoken line uses your phone's own Japanese text-to-speech voice. If no Japanese voice is
+  installed it's skipped and you get just the chime (Android settings → Text-to-speech).
+- **My file** lets you pick any audio file from your phone, such as your own recording of the
+  real thing.
 
 ## The retro screen
 

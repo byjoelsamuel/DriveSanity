@@ -24,6 +24,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
+import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 
 /**
@@ -101,15 +102,32 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 invalidate()
             }
             .build()
-        return NavigationTemplate.Builder()
-            .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build())
+        val sport = Action.Builder()
+            .setTitle(if (Prefs.layout(carContext) == Prefs.Layout.SPORT) "Exit Sport" else "SPORT")
+            .setOnClickListener {
+                Prefs.toggleSport(carContext)
+                invalidate()
+            }
             .build()
+        return try {
+            NavigationTemplate.Builder()
+                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build())
+                .build()
+        } catch (_: IllegalArgumentException) {
+            // A car whose screen takes fewer buttons: Sport is still one of the "Show …" screens.
+            NavigationTemplate.Builder()
+                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build())
+                .build()
+        }
     }
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
         surface = container.surface
         full = Rect(0, 0, container.width, container.height)
-        if (!introPlayed && Prefs.startupAnim(carContext)) introStartMs = SystemClock.elapsedRealtime()
+        if (!introPlayed) {
+            if (Prefs.startupAnim(carContext)) introStartMs = SystemClock.elapsedRealtime()
+            StartupSound.play(carContext)
+        }
         introPlayed = true
         draw()
     }

@@ -19,6 +19,8 @@ data class CarProfile(
     /** True when the redline came from the owner; false for a starting guess to adjust. */
     val redlineChecked: Boolean,
     val note: String,
+    /** Petrol engines only: the fuel economy estimate relies on the 14.7 : 1 air to fuel ratio. */
+    val petrol: Boolean = true,
 ) {
     /** The red zone start and the top of the rev scale, using the owner's own redline if they set one. */
     fun revScale(redlineOverride: Float? = null): Pair<Float, Float> {
@@ -74,7 +76,8 @@ object CarProfiles {
         redline = 4800f,
         revMax = 6000f,
         redlineChecked = false,
-        note = "Peak power at 4,000 rpm; 215/60 R17 or 215/55 R18 tyres. Hyundai doesn't publish the gear ratios, so the app learns the gears as you drive through them.",
+        note = "Peak power at 4,000 rpm; 215/60 R17 or 215/55 R18 tyres. Hyundai doesn't publish the gear ratios, so the app learns the gears as you drive through them. The fuel economy estimate is for petrol engines only.",
+        petrol = false,
     )
 
     val AMAZE = CarProfile(

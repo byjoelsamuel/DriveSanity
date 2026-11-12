@@ -14,23 +14,32 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * A short CRT power-on, in the spirit of an early-2000s handheld's boot screen: a bright line
- * stretches across a black screen, opens up into a glowing picture, the name flickers in, and
- * the whole thing, under scanlines and darkened corners, fades away into the app.
- * [t] is seconds since the start; it ends at [DURATION].
+ * A soft CRT power-on, in the spirit of an early-2000s handheld's boot screen: a glowing line
+ * stretches across a dark screen and swells until it fills it with light, the name fades in
+ * large and glowing, and the whole thing eases away into the app. [t] is seconds since the
+ * start; it ends at [DURATION].
  */
 class StartupPainter(context: Context) {
     private val word = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Fonts.semibold(context) }
     private val small = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Fonts.medium(context) }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val scan = Paint().apply { color = Color.argb(70, 0, 0, 0) }
+    private val scan = Paint().apply { color = Color.argb(30, 0, 0, 0) }
     private val vig = Paint()
+    private val glow = Paint()
+    private val bloom = Paint().apply {
+        // A unit circle, stretched to fit the line when drawn.
+        shader = RadialGradient(
+            0f, 0f, 1f,
+            intArrayOf(Color.argb(120, 190, 215, 240), Color.argb(46, 160, 190, 220), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
+        )
+    }
     private var linesFor = RectF()
     private var lines = FloatArray(0)
-    private var vigFor = RectF()
+    private var shadersFor = RectF()
 
     fun draw(c: Canvas, r: RectF, t: Float) {
-        val fade = 1f - smooth(t, 2.15f, 2.6f)
+        val fade = 1f - smooth(t, 2.4f, 3.0f)
         if (fade <= 0f) return
         val layer = c.saveLayerAlpha(r, (fade * 255).roundToInt())
         val w = r.width()
@@ -39,54 +48,73 @@ class StartupPainter(context: Context) {
         val cy = r.centerY()
         fill.color = BLACK
         c.drawRect(r, fill)
+        shaders(r)
 
-        // The line stretches out from the middle, then opens up into the picture.
-        val grow = smooth(t, 0.12f, 0.45f)
-        val open = smooth(t, 0.45f, 0.95f)
-        val thin = max(2f, h * 0.008f)
+        // A glowing line grows out from the middle, then swells until it is the whole screen.
+        val grow = smooth(t, 0.1f, 0.55f)
+        val open = smooth(t, 0.5f, 1.2f)
+        val thin = max(3f, h * 0.012f)
         val halfH = thin / 2 + (h / 2 - thin / 2) * open * open
         val halfW = w / 2 * grow
-        val bloomH = halfH + thin * 3 * (1f - open)
-        fill.color = Color.argb((90 * (1f - open)).roundToInt(), 190, 215, 235)
-        c.drawRect(cx - halfW, cy - bloomH, cx + halfW, cy + bloomH, fill)
+        // A soft ellipse of light around the line, fading out in every direction.
+        if (halfW > 1f) {
+            bloom.alpha = (255 * (1f - open * 0.75f)).roundToInt()
+            c.save()
+            c.translate(cx, cy)
+            c.scale(halfW + thin * 6f, halfH + thin * 9f * (1f - open * 0.5f))
+            c.drawCircle(0f, 0f, 1f, bloom)
+            c.restore()
+        }
         fill.color = mix(HOT, PHOSPHOR, open)
         c.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, fill)
+        // Light from the middle fills the screen.
+        glow.alpha = (open * 255).roundToInt()
+        c.drawRect(r, glow)
 
-        // The name flickers in.
-        val logo = smooth(t, 1.0f, 1.55f)
+        // The name fades in, big and glowing.
+        val logo = smooth(t, 1.05f, 1.7f)
         if (logo > 0f) {
-            val flicker = if (t < 1.5f) 0.85f + 0.15f * sin(t * 90f) else 1f
-            val jitter = if (t < 1.35f) ((t * 997f) % 1f - 0.5f) * w * 0.004f else 0f
-            word.textSize = min(w * 0.11f, h * 0.2f)
+            val flicker = if (t < 1.6f) 0.92f + 0.08f * sin(t * 70f) else 1f
+            word.textSize = min(w * 0.15f, h * 0.28f)
             word.textAlign = Paint.Align.CENTER
             word.letterSpacing = 0.04f
-            word.color = Color.argb((logo * flicker * 255).roundToInt().coerceIn(0, 255), 232, 230, 225)
-            word.setShadowLayer(word.textSize * 0.25f, 0f, 0f, Color.argb((170 * logo).roundToInt(), 143, 179, 194))
+            word.color = Color.argb((logo * flicker * 255).roundToInt().coerceIn(0, 255), 238, 236, 231)
+            word.setShadowLayer(word.textSize * 0.4f, 0f, 0f, Color.argb((190 * logo).roundToInt(), 143, 179, 194))
             val y = cy + word.textSize * 0.1f
-            c.drawText("DriveSanity", cx + jitter, y, word)
+            c.drawText("DriveSanity", cx, y, word)
 
-            val sweep = smooth(t, 1.3f, 1.8f)
+            val sweep = smooth(t, 1.4f, 2.0f)
             val half = word.measureText("DriveSanity") / 2 * sweep
-            fill.color = Color.argb((200 * logo).roundToInt(), 143, 179, 194)
-            c.drawRect(cx - half, y + word.textSize * 0.18f, cx + half, y + word.textSize * 0.18f + thin, fill)
+            fill.color = Color.argb((190 * logo).roundToInt(), 143, 179, 194)
+            c.drawRect(cx - half, y + word.textSize * 0.2f, cx + half, y + word.textSize * 0.2f + thin * 0.7f, fill)
 
-            val tag = smooth(t, 1.6f, 1.95f)
+            val tag = smooth(t, 1.8f, 2.3f)
             small.textSize = word.textSize * 0.2f
             small.textAlign = Paint.Align.CENTER
             small.letterSpacing = 0.3f
-            small.color = Color.argb((tag * 255).roundToInt(), 128, 132, 138)
-            c.drawText("DRIVE SYSTEM ONLINE", cx, y + word.textSize * 0.62f, small)
+            small.color = Color.argb((tag * 255).roundToInt(), 150, 154, 160)
+            c.drawText("DRIVE SYSTEM ONLINE", cx, y + word.textSize * 0.66f, small)
         }
 
-        // A faint refresh band rolling down the screen.
-        if (open > 0.9f) {
-            fill.color = Color.argb(14, 255, 255, 255)
-            val top = r.top + ((t * 0.7f) % 1f) * h
-            c.drawRect(r.left, top, r.right, min(r.bottom, top + h * 0.12f), fill)
-        }
         scanlines(c, r)
-        vignette(c, r)
+        c.drawRect(r, vig)
         c.restoreToCount(layer)
+    }
+
+    private fun shaders(r: RectF) {
+        if (shadersFor == r) return
+        shadersFor.set(r)
+        val reach = hypot(r.width(), r.height()) / 2f
+        glow.shader = RadialGradient(
+            r.centerX(), r.centerY(), reach * 0.9f,
+            intArrayOf(Color.argb(110, 120, 155, 190), Color.argb(40, 70, 95, 125), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP,
+        )
+        vig.shader = RadialGradient(
+            r.centerX(), r.centerY(), reach,
+            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(110, 0, 0, 0)),
+            floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP,
+        )
     }
 
     private fun scanlines(c: Canvas, r: RectF) {
@@ -107,23 +135,11 @@ class StartupPainter(context: Context) {
         c.drawLines(lines, scan)
     }
 
-    private fun vignette(c: Canvas, r: RectF) {
-        if (vigFor != r) {
-            vigFor.set(r)
-            vig.shader = RadialGradient(
-                r.centerX(), r.centerY(), hypot(r.width(), r.height()) / 2f,
-                intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(170, 0, 0, 0)),
-                floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP,
-            )
-        }
-        c.drawRect(r, vig)
-    }
-
     companion object {
-        const val DURATION = 2.6f
+        const val DURATION = 3.0f
         private val BLACK = Color.rgb(4, 5, 6)
-        private val HOT = Color.rgb(245, 250, 255)
-        private val PHOSPHOR = Color.rgb(20, 26, 32)
+        private val HOT = Color.rgb(240, 248, 255)
+        private val PHOSPHOR = Color.rgb(22, 28, 36)
 
         private fun smooth(t: Float, a: Float, b: Float): Float {
             val x = ((t - a) / (b - a)).coerceIn(0f, 1f)
