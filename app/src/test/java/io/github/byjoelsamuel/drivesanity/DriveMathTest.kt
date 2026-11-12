@@ -124,7 +124,7 @@ class DriveMathTest {
 
     @Test
     fun `mazda3 gears from speed and rpm`() {
-        val car = MY_CAR!!
+        val car = CarProfiles.MAZDA3.gears!!
         // About 32.5 km/h per 1,000 rpm in 4th (1:1).
         assertEquals(32.5, car.kmhPer1000Rpm[3], 0.5)
         fun kmh(gear: Int, rpm: Float, slip: Double = 0.0) = (car.kmhPer1000Rpm[gear - 1] * rpm / 1000 * (1 - slip)).toFloat()

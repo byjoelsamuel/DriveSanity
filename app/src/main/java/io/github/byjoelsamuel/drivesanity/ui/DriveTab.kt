@@ -159,7 +159,7 @@ private fun SpeedCard(s: Snapshot, units: Units, actions: PhoneActions) {
                 )
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallStat("Gear", s.gear?.toString() ?: "–")
+                SmallStat("Gear", s.gearText)
                 if (limitInUnits != null) SmallStat("Limit", limitInUnits.toString(), if (over) Ui.clay else Ui.fg)
             }
         }

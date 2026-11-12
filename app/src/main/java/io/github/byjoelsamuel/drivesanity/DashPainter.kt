@@ -141,8 +141,8 @@ class DashPainter(context: Context) {
         // Unknown: a small dash rather than a giant bar.
         text.textSize = min(b.height() * 0.95f, b.width() * 0.8f) * (if (s.gear == null) 0.45f else 1f)
         text.textAlign = Paint.Align.CENTER
-        text.color = if (s.gear == null) Colors.GRID else Colors.FG
-        c.drawText(s.gear?.toString() ?: "–", b.centerX(), b.top + b.height() * 0.86f, text)
+        text.color = when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG }
+        c.drawText(s.gearText, b.centerX(), b.top + b.height() * 0.86f, text)
     }
 
 

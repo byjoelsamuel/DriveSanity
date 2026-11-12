@@ -112,6 +112,28 @@ don't report fuel level; if yours doesn't, the fuel meter will say so.
   "Adapter stopped answering" points at the adapter or the car; "Adapter disconnected" means
   Bluetooth dropped.
 
+## Your car
+
+Pick your car in **Setup → My car**. It decides how the gear is worked out and where the red
+zone starts on the rev bar.
+
+| Car | Gears | Redline |
+|---|---|---|
+| Mazda3 2.5 AWD (2023), 6-speed automatic | Known: ratios and final drive from Mazda's spec sheet | 6,300 rpm |
+| Hyundai Alcazar 1.5 turbo petrol, 6-speed manual or 7-speed DCT | Learned while you drive | A guess: 6,000 rpm (peak power is at 5,500) |
+| Hyundai Alcazar 1.5 diesel, 6-speed manual or 6-speed automatic | Learned while you drive | A guess: 4,800 rpm (peak power is at 4,000) |
+| Honda Amaze 1.2 petrol, 5-speed manual | Learned while you drive | A guess: 6,600 rpm (peak power is at 6,000) |
+| Honda Amaze 1.2 petrol, CVT | None: it shows CVT | A guess: 6,600 rpm |
+
+- **Learned gears:** neither Hyundai nor Honda publishes its gear ratios where I could find
+  them, so for those cars the app watches speed against RPM and sorts it into gears. Drive
+  through the gears for a few minutes and the gear number appears. The learning is kept
+  separately for each car.
+- **Redlines marked "a guess"** are only a starting point. Use the **−** and **+** under
+  Redline to match the red zone on your tachometer; it's remembered for each car.
+- **Exact gear ratios:** if you have them and the final drive from the owner's manual, they can
+  go into `CarProfiles` in `Cars.kt`, and the gear shows straight away.
+
 ## Fuel level and tire pressure
 
 Your car's standard OBD2 data doesn't include these. A 2023 Mazda3 doesn't list the standard
@@ -174,10 +196,8 @@ too. Tap **End route** to stop.
   Many roads don't have their limit mapped yet, so the sign only shows where one is known.
   Your speed turns orange when you're more than 5 over.
 - **Gear:** most cars don't report their gear over OBD2, so the app works it out from speed
-  and RPM. It's set up for a 2023 Mazda3 2.5 AWD with the 6-speed automatic. It shows a dash
-  while shifting, or when the torque converter is slipping a lot. For another car, change
-  `MY_CAR` in `DriveMath.kt`, or set it to `null` and the app learns the gears by itself after
-  a few minutes of driving.
+  and RPM (see Your car). It shows a dash while shifting, or when the torque converter is
+  slipping a lot.
 
 The free services this uses ask apps to keep their traffic light, so they suit personal use.
 An app with many users would need its own servers.

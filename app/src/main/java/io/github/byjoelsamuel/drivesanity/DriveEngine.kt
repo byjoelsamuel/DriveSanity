@@ -52,7 +52,16 @@ data class Snapshot(
     val throttlePct: Float? = null,
     /** Tire pressures in PSI (front left, front right, rear left, rear right); null until the car can tell us. */
     val tires: List<Float?> = listOf(null, null, null, null),
-)
+    /** The car has no fixed gears (a CVT). */
+    val gearless: Boolean = false,
+) {
+    /** What to show for the gear. */
+    val gearText: String get() = when {
+        gearless -> "CVT"
+        gear != null -> gear.toString()
+        else -> "–"
+    }
+}
 
 /**
  * Reads GPS and the accelerometer and keeps the numbers both screens show, the phone and
@@ -100,6 +109,10 @@ object DriveEngine : SensorEventListener, LocationListener {
         private set
 
     private val gears = GearLearner()
+
+    /** The car picked in Setup: how its gears work and where its red zone starts. */
+    var profile: CarProfile = CarProfiles.default
+        private set
     private var gear: Int? = null
     private var lastGearNs = 0L
     private var heading: Float? = null
@@ -167,6 +180,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         gear = gear,
         throttlePct = Obd.throttlePct,
         tires = Obd.tirePsi,
+        gearless = !profile.hasGears,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -176,7 +190,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         if (!loaded) {
             loaded = true
             calibration = Prefs.loadRest(app)?.let { Calibration.fromRest(it) }
-            gears.load(Prefs.gears(app))
+            loadCar()
             Tiles.init(app)
             status = if (calibration != null) "Calibrated" else "Not calibrated"
         }
@@ -261,7 +275,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         mainHandler.removeCallbacks(backgroundCheck)
         holders.remove(BACKGROUND)
         Obd.stop()
-        Prefs.saveGears(app, gears.save())
+        Prefs.saveGears(app, profile.id, gears.save())
         app.getSystemService(SensorManager::class.java).unregisterListener(this)
         if (gpsOn) {
             app.getSystemService(LocationManager::class.java).removeUpdates(this)
@@ -287,6 +301,36 @@ object DriveEngine : SensorEventListener, LocationListener {
     }
 
     // --- controls ---------------------------------------------------------------------------
+
+    // --- the car -----------------------------------------------------------------------------
+
+    private fun loadCar() {
+        profile = CarProfiles.byId(Prefs.carId(app))
+        gears.load(Prefs.gears(app, profile.id))
+        applyRevs()
+    }
+
+    private fun applyRevs() {
+        val (redline, max) = profile.revScale(Prefs.redline(app, profile.id))
+        Revs.REDLINE = redline
+        Revs.MAX = max
+    }
+
+    /** Switches to another car: its own gears, learned ones included, and its own rev scale. */
+    fun setCar(context: Context, id: String) {
+        app = context.applicationContext
+        Prefs.saveGears(app, profile.id, gears.save())
+        Prefs.setCarId(app, id)
+        gear = null
+        loadCar()
+    }
+
+    /** Moves the red zone to match the tachometer. */
+    fun setRedline(context: Context, rpm: Float) {
+        app = context.applicationContext
+        Prefs.setRedline(app, profile.id, rpm.coerceIn(3_000f, 9_000f))
+        applyRevs()
+    }
 
     /** Starts a 1.5 s calibration. The car has to be stopped and the phone in its mount. */
     fun calibrate() {
@@ -340,9 +384,11 @@ object DriveEngine : SensorEventListener, LocationListener {
             lastGearNs = e.timestamp
             val rpm = Obd.rpm
             val kmh = Obd.speedKmh
+            val car = profile
             gear = when {
                 rpm == null || kmh == null -> null
-                MY_CAR != null -> MY_CAR.gearFor(kmh, rpm)
+                !car.hasGears -> null
+                car.gears != null -> car.gears.gearFor(kmh, rpm)
                 else -> gears.feed(kmh, rpm)
             }
         }

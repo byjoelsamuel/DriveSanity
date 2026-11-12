@@ -137,7 +137,7 @@ class RetroPainter(context: Context) {
         c.drawRoundRect(RectF(gx, gy, gx + gearW, gy + gh + big * 0.3f), big * 0.06f, big * 0.06f, line)
         drawDigits(c, s.gear?.toString() ?: "", gx + (gearW - cellsWidth(1, gh * 0.75f)) / 2, gy + big * 0.08f, gh * 0.75f, 1)
         label(big * 0.13f, MID, Paint.Align.CENTER)
-        c.drawText("GEAR", gx + gearW / 2, gy + gh + big * 0.22f, text)
+        c.drawText(if (s.gearless) "CVT" else "GEAR", gx + gearW / 2, gy + gh + big * 0.22f, text)
     }
 
     /** Four small vertical gauges: fuel, coolant, battery, intake. */
