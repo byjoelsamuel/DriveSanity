@@ -65,6 +65,25 @@ class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
 
     val bestLap: SessionLap? get() = laps.minByOrNull { it.ms }
 
+    /**
+     * The path without its first and last [trimM] metres, so a shared picture doesn't show where
+     * the drive began and ended (home, usually). Empty if the drive is too short to hide the ends.
+     */
+    fun trimmedPath(trimM: Double): List<SessionPoint> {
+        val pts = path
+        if (pts.size < 2) return emptyList()
+        val cum = DoubleArray(pts.size)
+        for (i in 1 until pts.size) {
+            val a = pts[i - 1]
+            val b = pts[i]
+            val mLon = 111_320.0 * cos(Math.toRadians(a.lat!!))
+            cum[i] = cum[i - 1] + hypot((b.lat!! - a.lat) * 111_320.0, (b.lon!! - a.lon!!) * mLon)
+        }
+        val total = cum.last()
+        if (total < trimM * 3) return emptyList()
+        return pts.filterIndexed { i, _ -> cum[i] >= trimM && total - cum[i] >= trimM }
+    }
+
     /** Positions that have a place on the map, for drawing the path. */
     val path: List<SessionPoint> by lazy { points.filter { it.lat != null && it.lon != null } }
 

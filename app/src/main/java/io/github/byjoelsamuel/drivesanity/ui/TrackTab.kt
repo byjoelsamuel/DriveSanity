@@ -128,6 +128,7 @@ fun TrackTab(s: Snapshot, units: Units, tick: Long) {
                     sec(run.quarterMs) + (run.trapKmh?.let { " at ${units.speed(it / 3.6f).roundToInt()} ${units.label}" } ?: ""),
                 )
             }
+            if (run != null && (run.to60Ms != null || run.to100Ms != null || run.quarterMs != null)) RunShare(run, units)
             Text(
                 "Timed from the car's own speed when the OBD2 adapter is connected, otherwise from GPS, which is slower to react. Do it somewhere safe and legal.",
                 style = MaterialTheme.typography.bodySmall,

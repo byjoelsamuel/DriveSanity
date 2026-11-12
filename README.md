@@ -154,9 +154,8 @@ also shows the speed limit.
 *The map picture was made where the map server can't be reached, so its streets are a
 stand-in. In the app the map is the real OpenStreetMap.*
 
-The dashboards are set in [Oxanium](https://fonts.google.com/specimen/Oxanium), a squared,
-instrument-cluster style typeface with clear figures. The phone's tabs and the Retro screen keep
-Poppins.
+The bars are rows of thin, close-set ticks, like the bars on an old LED tachometer, and the one
+a reading is partway through fades in so they fill smoothly. Everything is set in Poppins.
 
 Everything glides: bars and numbers ease to their new values between readings instead of
 jumping, and the car screen redraws about 30 times a second.
@@ -197,6 +196,31 @@ writes a row every second, because laps need it.
 Tap a recording in **Trips** to see its distance, time, top and average speed, peaks, the path
 drawn on a plain map and coloured by speed, speed and revs against time with a scrubber you drag
 along the drive, and the laps. Older recordings still open.
+
+## Sharing to Instagram
+
+Open a recording in **Trips** and scroll to **Share**. The app draws a picture of the drive on your
+phone (nothing is uploaded) in two shapes: **Story** (9:16) and **Post** (4:5, for the feed).
+
+- **The drive:** the shape of the path coloured by speed, distance, time, top and average speed,
+  highest revs, and your hardest braking, acceleration and cornering.
+- **The laps** (when you timed some): your best lap big, and every lap as a bar.
+- **A standing start:** on the **Track** tab, **Make a picture** under *Standing start* gives 0–60,
+  0–100 km/h and the quarter mile with its trap speed.
+
+![A drive picture for a Story](docs/share-card.png)
+
+**Instagram** opens Instagram with the picture, which then asks whether it's for a Story, a post or
+a message; **Share…** sends it to any app; **Save** puts it in Pictures/DriveSanity (Android 10 or
+newer). I haven't registered the app with Meta, so there's no one-tap "Add to Story" sticker
+button; Instagram's own chooser does the job.
+
+**Your home stays off it.** Drives usually start and end at home, so the first and last 250 m of the
+path are left out by default (a drive under 750 m shows no path at all), and the picture has no map
+tiles, street names or coordinates, only the shape. **Show the whole path** is there if you want it.
+
+(Apps like MEZGR share a link to a page of the drive. That needs a server to host the pages, so this
+sends a picture instead.)
 
 ## Demo mode and raw recordings
 
@@ -389,6 +413,5 @@ The built-in demo drive comes from `tools/make_demo.py`; run it to rebuild `demo
 include one that plays the whole demo through the app (`DemoFlowTest`) and checks the laps, the
 delta and the standing start come out.
 
-The fonts are [Oxanium](https://fonts.google.com/specimen/Oxanium) and
-[Poppins](https://fonts.google.com/specimen/Poppins), both used under the SIL Open Font License
-(see `licenses/`).
+The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open Font
+License (see `licenses/Poppins-OFL.txt`).

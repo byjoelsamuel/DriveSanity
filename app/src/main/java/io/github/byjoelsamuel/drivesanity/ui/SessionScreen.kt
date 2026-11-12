@@ -128,6 +128,9 @@ fun SessionScreen(file: File, units: Units, onBack: () -> Unit, onShare: () -> U
             }
         }
 
+        SectionTitle("Share")
+        SessionShare(file, s, units)
+
         Row(Modifier.padding(top = 16.dp)) {
             TextButton(onClick = onShare) { Text("Share spreadsheet") }
             TextButton(onClick = onDelete) { Text("Delete", color = Ui.clay) }
