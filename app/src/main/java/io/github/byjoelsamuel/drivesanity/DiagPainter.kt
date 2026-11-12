@@ -18,8 +18,8 @@ import kotlin.math.roundToInt
  * the car and the adapter. Meant for parked or slow moments, so it's text-heavy.
  */
 class DiagPainter(context: Context) {
-    private val numbers = Fonts.semibold(context)
-    private val labels = Fonts.medium(context)
+    private val numbers = Fonts.dashNumbers(context)
+    private val labels = Fonts.dashLabels(context)
     private val text = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = numbers }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
 

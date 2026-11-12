@@ -59,6 +59,20 @@ The app doesn't update itself.
 After a phone restart, Shizuku has to be started again before you can install: turn
 **Wireless debugging** back on and tap **Start** in Shizuku. No new code is needed.
 
+### Phone settings that stop the app running
+
+Open **Setup → Phone check**. It lists what the app needs (precise location, notifications,
+Nearby devices for Bluetooth, and battery set to unrestricted), ticks what's fine, and has a
+button to fix each thing that isn't. It also says whether the app was installed with the Play
+mark that Android Auto wants. Phone makers add their own battery savers on top of Android's, so
+the check shows steps for Samsung, OnePlus, Oppo, Realme, Xiaomi, Huawei and Vivo when it sees
+one. The ones that matter most:
+
+- **Samsung:** Settings → Battery → Background usage limits → turn off "Put unused apps to
+  sleep" and add DriveSanity to "Never sleeping apps".
+- **OnePlus / Oppo / Realme:** Settings → Apps → DriveSanity → Battery usage → "Allow
+  background activity", then lock the app in the recent apps view so it isn't cleared.
+
 ### If something goes wrong
 
 - **"Installed, but without the Google Play mark"** (red message in UnknownAuto, mentioning
@@ -129,6 +143,10 @@ also shows the speed limit.
 
 *The map picture was made where the map server can't be reached, so its streets are a
 stand-in. In the app the map is the real OpenStreetMap.*
+
+The dashboards are set in [Oxanium](https://fonts.google.com/specimen/Oxanium), a squared,
+instrument-cluster style typeface with clear figures. The phone's tabs and the Retro screen keep
+Poppins.
 
 Everything glides: bars and numbers ease to their new values between readings instead of
 jumping, and the car screen redraws about 30 times a second.
@@ -228,9 +246,20 @@ reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Setup → St
 
 ## The map
 
-On the phone, tap **Where to?** on the Drive tab and type an address. The car shows turn-by-
-turn directions with distance, time left and arrival time, and finds a new route if you leave
-the planned one.
+**On the phone**, tap **Where to?** on the Drive tab and type an address.
+
+**On the car screen**, show the Map screen and tap the magnifying glass over the map. Android
+Auto opens its keyboard (only while you're parked) and a microphone, so you can type or say the
+place. Pick a result and the route starts. The same screen has **End route**. The app only
+looks the place up when you submit it, not on every letter, because the free address service
+doesn't allow search-as-you-type.
+
+**By voice through the Assistant**, "navigate to …" can hand a place to the app when it's
+chosen as the navigation app. Whether your car and Assistant offer DriveSanity for that depends
+on Android Auto, so treat it as a bonus.
+
+The car then shows turn-by-turn directions with distance, time left and arrival time, and
+finds a new route if you leave the planned one.
 
 - **Map:** OpenStreetMap, dark and turning with the car. It needs mobile data.
 - **Speed limit:** from OpenStreetMap. Many roads don't have theirs mapped, so the sign only
@@ -278,5 +307,6 @@ with JDK 17 and the Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `obd/` | The OBD2 Bluetooth connection |
 | `map/`, `nav/` | Map tiles, address search, directions and speed limits |
 
-The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open
-Font License (see `licenses/Poppins-OFL.txt`).
+The fonts are [Oxanium](https://fonts.google.com/specimen/Oxanium) and
+[Poppins](https://fonts.google.com/specimen/Poppins), both used under the SIL Open Font License
+(see `licenses/`).

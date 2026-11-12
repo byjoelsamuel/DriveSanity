@@ -23,8 +23,8 @@ import kotlin.math.roundToInt
  * The speed counts up smoothly and rolls its digits, with a motion smear while it changes fast.
  */
 class ClusterPainter(context: Context) {
-    private val numbers = Fonts.semibold(context)
-    private val labels = Fonts.medium(context)
+    private val numbers = Fonts.dashNumbers(context)
+    private val labels = Fonts.dashLabels(context)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = numbers }
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -387,11 +387,11 @@ class ClusterPainter(context: Context) {
         speedAndGear(c, row(0.34f), s, units)
         row(0.01f)
         val pedal = s.throttlePct
-        levelBar(c, row(0.12f), "PEDAL", pedal?.let { "${it.roundToInt()}%" } ?: "–", pedal?.div(100f), rampColor((pedal ?: 0f) / 100f))
+        levelBar(c, row(0.14f), "PEDAL", pedal?.let { "${it.roundToInt()}%" } ?: "–", pedal?.div(100f), rampColor((pedal ?: 0f) / 100f))
         row(0.01f)
-        brakeBar(c, row(0.12f), s)
+        brakeBar(c, row(0.14f), s)
         row(0.03f)
-        temperatures(c, row(0.3f), s, units)
+        temperatures(c, row(0.26f), s, units)
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {
@@ -471,7 +471,7 @@ class ClusterPainter(context: Context) {
         val h = b.height()
         label(h * 0.3f)
         c.drawText(name, b.left, b.top + h * 0.38f, text)
-        number(h * 0.38f, if (frac == null) Colors.DIM else color, Paint.Align.RIGHT)
+        number(h * 0.44f, if (frac == null) Colors.DIM else color, Paint.Align.RIGHT)
         c.drawText(value, b.right, b.top + h * 0.42f, text)
         val bar = RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f)
         fill.color = Colors.GRID
@@ -490,7 +490,7 @@ class ClusterPainter(context: Context) {
         val color = Colors.brake(level)
         label(h * 0.3f)
         c.drawText("BRAKE", b.left, b.top + h * 0.38f, text)
-        number(h * 0.38f, color, Paint.Align.RIGHT)
+        number(h * 0.44f, color, Paint.Align.RIGHT)
         c.drawText(
             when {
                 s.g == null -> "–"

@@ -10,7 +10,7 @@ import io.github.byjoelsamuel.drivesanity.Prefs
 
 /** The live map on its own, for the phone's Drive tab while navigating. Redraws ~30 times a second. */
 class MapView(context: Context) : View(context) {
-    private val painter = MapPainter(Fonts.medium(context), Fonts.semibold(context))
+    private val painter = MapPainter(Fonts.dashLabels(context), Fonts.dashNumbers(context))
     private val rect = RectF()
 
     override fun onDraw(canvas: Canvas) {

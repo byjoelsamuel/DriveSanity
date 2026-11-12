@@ -14,6 +14,9 @@ import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarIcon
+import androidx.core.graphics.drawable.IconCompat
+import io.github.byjoelsamuel.drivesanity.R
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -110,16 +113,28 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 invalidate()
             }
             .build()
-        return try {
-            NavigationTemplate.Builder()
-                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build())
-                .build()
-        } catch (_: IllegalArgumentException) {
-            // A car whose screen takes fewer buttons: Sport is still one of the "Show …" screens.
-            NavigationTemplate.Builder()
-                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build())
-                .build()
+        // On the map, a search button over the map opens "Where to?" (keyboard and voice).
+        val search = Action.Builder()
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_search)).build())
+            .setOnClickListener { screenManager.push(SearchScreen(carContext)) }
+            .build()
+        val full = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build()
+        val short = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build()
+        val mapStrip = if (Prefs.layout(carContext) == Prefs.Layout.MAP) ActionStrip.Builder().addAction(search).build() else null
+        // Try everything; a car that takes fewer buttons gets fewer (Sport is still one of the "Show …" screens).
+        for (strip in listOf(full, short)) {
+            for (withMapStrip in listOf(true, false)) {
+                if (withMapStrip && mapStrip == null) continue
+                try {
+                    return NavigationTemplate.Builder()
+                        .setActionStrip(strip)
+                        .also { if (withMapStrip) it.setMapActionStrip(mapStrip!!) }
+                        .build()
+                } catch (_: IllegalArgumentException) {
+                }
+            }
         }
+        return NavigationTemplate.Builder().setActionStrip(short).build()
     }
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
