@@ -52,7 +52,7 @@ fun SetupTab(
     units: Units,
     carLayout: Prefs.Layout,
     obdName: String?,
-    @Suppress("UNUSED_PARAMETER") tick: Long, // the OBD2 status line is live
+    tick: Long, // the OBD2 status line and the phone check are live
     actions: PhoneActions,
 ) {
     // The fault codes and extra readings are only asked for while this screen is open.
@@ -65,6 +65,9 @@ fun SetupTab(
     ) {
         Spacer(Modifier.height(12.dp))
         Text("Setup", style = MaterialTheme.typography.titleLarge, color = Ui.fg)
+
+        SectionTitle("Phone check")
+        PhoneCheckCard(tick)
 
         SectionTitle("My car")
         InfoCard {

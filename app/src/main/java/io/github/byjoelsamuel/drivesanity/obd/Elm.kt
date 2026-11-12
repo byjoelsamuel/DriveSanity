@@ -13,6 +13,13 @@ enum class Pid(val code: Int, val bytes: Int, private val decode: (IntArray) -> 
     LOAD(0x04, 1, { it[0] * 100f / 255f }),             // %
     FUEL(0x2F, 1, { it[0] * 100f / 255f }),            // % of the tank
 
+    // What the driver's foot is doing, if the car reports it. Throttle position (0x11) is the valve,
+    // which a modern engine moves on its own to hold the revs, so it isn't the pedal.
+    PEDAL_REL(0x5A, 1, { it[0] * 100f / 255f }),        // % relative accelerator pedal position
+    PEDAL_D(0x49, 1, { it[0] * 100f / 255f }),          // % accelerator pedal position D
+    PEDAL_E(0x4A, 1, { it[0] * 100f / 255f }),          // % accelerator pedal position E
+    THROTTLE_REL(0x45, 1, { it[0] * 100f / 255f }),     // % relative throttle position (0 = closed)
+
     // Extra readings, asked for only while the OBD2 screen is showing.
     TRIM_SHORT(0x06, 1, { (it[0] - 128) * 100f / 128f }), // %
     TRIM_LONG(0x07, 1, { (it[0] - 128) * 100f / 128f }),  // %

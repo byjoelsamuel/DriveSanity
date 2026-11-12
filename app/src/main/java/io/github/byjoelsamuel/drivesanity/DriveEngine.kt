@@ -50,6 +50,8 @@ data class Snapshot(
     /** Learned from speed and RPM; null until it knows. */
     val gear: Int? = null,
     val throttlePct: Float? = null,
+    /** Engine load, 0–100: how hard the engine is working. */
+    val loadPct: Float? = null,
     /** Tire pressures in PSI (front left, front right, rear left, rear right); null until the car can tell us. */
     val tires: List<Float?> = listOf(null, null, null, null),
     /** The car has no fixed gears (a CVT). */
@@ -140,9 +142,12 @@ object DriveEngine : SensorEventListener, LocationListener {
     private val freshFix: Location?
         get() = lastFix?.takeIf { SystemClock.elapsedRealtime() - lastFixAtMs < STALE_FIX_MS }
 
-    /** GPS speed, or the car's own (OBD2) when GPS has dropped out, e.g. in a tunnel. */
+    /**
+     * The car's own speed (OBD2) while it's being read, since that updates several times a second
+     * and starts at an honest zero; GPS otherwise, once a second.
+     */
     val speedMps: Float?
-        get() = freshFix?.takeIf { it.hasSpeed() }?.let(::gpsSpeed) ?: Obd.speedKmh?.let { it / 3.6f }
+        get() = Obd.speedLiveKmh?.let { it / 3.6f } ?: freshFix?.takeIf { it.hasSpeed() }?.let(::gpsSpeed)
 
     /**
      * GPS reports a little speed even when parked. Anything within its own error margin (or
@@ -189,7 +194,8 @@ object DriveEngine : SensorEventListener, LocationListener {
         position = livePosition(),
         headingDeg = heading,
         gear = gear,
-        throttlePct = Obd.throttlePct,
+        throttlePct = Obd.pedalPct,
+        loadPct = Obd.loadPct,
         tires = Obd.tirePsi,
         gearless = !profile.hasGears,
         lambda = Obd.lambda,

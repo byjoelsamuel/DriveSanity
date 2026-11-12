@@ -32,7 +32,7 @@ class TripLog private constructor(val file: File) {
             BrakeLevel.of(g.brake).name,
             num(Obd.rpm, "%.0f"),
             num(Obd.speedKmh, "%.0f"),
-            num(Obd.throttlePct, "%.1f"),
+            num(Obd.pedalPct, "%.1f"),
             num(Obd.loadPct, "%.1f"),
             num(Obd.coolantC, "%.0f"),
             num(Obd.intakeC, "%.0f"),

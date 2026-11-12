@@ -14,6 +14,9 @@ import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarIcon
+import androidx.core.graphics.drawable.IconCompat
+import io.github.byjoelsamuel.drivesanity.R
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -45,9 +48,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
     private val tick = object : Runnable {
         override fun run() {
+            val started = SystemClock.uptimeMillis()
             draw()
-            // ~15 fps is plenty for gauges; the map moves, so it gets 30.
-            handler.postDelayed(this, if (Prefs.layout(carContext) == Prefs.Layout.MAP || introStartMs != null) 33 else 66)
+            // About 30 frames a second on every screen, counting the time the drawing took.
+            handler.postDelayed(this, maxOf(4L, FRAME_MS - (SystemClock.uptimeMillis() - started)))
         }
     }
 
@@ -109,16 +113,28 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 invalidate()
             }
             .build()
-        return try {
-            NavigationTemplate.Builder()
-                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build())
-                .build()
-        } catch (_: IllegalArgumentException) {
-            // A car whose screen takes fewer buttons: Sport is still one of the "Show …" screens.
-            NavigationTemplate.Builder()
-                .setActionStrip(ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build())
-                .build()
+        // On the map, a search button over the map opens "Where to?" (keyboard and voice).
+        val search = Action.Builder()
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_search)).build())
+            .setOnClickListener { screenManager.push(SearchScreen(carContext)) }
+            .build()
+        val full = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).addAction(sport).build()
+        val short = ActionStrip.Builder().addAction(calibrate).addAction(record).addAction(layout).build()
+        val mapStrip = if (Prefs.layout(carContext) == Prefs.Layout.MAP) ActionStrip.Builder().addAction(search).build() else null
+        // Try everything; a car that takes fewer buttons gets fewer (Sport is still one of the "Show …" screens).
+        for (strip in listOf(full, short)) {
+            for (withMapStrip in listOf(true, false)) {
+                if (withMapStrip && mapStrip == null) continue
+                try {
+                    return NavigationTemplate.Builder()
+                        .setActionStrip(strip)
+                        .also { if (withMapStrip) it.setMapActionStrip(mapStrip!!) }
+                        .build()
+                } catch (_: IllegalArgumentException) {
+                }
+            }
         }
+        return NavigationTemplate.Builder().setActionStrip(short).build()
     }
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
@@ -143,6 +159,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         surface = null
     }
 
+    private companion object {
+        const val FRAME_MS = 33L
+    }
+
     private fun draw() {
         // The phone changed something the buttons show.
         if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout) invalidate()
@@ -158,7 +178,9 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         }
         try {
             canvas.drawColor(if (Prefs.layout(carContext) == Prefs.Layout.RETRO) RetroPainter.BG else Colors.BG)
-            val area = if (visible.isEmpty) full else visible
+            // Android Auto's "visible area" leaves room at the top for the button strip even while it's
+            // hidden, which left a blank band. Draw up to the top edge; the buttons float over it when shown.
+            val area = if (visible.isEmpty) full else Rect(visible.left, full.top, visible.right, visible.bottom)
             painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
             introStartMs?.let { start ->
                 val t = (SystemClock.elapsedRealtime() - start) / 1000f

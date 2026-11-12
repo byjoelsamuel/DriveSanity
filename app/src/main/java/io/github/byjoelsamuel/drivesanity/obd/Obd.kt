@@ -107,9 +107,27 @@ object Obd {
 
     val rpm get() = value("rpm")
     val speedKmh get() = value("speed")
+
+    /** The car's speed only while it's being read often, which is when it beats GPS (one fix a second). */
+    val speedLiveKmh get() = value("speed", 1_200)
     val coolantC get() = value("coolant", 15_000)
     val intakeC get() = value("intake", 15_000)
     val throttlePct get() = value("throttle")
+
+    // The pedal: the car's own pedal reading when it has one, otherwise the throttle valve rescaled.
+    private val pedalPids = listOf(Pid.PEDAL_REL, Pid.PEDAL_D, Pid.PEDAL_E, Pid.THROTTLE_REL)
+    @Volatile var pedalSource: String = "not known yet"
+        private set
+    @Volatile private var pedalPid: Pid? = null
+    private val valve = Rescale()
+
+    /** How far down the accelerator is, 0–100. */
+    val pedalPct: Float?
+        get() {
+            val pid = pedalPid
+            if (pid != null) return value(key(pid))
+            return throttlePct?.let { valve.scale(it) }
+        }
     val loadPct get() = value("load")
     val fuelPct get() = value("fuel", 60_000)
     val volts get() = value("volts", 20_000)
@@ -193,8 +211,15 @@ object Obd {
     /** RPM every round, one of the others in turn, fuel and battery every 10 s. */
     private fun poll(s: ObdSession) {
         // Air flow and the commanded air/fuel ratio feed the fuel economy estimate, so they're always asked for.
-        val others = listOf(Pid.SPEED, Pid.THROTTLE, Pid.COOLANT, Pid.LOAD, Pid.INTAKE, Pid.MAF, Pid.LAMBDA)
+        pedalPid = pedalPids.firstOrNull { s.supports(it) }
+        pedalSource = pedalPid?.let { "car's pedal reading (PID %02X)".format(it.code) }
+            ?: if (s.supports(Pid.THROTTLE)) "estimated from the throttle valve (the car has no pedal reading)" else "none"
+        valve.reset()
+        // Speed and the pedal come round every other time; the slower readings take turns in between.
+        val fast = listOf(Pid.SPEED, pedalPid ?: Pid.THROTTLE).filter { s.supports(it) }
+        val slow = listOf(Pid.COOLANT, Pid.LOAD, Pid.INTAKE, Pid.MAF, Pid.LAMBDA)
             .filter { s.supports(it) }
+        val others = slow.flatMap { fast + it }.ifEmpty { fast }
         val extras = listOf(Pid.TRIM_SHORT, Pid.TRIM_LONG, Pid.MAP, Pid.TIMING, Pid.AMBIENT, Pid.RUNTIME)
             .filter { s.supports(it) }
         var i = 0
@@ -209,7 +234,9 @@ object Obd {
             val rotation = if (diagnosticsOn) others + extras else others
             if (rotation.isNotEmpty()) {
                 val pid = rotation[i++ % rotation.size]
-                put(key(pid), tolerate { s.read(pid) })
+                val v = tolerate { s.read(pid) }
+                put(key(pid), v)
+                if (pid == Pid.THROTTLE && v != null) valve.see(v)
             }
             val now = SystemClock.elapsedRealtime()
             if (now >= slowAt) {
@@ -251,6 +278,32 @@ object Obd {
 
     private fun key(pid: Pid) = pid.name.lowercase()
 
+    /**
+     * Turns the throttle valve's position into something like a pedal: closed at idle reads 0, the
+     * widest it has been seen open reads 100. It's an estimate, and shows as one in Diagnostics.
+     */
+    class Rescale {
+        private var lo = Float.MAX_VALUE
+        private var hi = 0f
+
+        fun reset() {
+            lo = Float.MAX_VALUE
+            hi = 0f
+        }
+
+        fun see(v: Float) {
+            if (v < lo) lo = v
+            if (v > hi) hi = v
+        }
+
+        fun scale(v: Float): Float {
+            if (lo == Float.MAX_VALUE) return 0f
+            // Until it has seen the valve open a fair way, don't blow a small movement up to 100%.
+            val span = maxOf(hi - lo, 40f)
+            return ((v - lo) / span * 100f).coerceIn(0f, 100f)
+        }
+    }
+
     /** The readings the car sends. */
     fun extra(p: Pid): Float? = value(p.name.lowercase(), 15_000)
 
@@ -259,6 +312,7 @@ object Obd {
 
     /** What the car has said, for the Setup screen. */
     fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.") +
+        "Pedal reading: $pedalSource\n" +
         "Link dropped and restarted: $reconnects times since the app opened\n" +
         (lastProblem?.let { "Last problem: $it\n" } ?: "") +
         (probeResult?.let { "\nMazda-specific probe:\n$it\n" } ?: "")

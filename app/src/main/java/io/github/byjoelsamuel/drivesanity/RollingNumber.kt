@@ -104,6 +104,6 @@ class RollingNumber {
         (color and 0x00FFFFFF) or ((alpha * 255).roundToInt().coerceIn(0, 255) shl 24)
 
     companion object {
-        private const val TAU = 0.22f
+        private const val TAU = 0.12f
     }
 }

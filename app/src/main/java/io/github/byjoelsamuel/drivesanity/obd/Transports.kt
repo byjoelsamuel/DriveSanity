@@ -40,8 +40,21 @@ class ClassicTransport(device: BluetoothDevice) : ObdTransport {
             return insecure
         } catch (e: IOException) {
             runCatching { insecure.close() }
-            throw IOException("Couldn't connect to ${device.address}. Is the adapter plugged in and the car on?", e)
         }
+        // Last try, the old way: a fixed channel. Some phones (Samsung, OnePlus among them) and cheap adapters
+        // only manage it like this when the usual lookup fails.
+        val fixed = runCatching {
+            device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType).invoke(device, 1) as BluetoothSocket
+        }.getOrNull()
+        if (fixed != null) {
+            try {
+                fixed.connect()
+                return fixed
+            } catch (e: IOException) {
+                runCatching { fixed.close() }
+            }
+        }
+        throw IOException("Couldn't connect to ${device.address}. Is the adapter plugged in and the car on?")
     }
 
     override fun send(text: String) {

@@ -59,6 +59,20 @@ The app doesn't update itself.
 After a phone restart, Shizuku has to be started again before you can install: turn
 **Wireless debugging** back on and tap **Start** in Shizuku. No new code is needed.
 
+### Phone settings that stop the app running
+
+Open **Setup → Phone check**. It lists what the app needs (precise location, notifications,
+Nearby devices for Bluetooth, and battery set to unrestricted), ticks what's fine, and has a
+button to fix each thing that isn't. It also says whether the app was installed with the Play
+mark that Android Auto wants. Phone makers add their own battery savers on top of Android's, so
+the check shows steps for Samsung, OnePlus, Oppo, Realme, Xiaomi, Huawei and Vivo when it sees
+one. The ones that matter most:
+
+- **Samsung:** Settings → Battery → Background usage limits → turn off "Put unused apps to
+  sleep" and add DriveSanity to "Never sleeping apps".
+- **OnePlus / Oppo / Realme:** Settings → Apps → DriveSanity → Battery usage → "Allow
+  background activity", then lock the app in the recent apps view so it isn't cleared.
+
 ### If something goes wrong
 
 - **"Installed, but without the Google Play mark"** (red message in UnknownAuto, mentioning
@@ -67,8 +81,16 @@ After a phone restart, Shizuku has to be started again before you can install: t
   Install in UnknownAuto again. If you haven't set Shizuku up yet, do the steps above.
 - **Shizuku won't pair:** keep the pairing box open, stay on Wi-Fi, allow notifications for
   Shizuku, and set its battery use to unrestricted.
-- **Installed fine, but not in the car:** the UnknownAuto message must be green. Reinstall
-  through UnknownAuto, then disconnect and reconnect Android Auto.
+- **Installed fine, but not in the car:** first, the UnknownAuto message must be green. If it
+  says "without the Play mark", Shizuku wasn't running (see above). If it's green, try these in
+  order:
+  1. In Android Auto's settings, tap **Version** about 10 times, open the three-dot menu →
+     **Developer settings** and turn on **Unknown sources**.
+  2. In Android Auto's settings, open **Customize launcher** and make sure DriveSanity is
+     ticked.
+  3. Force stop Android Auto (phone Settings → Apps), then reconnect to the car.
+  4. Update Android Auto and Google Play services.
+  5. Open DriveSanity once on the phone and allow location.
 - **Phone says it can't install over the old version:** the old one was installed a different
   way. Uninstall DriveSanity and install it again.
 - **Other trouble with UnknownAuto:** its own page has more help.
@@ -94,14 +116,18 @@ gear and the speed in the middle, g-force, battery, intake air and tires on the 
 
 ![The Gauges screen, with sample data](docs/car-screen.png)
 
-**Map**: directions in a box, and a live map that fades into the background, on the left. The
-instruments are on the right.
+**Map**: the map takes more than half the screen, with the next turn in a big box over its top
+edge and the rev bar underneath. On the right: speed and gear, how hard the accelerator and the
+brake are pressed, and coolant, battery and intake air.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
-**Sport**: the picture at the top. A cluster layout with a huge gear, a thin rev line that
-turns red at the redline, economy, air/fuel and coolant on the left, throttle, brake and
-g-force on the right, and tire pressures in rings.
+**Sport**: performance readings only. RPM, throttle, engine load and the air/fuel ratio on the
+left, a huge gear and the speed in the middle, and g-force, braking and acceleration on the
+right. No temperatures, battery or tires. It's the top-row button **SPORT** in the car, and
+**Exit Sport** takes you back.
+
+![The Sport screen, with sample data](docs/sport-screen.png)
 
 **Retro**: everything in Saab green, after early-2000s dashboards.
 
@@ -117,6 +143,13 @@ also shows the speed limit.
 
 *The map picture was made where the map server can't be reached, so its streets are a
 stand-in. In the app the map is the real OpenStreetMap.*
+
+The dashboards are set in [Oxanium](https://fonts.google.com/specimen/Oxanium), a squared,
+instrument-cluster style typeface with clear figures. The phone's tabs and the Retro screen keep
+Poppins.
+
+Everything glides: bars and numbers ease to their new values between readings instead of
+jumping, and the car screen redraws about 30 times a second.
 
 ## OBD2
 
@@ -162,6 +195,16 @@ zone starts.
 - If you have exact gear ratios and the final drive, they can go into `CarProfiles` in
   `Cars.kt`.
 
+## Throttle and pedal
+
+Many cars, including newer Mazdas, move the throttle valve themselves to hold the revs, so the
+standard "throttle position" reading follows RPM, not your foot. The app asks the car for the
+accelerator pedal reading instead (the standard readings for pedal position and relative
+throttle), and uses the first one the car has. If the car has none of them, it takes the
+throttle valve and rescales it so idle reads 0% and the widest it has opened reads 100%, and
+that is only an estimate. **Setup → OBD2 adapter → Diagnostics** says which one is in use
+("Pedal reading").
+
 ## Fuel, tires and economy
 
 Standard OBD2 data doesn't include fuel level on a 2023 Mazda3, and tire pressures aren't
@@ -179,9 +222,9 @@ or MPG, and as litres or gallons per hour when you're stopped. The trip total is
 
 ## Shift light and alerts
 
-- **Shift light:** on the Sport screen the rev line under the gear turns sand at 92% of the
-  redline, and at 98.5% the line and the gear flash red. Other screens get a thin strip along
-  the top.
+- **Shift light:** the gear turns sand at 92% of the redline, and at 98.5% it flashes red. All
+  screens except Retro also get a thin strip along the top that does the same. The redline is
+  set per car in Setup.
 - **Alerts:** a banner for a hot engine (above 108 °C / 226 °F), low battery (under 11.8 V, or
   12.5 V with the engine running), a flat tire (under 27 psi), low fuel when the car reports
   it, and going 5 mph (8 km/h) over the posted limit.
@@ -203,9 +246,20 @@ reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Setup → St
 
 ## The map
 
-On the phone, tap **Where to?** on the Drive tab and type an address. The car shows turn-by-
-turn directions with distance, time left and arrival time, and finds a new route if you leave
-the planned one.
+**On the phone**, tap **Where to?** on the Drive tab and type an address.
+
+**On the car screen**, show the Map screen and tap the magnifying glass over the map. Android
+Auto opens its keyboard (only while you're parked) and a microphone, so you can type or say the
+place. Pick a result and the route starts. The same screen has **End route**. The app only
+looks the place up when you submit it, not on every letter, because the free address service
+doesn't allow search-as-you-type.
+
+**By voice through the Assistant**, "navigate to …" can hand a place to the app when it's
+chosen as the navigation app. Whether your car and Assistant offer DriveSanity for that depends
+on Android Auto, so treat it as a bonus.
+
+The car then shows turn-by-turn directions with distance, time left and arrival time, and
+finds a new route if you leave the planned one.
 
 - **Map:** OpenStreetMap, dark and turning with the car. It needs mobile data.
 - **Speed limit:** from OpenStreetMap. Many roads don't have theirs mapped, so the sign only
@@ -228,8 +282,8 @@ Map data © OpenStreetMap contributors.
 
 - Hills show up as a small amount of acceleration, because the motion sensor can't tell a
   slope from speeding up.
-- Speed comes from GPS and updates about once a second. If GPS drops out, for example in a
-  tunnel, the car's own speed from OBD2 is used.
+- Speed comes from the car (OBD2) when the adapter is connected, since it updates several
+  times a second, and from GPS (once a second) when it isn't.
 - Keep your eyes on the road. The car screen is made for quick glances.
 
 ## For developers
@@ -253,5 +307,6 @@ with JDK 17 and the Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `obd/` | The OBD2 Bluetooth connection |
 | `map/`, `nav/` | Map tiles, address search, directions and speed limits |
 
-The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open
-Font License (see `licenses/Poppins-OFL.txt`).
+The fonts are [Oxanium](https://fonts.google.com/specimen/Oxanium) and
+[Poppins](https://fonts.google.com/specimen/Poppins), both used under the SIL Open Font License
+(see `licenses/`).

@@ -152,31 +152,32 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
      * The next turn in a box of its own: the arrow, the distance, the instruction with the street
      * name, and what's left of the trip. Or a short message ("Finding a route…").
      */
-    fun drawDirections(c: Canvas, b: RectF, units: Units) {
+    fun drawDirections(c: Canvas, b: RectF, units: Units, alpha: Int = 255) {
         val route = Nav.route
         val msg = Nav.message
         if (route == null && msg == null) return
         val h = b.height()
-        fill.color = Colors.BOX
-        c.drawRoundRect(b, h * 0.18f, h * 0.18f, fill)
+        fill.color = (Colors.BOX and 0x00FFFFFF) or (alpha shl 24)
+        c.drawRoundRect(b, h * 0.16f, h * 0.16f, fill)
         if (route == null || route.steps.isEmpty()) {
-            value(h * 0.3f, Colors.FG, Paint.Align.LEFT)
+            value(h * 0.36f, Colors.FG, Paint.Align.LEFT)
             val line = TextUtils.ellipsize(msg ?: "", text, b.width() - h * 0.6f, TextUtils.TruncateAt.END)
-            c.drawText(line, 0, line.length, b.left + h * 0.3f, b.centerY() + h * 0.1f, text)
+            c.drawText(line, 0, line.length, b.left + h * 0.3f, b.centerY() + h * 0.12f, text)
             return
         }
         val step = route.steps[Nav.next]
-        val icon = h * 0.6f
-        drawArrow(c, step.arrow, b.left + h * 0.15f + icon / 2, b.centerY(), icon)
-        val tx = b.left + h * 0.3f + icon
-        value(h * 0.34f, Colors.FG, Paint.Align.LEFT)
-        c.drawText(distance(Nav.toNextM, units), tx, b.top + h * 0.4f, text)
-        label(h * 0.2f, Colors.FG, Paint.Align.LEFT)
+        val icon = h * 0.72f
+        drawArrow(c, step.arrow, b.left + h * 0.14f + icon / 2, b.centerY(), icon)
+        val tx = b.left + h * 0.28f + icon
+        value(h * 0.43f, Colors.FG, Paint.Align.LEFT)
+        c.drawText(distance(Nav.toNextM, units), tx, b.top + h * 0.43f, text)
+        label(h * 0.25f, Colors.FG, Paint.Align.LEFT)
         val what = TextUtils.ellipsize(step.text, text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
-        c.drawText(what, 0, what.length, tx, b.top + h * 0.68f, text)
-        label(h * 0.15f, Colors.DIM, Paint.Align.LEFT)
-        val left = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min · ETA ${Nav.arrivalTime()}"
-        c.drawText(left, tx, b.top + h * 0.9f, text)
+        c.drawText(what, 0, what.length, tx, b.top + h * 0.72f, text)
+        label(h * 0.18f, Colors.DIM, Paint.Align.LEFT)
+        val trip = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min · ETA ${Nav.arrivalTime()}"
+        val fitted = TextUtils.ellipsize(trip, text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
+        c.drawText(fitted, 0, fitted.length, tx, b.top + h * 0.94f, text)
     }
 
     private fun drawArrow(c: Canvas, a: Arrow, cx: Float, cy: Float, size: Float) {
