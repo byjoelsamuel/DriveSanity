@@ -72,15 +72,26 @@ class ObdSession(private val link: ObdTransport) {
     var supported: Set<Int> = emptySet()
         private set
 
+    private val lastReply = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     fun command(cmd: String, timeoutMs: Long = 2_000): String {
         link.send(cmd + "\r")
-        return link.readReply(timeoutMs)
+        return link.readReply(timeoutMs).also { lastReply[cmd] = it }
+    }
+
+    /** For Setup: which readings the car lists, and the last raw reply to each one. */
+    fun report(): String = buildString {
+        appendLine("Lists fuel level: " + if (Pid.FUEL.code in supported) "yes" else "no")
+        for ((cmd, reply) in lastReply.toSortedMap()) {
+            if (cmd.startsWith("01")) appendLine("$cmd: " + Elm.lines(reply).joinToString(" ").ifEmpty { "no reply" })
+        }
     }
 
     /** Resets the adapter and connects to the car. Returns the adapter's name, e.g. "ELM327 v1.5". */
     fun start(): String {
         val id = Elm.lines(command("ATZ", 4_000)).lastOrNull { it.contains("ELM", ignoreCase = true) } ?: "ELM327"
-        for (setup in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATSP0")) command(setup) // no echo, spaces or headers; any protocol
+        // No echo, spaces or headers; any protocol. ATAT2 lets the adapter shorten its wait when the car answers quickly.
+        for (setup in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "ATAT2")) command(setup)
         // The first query makes the adapter search for the car's protocol, which can take a while.
         val first = command("0100", 15_000)
         if (Elm.mode01(first, 0x00) == null) {

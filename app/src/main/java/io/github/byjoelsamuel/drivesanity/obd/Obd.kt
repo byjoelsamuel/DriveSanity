@@ -35,6 +35,7 @@ object Obd {
     @Volatile private var running = false
     @Volatile private var worker: Thread? = null
     @Volatile private var link: ObdTransport? = null
+    @Volatile private var live: ObdSession? = null
 
     fun start(context: Context) {
         app = context.applicationContext
@@ -98,6 +99,7 @@ object Obd {
             } finally {
                 link?.close()
                 link = null
+                live = null
                 supported = emptySet()
             }
         }
@@ -128,6 +130,7 @@ object Obd {
         val t = open(device, saved.ble)
         link = t
         val session = ObdSession(t)
+        live = session
         val id = session.start()
         supported = session.supported
         status = Status(Link.LIVE, "${saved.name} · $id")
@@ -179,6 +182,9 @@ object Obd {
         Pid.LOAD -> "load"
         Pid.FUEL -> "fuel"
     }
+
+    /** What the car has said, for the Setup screen. */
+    fun report(): String = live?.report() ?: "Not connected, so nothing to report yet."
 
     fun hasBluetoothPermission(ctx: Context): Boolean =
         Build.VERSION.SDK_INT < 31 ||

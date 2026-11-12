@@ -43,7 +43,7 @@ class ElmTest {
         val fake = FakeElm(car)
         val s = ObdSession(fake)
         assertEquals("ELM327 v1.5", s.start())
-        assertEquals(listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "0100", "0120", "0140"), fake.sent)
+        assertEquals(listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "ATAT2", "0100", "0120", "0140"), fake.sent)
         for (pid in listOf(Pid.RPM, Pid.SPEED, Pid.COOLANT, Pid.INTAKE, Pid.THROTTLE, Pid.LOAD, Pid.FUEL)) {
             assertTrue("$pid", s.supports(pid))
         }

@@ -61,14 +61,14 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         shownRecording = DriveEngine.recording
         shownLayout = Prefs.layout(carContext)
         val calibrate = Action.Builder()
-            .setTitle("Calibrate")
+            .setTitle(if (DriveEngine.snapshot().calibrating) "Calibrating…" else "Calibrate")
             .setOnClickListener {
                 DriveEngine.calibrate()
                 CarToast.makeText(carContext, DriveEngine.status, CarToast.LENGTH_SHORT).show()
             }
             .build()
         val record = Action.Builder()
-            .setTitle(if (shownRecording) "Stop" else "Rec")
+            .setTitle(if (shownRecording) "● Stop" else "● Record")
             .setOnClickListener {
                 DriveEngine.toggleRecording(carContext)
                 CarToast.makeText(carContext, DriveEngine.status, CarToast.LENGTH_SHORT).show()
@@ -76,7 +76,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             }
             .build()
         val layout = Action.Builder()
-            .setTitle(Prefs.layout(carContext).next.title)
+            .setTitle("Show ${Prefs.layout(carContext).next.title}")
             .setOnClickListener {
                 Prefs.toggleLayout(carContext)
                 invalidate()
