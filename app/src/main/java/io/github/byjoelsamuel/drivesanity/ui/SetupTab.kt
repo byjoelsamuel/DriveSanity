@@ -45,6 +45,7 @@ import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
+import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 
@@ -246,6 +247,40 @@ fun SetupTab(
             }
         }
 
+        SectionTitle("Music")
+        InfoCard {
+            val ctx = LocalContext.current
+            MediaWatcher.poll(ctx)
+            val granted = MediaWatcher.hasAccess(ctx)
+            Text(
+                "The Music screen shows what's playing in YouTube Music or any other music app, with previous, play or pause and next, and the cover and the app's icon. To read it, Android needs you to allow DriveSanity under notification access. The app only looks at what's playing: it doesn't read, keep or send your notifications.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(10.dp))
+            val np = MediaWatcher.now
+            Text(
+                when {
+                    !granted -> "Notification access is off."
+                    np == null -> "Notification access is on. Nothing is playing."
+                    else -> "Now playing: ${np.title}${if (np.artist.isNotEmpty()) " · ${np.artist}" else ""} (${np.appName.ifEmpty { np.pkg }})"
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (granted) Ui.good else Ui.sand,
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = {
+                runCatching {
+                    ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            }) { Text(if (granted) "Notification access settings" else "Allow notification access") }
+            Spacer(Modifier.height(14.dp))
+            Text("Which side", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+            var left by remember { mutableStateOf(Prefs.musicLeft(ctx)) }
+            Segments(listOf("Player left, map right", "Map left, player right"), if (left) 0 else 1) { left = it == 0; Prefs.setMusicLeft(ctx, left) }
+            Text("The swap button on the player card does the same from the car screen.", style = MaterialTheme.typography.bodySmall, color = Ui.dim, modifier = Modifier.padding(top = 6.dp))
+        }
+
         SectionTitle("Map look")
         InfoCard {
             val ctx = LocalContext.current
@@ -366,7 +401,8 @@ fun SetupTab(
                     Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
                     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
                     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
-                    Prefs.Layout.SPORT -> "Shift lights across the top, throttle and brake as pedal bars, a huge gear, the air/fuel ratio and fuel economy. The SPORT button at the top of the car screen jumps straight to it."
+                    Prefs.Layout.SPORT -> "A race-style display: a rev ribbon, a huge gear and speed, pedal bars, a g-g plot and a lap timer strip. The SPORT button at the top of the car screen jumps straight to it."
+                    Prefs.Layout.MUSIC -> "Just the map and what's playing, with the cover, previous, play or pause and next. Set which side the player is on under Music below."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,

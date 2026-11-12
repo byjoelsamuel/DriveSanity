@@ -52,7 +52,8 @@ object Prefs {
         MAP("Map"),
         RETRO("Retro"),
         DIAG("OBD2"),
-        SPORT("Sport");
+        SPORT("Sport"),
+        MUSIC("Music");
 
         val next get() = entries[(ordinal + 1) % entries.size]
     }
@@ -102,6 +103,16 @@ object Prefs {
     }
 
     /** Flashing warnings and the shift light. */
+    /** How the share pictures are put together (see ShareConfig); kept so the next one starts the same way. */
+    fun shareConfig(ctx: Context): String? = prefs(ctx).getString("share_config", null)
+
+    fun setShareConfig(ctx: Context, encoded: String) = prefs(ctx).edit { putString("share_config", encoded) }
+
+    /** On the Music screen: the player on the left (and the map on the right), or the other way round. */
+    fun musicLeft(ctx: Context): Boolean = prefs(ctx).getBoolean("music_left", true)
+
+    fun setMusicLeft(ctx: Context, left: Boolean) = prefs(ctx).edit { putBoolean("music_left", left) }
+
     /** True for the modern dark map (CARTO's Dark Matter); false for the classic OpenStreetMap look. */
     fun modernMap(ctx: Context): Boolean = prefs(ctx).getBoolean("modern_map", true)
 

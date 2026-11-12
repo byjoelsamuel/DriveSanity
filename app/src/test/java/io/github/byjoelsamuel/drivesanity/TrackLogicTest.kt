@@ -307,3 +307,70 @@ class ShareTrimTest {
         org.junit.Assert.assertTrue(line(10).trimmedPath(250.0).isEmpty()) // 500 m: the ends would be everything
     }
 }
+
+class ShareConfigTest {
+    @org.junit.Test
+    fun aConfigSurvivesBeingSaved() {
+        val c = ShareConfig(setOf(Block.TOP_SPEED, Block.PATH, Block.BEST_LAP), 0.75f, PanelStyle.SOLID, Place.BOTTOM)
+        val back = ShareConfig.decode(c.encode())
+        org.junit.Assert.assertEquals(c, back)
+    }
+
+    @org.junit.Test
+    fun rubbishFallsBackToTheDefault() {
+        org.junit.Assert.assertEquals(ShareConfig(), ShareConfig.decode(null))
+        org.junit.Assert.assertEquals(ShareConfig(), ShareConfig.decode("nonsense"))
+        org.junit.Assert.assertEquals(ShareConfig(), ShareConfig.decode("A;B;C;D"))
+    }
+
+    @org.junit.Test
+    fun aWholeGenreSwitchesOnAndOffTogether() {
+        val c = ShareConfig().withGenre(Genre.PERFORMANCE, false)
+        org.junit.Assert.assertTrue(Block.of(Genre.PERFORMANCE).none { it in c.blocks })
+        org.junit.Assert.assertTrue(Block.TOP_SPEED in c.blocks)
+        org.junit.Assert.assertTrue(Block.of(Genre.PERFORMANCE).all { it in c.withGenre(Genre.PERFORMANCE, true).blocks })
+    }
+
+    @org.junit.Test
+    fun everyBlockHasAGenreAndTheGenresCoverThem() {
+        org.junit.Assert.assertTrue(Block.entries.all { it.genre in Genre.entries })
+        org.junit.Assert.assertEquals(Block.entries.size, Genre.entries.sumOf { Block.of(it).size })
+    }
+
+    @org.junit.Test
+    fun aCardOnlyOffersWhatThereIsData_For() {
+        val s = Session(
+            listOf(
+                SessionPoint(0.0, 40.0, -119.0, 50f, 3000f, 20f, 0.3f, 0.4f, 0.2f, null),
+                SessionPoint(5.0, 40.0, -118.99, 80f, 5000f, 60f, 0.5f, 0.6f, 0.4f, null),
+            ),
+            emptyList(),
+        )
+        val d = CardData.ofSession(s, "Drive", "1 JAN", "Car", Units.MPH, hideEnds = false)
+        org.junit.Assert.assertTrue(d.has(Block.TOP_SPEED))
+        org.junit.Assert.assertTrue(d.has(Block.PATH))
+        org.junit.Assert.assertFalse(d.has(Block.BEST_LAP)) // no laps
+        org.junit.Assert.assertFalse(d.has(Block.ZERO_60))  // no run
+        org.junit.Assert.assertFalse(d.has(Block.DRIVES))   // only on a profile
+    }
+
+    @org.junit.Test
+    fun theProfileAddsDrivesUp() {
+        fun drive(km: Double, top: Float) = Session(
+            listOf(
+                SessionPoint(0.0, 40.0, -119.0, 0f, 2000f, null, 0.2f, 0.3f, 0.1f, null),
+                SessionPoint(20.0, 40.0, -119.0 + km * 1000 / (111_320.0 * Math.cos(Math.toRadians(40.0))), top, 4000f, null, 0.5f, 0.2f, 0.3f, null),
+            ),
+            listOf(SessionLap("t", 1, 50_000, 100f)),
+        )
+        val p = CardData.ofProfile(listOf(drive(10.0, 100f), drive(5.0, 140f)), "Car", Units.KMH, "1 JAN")
+        org.junit.Assert.assertEquals(2, p.drives)
+        org.junit.Assert.assertEquals(15_000.0, p.distanceM!!, 200.0)
+        org.junit.Assert.assertEquals(40.0, p.durationS!!, 0.0)
+        org.junit.Assert.assertEquals(140f, p.topKmh!!, 0f)
+        org.junit.Assert.assertEquals(0.5f, p.brakeG!!, 0f)
+        org.junit.Assert.assertEquals(1, p.laps.size)
+        org.junit.Assert.assertTrue(p.has(Block.DRIVES))
+        org.junit.Assert.assertFalse(p.has(Block.PATH)) // a profile is many drives, so there's no one path
+    }
+}

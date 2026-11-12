@@ -5,10 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
-import io.github.byjoelsamuel.drivesanity.track.RunView
 import io.github.byjoelsamuel.drivesanity.track.lapText
 import kotlin.math.cos
 import kotlin.math.max
@@ -16,8 +14,13 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Pictures of a drive, your laps or a standing start, made to post: a tall one for Stories and a
- * 4:5 one for the feed. They're drawn here, with no server, in the same look as the dashboards.
+ * Pictures of a drive, your laps, a standing start or all your drives together, made to post: a tall one
+ * for Stories and a 4:5 one for the feed. They're drawn here, with no server, in the same look as the
+ * dashboards, with an optional photo behind them.
+ *
+ * The blocks on a picture are grouped by genre, each genre in one panel (see [Genre]), and the
+ * panels are stacked top to bottom: if there's more than fits, the stack is shrunk to fit rather than
+ * cut off.
  *
  * A picture of a path shows where you've been, and drives often start and end at home. So the first and
  * last 250 m of the path are left out unless the person chooses to show them. No coordinates, street
@@ -32,209 +35,254 @@ object ShareCard {
     const val HIDE_ENDS_M = 250.0
 
     private val PALE = android.graphics.Color.rgb(222, 228, 236)
-    private const val M = 72f // side margin
+    private const val M = 72f   // side margin
+    private const val PAD = 44f // inside a panel
+    private const val GAP = 26f // between panels
+    private const val GENRE_H = 62f
 
-    private class Pens(ctx: Context) {
+    /** The panels, in the order they're stacked. */
+    private val ORDER = listOf(Genre.TRIP, Genre.ROUTE, Genre.SPEED, Genre.PERFORMANCE, Genre.ENGINE, Genre.LAPS, Genre.STANDING)
+
+    private class Pens(ctx: Context, val onPhoto: Boolean) {
         val numbers = Fonts.dashNumbers(ctx)
         val labels = Fonts.dashLabels(ctx)
         val text = Paint(Paint.ANTI_ALIAS_FLAG)
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
 
-        fun label(size: Float, color: Int = Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
-            text.typeface = labels; text.letterSpacing = 0.12f; text.textSize = size; text.color = color; text.textAlign = align
+        /** On a photo the text gets a soft shadow so it stays readable on bright parts. */
+        private fun shadow() {
+            if (onPhoto) text.setShadowLayer(10f, 0f, 2f, android.graphics.Color.argb(170, 0, 0, 0)) else text.clearShadowLayer()
+        }
+
+        fun label(size: Float, color: Int = if (onPhoto) android.graphics.Color.rgb(190, 195, 202) else Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
+            text.typeface = labels; text.letterSpacing = 0.12f; text.textSize = size; text.color = color; text.textAlign = align; shadow()
         }
 
         fun number(size: Float, color: Int = PALE, align: Paint.Align = Paint.Align.LEFT) {
-            text.typeface = numbers; text.letterSpacing = 0f; text.textSize = size; text.color = color; text.textAlign = align
+            text.typeface = numbers; text.letterSpacing = 0f; text.textSize = size; text.color = color; text.textAlign = align; shadow()
         }
     }
 
-    // ---------------------------------------------------------------------------------------
-    // A drive
-    // ---------------------------------------------------------------------------------------
+    private class Panel(val genre: Genre, val height: Float, val draw: (Canvas, Float, Float, Float) -> Unit)
 
-    fun drive(ctx: Context, session: Session, title: String, whenText: String, units: Units, format: Format, hideEnds: Boolean): Bitmap {
-        val p = Pens(ctx)
-        val (bmp, c) = canvas(format, p)
-        val story = format == Format.STORY
-        header(c, p, format, title, whenText, ctx)
-        val mapH = if (story) 800f else 400f
-        val top = if (story) 330f else 290f
-        val box = RectF(M, top, format.w - M, top + mapH)
-        pathBox(c, p, box, if (hideEnds) session.trimmedPath(HIDE_ENDS_M) else session.path, session.topKmh, hideEnds)
-
-        var y = box.bottom + if (story) 175f else 135f
-        // Distance and time, the big pair.
-        val half = (format.w - 2 * M) / 2
-        pair(c, p, M, y, half, "DISTANCE", "${oneDecimal(units.distance(session.distanceM))} ${units.distanceLabel}", if (story) 112f else 96f)
-        pair(c, p, M + half, y, half, "TIME", hms(session.durationS), if (story) 112f else 96f)
-        y += if (story) 235f else 190f
-        val third = (format.w - 2 * M) / 3
-        val s1 = if (story) 60f else 54f
-        small(c, p, M, y, third, "TOP SPEED", "${units.speed(session.topKmh / 3.6f).roundToInt()} ${units.label}", s1)
-        small(c, p, M + third, y, third, "AVERAGE", "${units.speed(session.avgMovingKmh / 3.6f).roundToInt()} ${units.label}", s1)
-        small(c, p, M + 2 * third, y, third, "HIGHEST REVS", if (session.maxRpm > 0) "%,d".format(session.maxRpm.roundToInt()) else "–", s1)
-        y += if (story) 185f else 150f
-        small(c, p, M, y, third, "BRAKING", "%.2f g".format(session.peakBrakeG), s1)
-        small(c, p, M + third, y, third, "ACCELERATION", "%.2f g".format(session.peakAccelG), s1)
-        small(c, p, M + 2 * third, y, third, "CORNERING", "%.2f g".format(session.peakLatG), s1)
-        footer(c, p, format)
-        return bmp
-    }
-
-    // ---------------------------------------------------------------------------------------
-    // Laps
-    // ---------------------------------------------------------------------------------------
-
-    fun laps(ctx: Context, session: Session, whenText: String, format: Format, hideEnds: Boolean): Bitmap {
-        val p = Pens(ctx)
-        val (bmp, c) = canvas(format, p)
-        val story = format == Format.STORY
-        val laps = session.laps
-        val best = session.bestLap
-        header(c, p, format, laps.firstOrNull()?.track ?: "Laps", whenText, ctx)
-
-        val mapH = if (story) 520f else 330f
-        val top = if (story) 330f else 290f
-        val box = RectF(M, top, format.w - M, top + mapH)
-        pathBox(c, p, box, if (hideEnds) session.trimmedPath(HIDE_ENDS_M) else session.path, session.topKmh, hideEnds)
-
-        var y = box.bottom + if (story) 150f else 110f
-        p.label(34f)
-        c.drawText("BEST LAP", M, y - 125f, p.text)
-        p.number(if (story) 170f else 140f, Colors.GOOD)
-        c.drawText(lapText(best?.ms), M, y + 60f, p.text)
-        p.label(34f, Colors.DIM, Paint.Align.RIGHT)
-        c.drawText("TOP SPEED", format.w - M, y - 125f, p.text)
-        if (best != null) {
-            p.number(60f, PALE, Paint.Align.RIGHT)
-            c.drawText("${units(ctx).speed(best.topKmh / 3.6f).roundToInt()} ${units(ctx).label}", format.w - M, y + 60f, p.text)
-        }
-        y += if (story) 150f else 120f
-
-        // Every lap, as a bar as long as it is slow: the best lap is the shortest, in green.
-        val shown = if (story) 8 else 5
-        val rows = laps.take(shown)
-        val slowest = (rows.maxOfOrNull { it.ms } ?: 1L).toFloat()
-        val fastest = (best?.ms ?: 1L).toFloat()
-        val rowH = if (story) 112f else 92f
-        for ((i, l) in rows.withIndex()) {
-            val ry = y + i * rowH
-            val isBest = l.ms == best?.ms
-            p.label(32f, Colors.DIM)
-            c.drawText("LAP ${l.number}", M, ry + 40f, p.text)
-            p.number(48f, if (isBest) Colors.GOOD else PALE, Paint.Align.RIGHT)
-            c.drawText(lapText(l.ms), format.w - M, ry + 46f, p.text)
-            // The bar runs from the best lap's length to the slowest, so the gaps are visible.
-            val barL = M + 190f
-            val barR = format.w - M - 300f
-            val frac = if (slowest > fastest) 0.35f + 0.65f * ((l.ms - fastest) / (slowest - fastest)) else 0.35f
-            p.fill.color = Colors.GRID
-            c.drawRect(barL, ry + 22f, barR, ry + 40f, p.fill)
-            p.fill.color = if (isBest) Colors.GOOD else Colors.ACCENT
-            c.drawRect(barL, ry + 22f, barL + (barR - barL) * frac, ry + 40f, p.fill)
-        }
-        p.label(30f, Colors.DIM, Paint.Align.RIGHT)
-        c.drawText("${laps.size} LAPS", format.w - M, y - 25f, p.text)
-        if (laps.size > shown) {
-            p.label(30f)
-            c.drawText("+ ${laps.size - shown} more", M, y + shown * rowH + 20f, p.text)
-        }
-        footer(c, p, format)
-        return bmp
-    }
-
-    private fun units(ctx: Context) = Prefs.units(ctx)
-
-    // ---------------------------------------------------------------------------------------
-    // A standing start
-    // ---------------------------------------------------------------------------------------
-
-    fun run(ctx: Context, run: RunView, whenText: String, units: Units, format: Format): Bitmap {
-        val p = Pens(ctx)
-        val (bmp, c) = canvas(format, p)
-        val story = format == Format.STORY
-        header(c, p, format, "Standing start", whenText, ctx)
-        val rows = listOf(
-            "0–60 MPH" to run.to60Ms?.let { "%.2f s".format(java.util.Locale.US, it / 1000.0) },
-            "0–100 KM/H" to run.to100Ms?.let { "%.2f s".format(java.util.Locale.US, it / 1000.0) },
-            "¼ MILE" to run.quarterMs?.let { "%.2f s".format(java.util.Locale.US, it / 1000.0) },
-        )
-        var y = if (story) 560f else 420f
-        val gap = if (story) 330f else 260f
-        for ((name, value) in rows) {
-            p.label(40f)
-            c.drawText(name, M, y - 130f, p.text)
-            p.number(if (story) 200f else 160f, if (value == null) Colors.DIM else PALE)
-            c.drawText(value ?: "–", M, y + 40f, p.text)
-            if (name == "¼ MILE" && run.trapKmh != null) {
-                p.label(32f)
-                c.drawText("TRAP SPEED", M, y + 110f, p.text)
-                p.number(52f, Colors.SAND, Paint.Align.RIGHT)
-                c.drawText("${units.speed(run.trapKmh / 3.6f).roundToInt()} ${units.label}", format.w - M, y + 112f, p.text)
-            }
-            p.fill.color = Colors.GRID
-            c.drawRect(M, y + 150f, format.w - M, y + 153f, p.fill)
-            y += gap
-        }
-        footer(c, p, format)
-        return bmp
-    }
-
-    // ---------------------------------------------------------------------------------------
-    // Pieces
-    // ---------------------------------------------------------------------------------------
-
-    private fun canvas(format: Format, p: Pens): Pair<Bitmap, Canvas> {
+    fun render(ctx: Context, data: CardData, config: ShareConfig, format: Format, background: Bitmap?): Bitmap {
+        val p = Pens(ctx, onPhoto = background != null)
         val bmp = Bitmap.createBitmap(format.w, format.h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        p.fill.shader = LinearGradient(0f, 0f, 0f, format.h.toFloat(), Colors.BG, android.graphics.Color.rgb(10, 11, 13), Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, format.w.toFloat(), format.h.toFloat(), p.fill)
-        p.fill.shader = null
-        return bmp to c
-    }
-
-    private fun header(c: Canvas, p: Pens, format: Format, title: String, whenText: String, ctx: Context) {
+        val w = format.w.toFloat()
+        val h = format.h.toFloat()
         val story = format == Format.STORY
+        backdrop(c, p, background, config.dim, w, h)
+
+        // The top: the app's name, the date, then the title and car.
         p.label(32f)
-        c.drawText("DRIVESANITY", M, if (story) 120f else 100f, p.text)
-        p.label(32f, Colors.DIM, Paint.Align.RIGHT)
-        c.drawText(whenText, format.w - M, if (story) 120f else 100f, p.text)
-        p.number(if (story) 92f else 80f)
-        c.drawText(title.take(22), M, if (story) 235f else 200f, p.text)
-        p.label(34f)
-        c.drawText(CarProfiles.byId(Prefs.carId(ctx)).name, M, if (story) 290f else 250f, p.text)
+        c.drawText("DRIVESANITY", M, 120f, p.text)
+        if (Block.DATE in config.blocks) {
+            p.label(32f, align = Paint.Align.RIGHT)
+            c.drawText(data.whenText, w - M, 120f, p.text)
+        }
+        var top = 150f
+        if (Block.TITLE in config.blocks) {
+            p.number(if (story) 92f else 80f)
+            c.drawText(data.title.take(22), M, top + 90f, p.text)
+            top += 118f
+        }
+        if (Block.CAR in config.blocks) {
+            p.label(34f)
+            c.drawText(data.car, M, top + 30f, p.text)
+            top += 60f
+        }
+        top += 26f
+
+        val panels = ORDER.mapNotNull { panel(p, data, config, it, format, w - 2 * M) }
+        val avail = (h - 130f) - top
+        val total = panels.sumOf { it.height.toDouble() }.toFloat() + GAP * max(0, panels.size - 1)
+        val k = if (total > avail && total > 0f) avail / total else 1f
+        val used = total * k
+        var y = top + when (config.place) {
+            Place.TOP -> 0f
+            Place.MIDDLE -> (avail - used) / 2
+            Place.BOTTOM -> avail - used
+        }
+        c.save()
+        c.translate(M, y)
+        c.scale(k, k)
+        var yy = 0f
+        for (panel in panels) {
+            backing(c, p, config.panel, background != null, RectF(0f, yy, (w - 2 * M) / k, yy + panel.height))
+            panel.draw(c, 0f, yy, (w - 2 * M) / k)
+            yy += panel.height + GAP
+        }
+        c.restore()
+
+        p.label(30f, align = Paint.Align.CENTER)
+        c.drawText("MADE WITH DRIVESANITY", w / 2f, h - 70f, p.text)
+        return bmp
     }
 
-    private fun footer(c: Canvas, p: Pens, format: Format) {
-        p.label(30f, Colors.DIM, Paint.Align.CENTER)
-        c.drawText("MADE WITH DRIVESANITY", format.w / 2f, format.h - 70f, p.text)
+    // ---------------------------------------------------------------------------------------
+    // Background and panels
+    // ---------------------------------------------------------------------------------------
+
+    /** The photo (cropped to fill) and a dark layer over it, or the plain dark gradient. */
+    private fun backdrop(c: Canvas, p: Pens, photo: Bitmap?, dim: Float, w: Float, h: Float) {
+        if (photo == null) {
+            p.fill.shader = LinearGradient(0f, 0f, 0f, h, Colors.BG, android.graphics.Color.rgb(10, 11, 13), Shader.TileMode.CLAMP)
+            c.drawRect(0f, 0f, w, h, p.fill)
+            p.fill.shader = null
+            return
+        }
+        val scale = max(w / photo.width, h / photo.height)
+        val dw = photo.width * scale
+        val dh = photo.height * scale
+        c.drawBitmap(photo, null, RectF((w - dw) / 2, (h - dh) / 2, (w + dw) / 2, (h + dh) / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+        p.fill.color = android.graphics.Color.argb((dim * 255).roundToInt().coerceIn(0, 255), 0, 0, 0)
+        c.drawRect(0f, 0f, w, h, p.fill)
     }
 
-    private fun pair(c: Canvas, p: Pens, x: Float, y: Float, w: Float, name: String, value: String, size: Float) {
-        p.label(34f)
-        c.drawText(name, x, y - size * 1.0f, p.text)
-        p.number(size)
-        // Shrink to fit the column rather than run into the next one.
-        while (p.text.measureText(value) > w - 30f && p.text.textSize > 40f) p.text.textSize -= 4f
-        c.drawText(value, x, y, p.text)
+    private fun backing(c: Canvas, p: Pens, style: PanelStyle, onPhoto: Boolean, r: RectF) {
+        when (style) {
+            PanelStyle.NONE -> return
+            PanelStyle.SOLID -> p.fill.color = Colors.BOX
+            PanelStyle.GLASS -> p.fill.color = if (onPhoto) android.graphics.Color.argb(150, 8, 9, 11) else Colors.BOX
+        }
+        c.drawRoundRect(r, 40f, 40f, p.fill)
     }
 
-    private fun small(c: Canvas, p: Pens, x: Float, y: Float, w: Float, name: String, value: String, size: Float) {
-        p.label(28f)
-        c.drawText(name, x, y - size - 8f, p.text)
-        p.number(size)
-        while (p.text.measureText(value) > w - 20f && p.text.textSize > 30f) p.text.textSize -= 3f
-        c.drawText(value, x, y, p.text)
+    // ---------------------------------------------------------------------------------------
+    // One panel per genre
+    // ---------------------------------------------------------------------------------------
+
+    private fun panel(p: Pens, d: CardData, cfg: ShareConfig, genre: Genre, f: Format, width: Float): Panel? {
+        val blocks = Block.of(genre).filter { it in cfg.blocks && d.has(it) }
+        if (blocks.isEmpty()) return null
+        val story = f == Format.STORY
+        val inner = width - 2 * PAD
+        val title = genre.label.uppercase()
+        fun frame(contentH: Float, draw: (Canvas, Float, Float, Float) -> Unit) = Panel(genre, PAD * 2 + GENRE_H + contentH) { c, x, y, w ->
+            p.label(30f)
+            c.drawText(title, x + PAD, y + PAD + 26f, p.text)
+            draw(c, x + PAD, y + PAD + GENRE_H, w - 2 * PAD)
+        }
+        return when (genre) {
+            Genre.TRIP -> {
+                val items = blocks.map {
+                    when (it) {
+                        Block.DISTANCE -> "DISTANCE" to "${oneDecimal(d.units.distance(d.distanceM!!))} ${d.units.distanceLabel}"
+                        Block.TIME -> "TIME" to hms(d.durationS!!)
+                        else -> "DRIVES" to d.drives.toString()
+                    }
+                }
+                val size = if (items.size >= 3) 66f else if (story) 100f else 88f
+                frame(size + 56f) { c, x, y, w -> stats(c, p, x, y, w, items, size) }
+            }
+            Genre.ROUTE -> {
+                val mapH = if (story) 700f else 420f
+                frame(mapH) { c, x, y, w -> path(c, p, RectF(x, y, x + w, y + mapH), d.path, d.topKmh ?: 1f, d.pathHidden) }
+            }
+            Genre.SPEED -> {
+                val items = blocks.map {
+                    if (it == Block.TOP_SPEED) "TOP SPEED" to "${d.units.speed(d.topKmh!! / 3.6f).roundToInt()} ${d.units.label}"
+                    else "AVERAGE" to "${d.units.speed(d.avgKmh!! / 3.6f).roundToInt()} ${d.units.label}"
+                }
+                frame(72f + 56f) { c, x, y, w -> stats(c, p, x, y, w, items, 72f) }
+            }
+            Genre.PERFORMANCE -> {
+                val items = blocks.map {
+                    when (it) {
+                        Block.BRAKING -> "BRAKING" to "%.2f g".format(d.brakeG!!)
+                        Block.ACCEL -> "ACCELERATION" to "%.2f g".format(d.accelG!!)
+                        else -> "CORNERING" to "%.2f g".format(d.latG!!)
+                    }
+                }
+                frame(60f + 56f) { c, x, y, w -> stats(c, p, x, y, w, items, 60f) }
+            }
+            Genre.ENGINE -> frame(72f + 56f) { c, x, y, w -> stats(c, p, x, y, w, listOf("HIGHEST REVS" to "%,d".format(d.maxRpm!!.roundToInt())), 72f) }
+            Genre.LAPS -> {
+                val best = d.laps.minByOrNull { it.ms }
+                val showBest = Block.BEST_LAP in blocks
+                val showList = Block.LAP_LIST in blocks
+                val shown = if (showList) d.laps.take(if (story) 8 else 5) else emptyList()
+                val rowH = 84f
+                val bestH = if (showBest) 150f else 0f
+                frame(bestH + shown.size * rowH + if (d.laps.size > shown.size && showList) 50f else 0f) { c, x, y, w ->
+                    var yy = y
+                    if (showBest && best != null) {
+                        p.label(28f)
+                        c.drawText("BEST LAP", x, yy + 22f, p.text)
+                        p.number(110f, Colors.GOOD)
+                        c.drawText(lapText(best.ms), x, yy + 130f, p.text)
+                        p.number(54f, PALE, Paint.Align.RIGHT)
+                        c.drawText("${d.units.speed(best.topKmh / 3.6f).roundToInt()} ${d.units.label}", x + w, yy + 126f, p.text)
+                        yy += bestH
+                    }
+                    val bestMs = best?.ms ?: 0L
+                    val slowest = (shown.maxOfOrNull { it.ms } ?: 1L).toFloat()
+                    for ((i, l) in shown.withIndex()) {
+                        val ry = yy + i * rowH
+                        val isBest = l.ms == bestMs
+                        p.label(30f)
+                        c.drawText("LAP ${l.number}", x, ry + 44f, p.text)
+                        p.number(46f, if (isBest) Colors.GOOD else PALE, Paint.Align.RIGHT)
+                        c.drawText(lapText(l.ms), x + w, ry + 48f, p.text)
+                        val barL = x + 190f
+                        val barR = x + w - 290f
+                        val frac = if (slowest > bestMs) 0.35f + 0.65f * ((l.ms - bestMs) / (slowest - bestMs)) else 0.35f
+                        p.fill.color = Colors.GRID
+                        c.drawRect(barL, ry + 26f, barR, ry + 42f, p.fill)
+                        p.fill.color = if (isBest) Colors.GOOD else Colors.ACCENT
+                        c.drawRect(barL, ry + 26f, barL + (barR - barL) * frac, ry + 42f, p.fill)
+                    }
+                    if (d.laps.size > shown.size && showList) {
+                        p.label(28f)
+                        c.drawText("+ ${d.laps.size - shown.size} more", x, yy + shown.size * rowH + 34f, p.text)
+                    }
+                }
+            }
+            Genre.STANDING -> {
+                val r = d.run!!
+                val rows = blocks.map {
+                    when (it) {
+                        Block.ZERO_60 -> "0–60 MPH" to sec(r.to60Ms)
+                        Block.ZERO_100 -> "0–100 KM/H" to sec(r.to100Ms)
+                        else -> "¼ MILE" to (sec(r.quarterMs) + (r.trapKmh?.let { t -> "  @ ${d.units.speed(t / 3.6f).roundToInt()} ${d.units.label}" } ?: ""))
+                    }
+                }
+                val rowH = 176f
+                frame(rows.size * rowH) { c, x, y, w ->
+                    for ((i, row) in rows.withIndex()) {
+                        val ry = y + i * rowH
+                        p.label(30f)
+                        c.drawText(row.first, x, ry + 30f, p.text)
+                        p.number(if (row.second.length > 12) 72f else 100f)
+                        c.drawText(row.second, x, ry + 136f, p.text)
+                    }
+                }
+            }
+            else -> null
+        }.also { if (genre == Genre.DETAILS) return null }
+    }
+
+    private fun sec(ms: Long?) = if (ms == null) "–" else "%.2f s".format(java.util.Locale.US, ms / 1000.0)
+
+    /** A row of labelled values, evenly spaced; each shrinks a little if it won't fit its column. */
+    private fun stats(c: Canvas, p: Pens, x: Float, y: Float, w: Float, items: List<Pair<String, String>>, size: Float) {
+        val col = w / items.size
+        for ((i, item) in items.withIndex()) {
+            val cx = x + i * col
+            p.label(27f)
+            c.drawText(item.first, cx, y + 24f, p.text)
+            p.number(size)
+            while (p.text.measureText(item.second) > col - 22f && p.text.textSize > 28f) p.text.textSize -= 3f
+            c.drawText(item.second, cx, y + 24f + 20f + size * 0.82f, p.text)
+        }
     }
 
     /** The path, fitted into [box] with the right proportions and coloured by speed, with a soft glow under it. */
-    private fun pathBox(c: Canvas, p: Pens, box: RectF, pts: List<SessionPoint>, topKmh: Float, hidden: Boolean) {
-        p.fill.color = Colors.BOX
-        c.drawRoundRect(box, 44f, 44f, p.fill)
+    private fun path(c: Canvas, p: Pens, box: RectF, pts: List<SessionPoint>, topKmh: Float, hidden: Boolean) {
         if (pts.size < 2) {
-            p.label(34f, Colors.DIM, Paint.Align.CENTER)
+            p.label(30f, align = Paint.Align.CENTER)
             c.drawText(if (hidden) "PATH HIDDEN FOR PRIVACY" else "NO PATH RECORDED", box.centerX(), box.centerY(), p.text)
             return
         }
@@ -245,14 +293,13 @@ object ShareCard {
         val minX = xs.min(); val maxX = xs.max(); val minY = ys.min(); val maxY = ys.max()
         val spanX = max(maxX - minX, 1e-7)
         val spanY = max(maxY - minY, 1e-7)
-        val pad = 70f
-        val scale = min((box.width() - 2 * pad) / spanX, (box.height() - 2 * pad) / spanY).toFloat()
+        val pad = 40f
+        val scale = min((box.width() - 2 * pad) / spanX, (box.height() - 2 * pad - 20f) / spanY).toFloat()
         val offX = box.left + (box.width() - (spanX * scale).toFloat()) / 2
-        val offY = box.top + (box.height() - (spanY * scale).toFloat()) / 2
+        val offYtop = box.top + (box.height() - 20f - (spanY * scale).toFloat()) / 2
         fun px(i: Int) = offX + ((xs[i] - minX) * scale).toFloat()
-        fun py(i: Int) = box.bottom - (box.height() - (spanY * scale).toFloat()) / 2 - ((ys[i] - minY) * scale).toFloat()
+        fun py(i: Int) = offYtop + (((maxY - ys[i])) * scale).toFloat()
         val top = max(1f, topKmh)
-        // Glow first, then the line itself.
         for (pass in 0..1) {
             p.line.strokeWidth = if (pass == 0) 26f else 9f
             for (i in 1 until pts.size) {
@@ -268,8 +315,8 @@ object ShareCard {
             p.fill.color = Colors.RED
             c.drawCircle(px(pts.size - 1), py(pts.size - 1), 16f, p.fill)
         }
-        p.label(26f, Colors.DIM, Paint.Align.LEFT)
-        c.drawText(if (hidden) "THE FIRST AND LAST 250 M ARE LEFT OUT" else "SLOW  →  FAST", box.left + 36f, box.bottom - 30f, p.text)
+        p.label(24f)
+        c.drawText(if (hidden) "THE FIRST AND LAST 250 M ARE LEFT OUT" else "SLOW  →  FAST", box.left + 4f, box.bottom - 2f, p.text)
     }
 
     private fun speedColor(f: Float): Int = when {
