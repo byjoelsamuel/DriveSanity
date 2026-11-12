@@ -25,11 +25,12 @@ half. Speed, gear, RPM, brake and the rest are on the right.
 *This picture was made where the map server can't be reached, so its streets are a stand-in.
 In the app the map is the real OpenStreetMap.*
 
-**Sport**: the gear is the biggest thing on the screen. A row of shift lights runs along the top
-and fills from both edges toward the redline, then flashes red. Throttle and brake are tall
-pedal bars on either side of the gear, with the air/fuel ratio, fuel economy and coolant on the
-left and g-force, battery, intake air and tire pressures on the right. It's the top-row button
-**SPORT** in the car, and **Exit Sport** takes you back.
+**Sport**: laid out like a supercar's digital cluster. The gear is the biggest thing on the screen,
+with a thin rev line under it that turns red at the redline. Fuel economy sits top left with a
+small arc, then air/fuel ratio and coolant under it, each with a bar that ends in an arrowhead.
+Throttle, brake and g-force are on the right the same way, and the four tire pressures run down
+the edge in rings. Battery and intake air are in the line along the top. It's the top-row
+button **SPORT** in the car, and **Exit Sport** takes you back.
 
 ![The Sport screen, with sample data](docs/sport-screen.png)
 
@@ -174,9 +175,9 @@ resetting the trip resets it.
 
 ## Shift light and alerts
 
-- **Shift light:** 18 lights along the top of the Sport screen, and a thin strip along the top
-  of the other screens. They start filling at 92% of the car's redline and flash red at 98.5%.
-  The redline is set per car in Setup.
+- **Shift light:** on the Sport screen the rev line under the gear turns sand at 92% of the
+  redline, and at 98.5% the line and the gear flash red. The other screens get a thin strip
+  along the top. The redline is set per car in Setup.
 - **Alerts:** a banner appears over the screen for a hot engine (above 108 °C / 226 °F), low
   battery voltage (under 11.8 V, or under 12.5 V with the engine running), a flat tire (under
   27 psi), low fuel when the car reports it, and going more than 5 mph (8 km/h) over the posted
