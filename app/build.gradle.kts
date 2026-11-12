@@ -51,6 +51,19 @@ android {
         buildConfig = true
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric needs the app's resources and assets (the demo drive is one).
+            isIncludeAndroidResources = true
+            all {
+                // Where there's no network, point ROBOLECTRIC_DIR at a folder that already has the Android jars.
+                System.getenv("ROBOLECTRIC_DIR")?.let { dir ->
+                    it.systemProperty("robolectric.offline", "true")
+                    it.systemProperty("robolectric.dependency.dir", dir)
+                }
+            }
+        }
+    }
 }
 
 kotlin {
@@ -72,4 +85,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is a stub in plain unit tests; this is the real one.
     testImplementation("org.json:json:20240303")
+    // Runs the app's own code, the Android parts included, in plain unit tests (see DemoFlowTest).
+    testImplementation("org.robolectric:robolectric:4.16")
 }

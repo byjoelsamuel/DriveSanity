@@ -107,6 +107,9 @@ object Elm {
         Regex("""(\d{1,2}(?:\.\d+)?)\s*V""").find(raw)?.groupValues?.get(1)?.toFloatOrNull()
 }
 
+/** The adapter is fine but the car doesn't answer: it's off or asleep. Asking again straight away would keep it awake. */
+class CarAsleepException(message: String) : IOException(message)
+
 /** A link to an ELM327 adapter: sends a command, reads the reply up to the '>' prompt. */
 interface ObdTransport : Closeable {
     fun send(text: String)
@@ -117,7 +120,7 @@ interface ObdTransport : Closeable {
 }
 
 /** Talks ELM327 over a [ObdTransport]: sets the adapter up, finds what the car supports, reads values. */
-class ObdSession(private val link: ObdTransport) {
+class ObdSession(private val link: ObdTransport, private val advanced: () -> Boolean = { false }) {
     var supported: Set<Int> = emptySet()
         private set
 
@@ -128,6 +131,8 @@ class ObdSession(private val link: ObdTransport) {
     private val lastReply = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     fun command(cmd: String, timeoutMs: Long = 2_000): String {
+        // Only reads get through; see CommandGuard.
+        CommandGuard.check(cmd, advanced())
         link.drain()
         link.send(cmd + "\r")
         return link.readReply(timeoutMs).also { lastReply[cmd] = it }
@@ -150,7 +155,7 @@ class ObdSession(private val link: ObdTransport) {
         // The first query makes the adapter search for the car's protocol, which can take a while.
         val first = command("0100", 15_000)
         if (Elm.mode01(first, 0x00) == null) {
-            throw IOException("Car didn't answer (${Elm.lines(first).joinToString(" ").ifEmpty { "no reply" }}). Is the ignition on?")
+            throw CarAsleepException("Car didn't answer (${Elm.lines(first).joinToString(" ").ifEmpty { "no reply" }}). Is the ignition on?")
         }
         supported = Elm.supported(first, 0x00)
         if (0x20 in supported) supported = supported + Elm.supported(command("0120"), 0x20)

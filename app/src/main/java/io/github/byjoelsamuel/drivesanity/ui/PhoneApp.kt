@@ -43,6 +43,9 @@ interface PhoneActions {
     fun pickObd()
     fun readCodes()
     fun probeCar()
+    fun setDemo(on: Boolean)
+    fun setRawRecording(on: Boolean)
+    fun playRaw(file: File)
     fun forgetObd()
     fun navigate()
     fun endRoute()
@@ -81,7 +84,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             containerColor = Ui.bg,
             bottomBar = {
                 NavigationBar(containerColor = Ui.card) {
-                    listOf("Drive" to TabIcon.DRIVE, "Trips" to TabIcon.TRIPS, "Setup" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
+                    listOf("Drive" to TabIcon.DRIVE, "Track" to TabIcon.TRACK, "Trips" to TabIcon.TRIPS, "Setup" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
                         val on = tab == i
                         NavigationBarItem(
                             selected = on,
@@ -100,8 +103,9 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
         ) { pad ->
             Box(Modifier.fillMaxSize().padding(pad)) {
                 when (tab) {
-                    0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 2 })
-                    1 -> TripsTab(units, recordings, tick, actions)
+                    0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 })
+                    1 -> TrackTab(s, units, tick)
+                    2 -> TripsTab(units, recordings, tick, actions)
                     else -> SetupTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
                 }
             }
