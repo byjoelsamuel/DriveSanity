@@ -64,6 +64,8 @@ class MainActivity : ComponentActivity(), PhoneActions {
 
     override fun swapUnits() = Prefs.toggleUnits(this)
 
+    override fun setStartupAnim(on: Boolean) = Prefs.setStartupAnim(this, on)
+
     override fun setCarLayout(layout: Prefs.Layout) {
         while (Prefs.layout(this) != layout) Prefs.toggleLayout(this)
     }

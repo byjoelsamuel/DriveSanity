@@ -62,6 +62,10 @@ object Prefs {
 
     fun saveGears(ctx: Context, saved: String) = prefs(ctx).edit { putString("gears", saved) }
 
+    fun startupAnim(ctx: Context): Boolean = prefs(ctx).getBoolean("startup_anim", true)
+
+    fun setStartupAnim(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("startup_anim", on) }
+
     data class ObdDevice(val address: String, val name: String, val ble: Boolean)
 
     fun obdDevice(ctx: Context): ObdDevice? {

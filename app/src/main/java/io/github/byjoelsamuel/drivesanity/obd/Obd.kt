@@ -30,6 +30,12 @@ object Obd {
     @Volatile var supported: Set<Int> = emptySet()
         private set
 
+    /** How many times the link dropped and was set up again since the app started, and why the last time. */
+    @Volatile var reconnects = 0
+        private set
+    @Volatile var lastProblem: String? = null
+        private set
+
     private val readings = ConcurrentHashMap<String, Pair<Float, Long>>()
     private lateinit var app: Context
     @Volatile private var running = false
@@ -91,8 +97,10 @@ object Obd {
             } catch (e: Exception) {
                 if (!running) break
                 status = Status(Link.RETRYING, e.message ?: e.javaClass.simpleName)
+                reconnects++
+                lastProblem = e.message ?: e.javaClass.simpleName
                 try {
-                    Thread.sleep(5_000)
+                    Thread.sleep(3_000)
                 } catch (_: InterruptedException) {
                     break
                 }
@@ -154,23 +162,37 @@ object Obd {
         var i = 0
         var slowAt = 0L
         var misses = 0
+        failures = 0
         while (running) {
-            val rpm = s.read(Pid.RPM)
+            val rpm = tolerate { s.read(Pid.RPM) }
             put("rpm", rpm)
             if (others.isNotEmpty()) {
                 val pid = others[i++ % others.size]
-                put(key(pid), s.read(pid))
+                put(key(pid), tolerate { s.read(pid) })
             }
             val now = SystemClock.elapsedRealtime()
             if (now >= slowAt) {
-                put("fuel", s.read(Pid.FUEL))
-                put("volts", s.volts())
+                put("fuel", tolerate { s.read(Pid.FUEL) })
+                put("volts", tolerate { s.volts() })
                 slowAt = now + 10_000
             }
             // The adapter stays powered with the engine off; stop hammering a sleeping car.
             misses = if (rpm == null && s.supports(Pid.RPM)) misses + 1 else 0
             if (misses >= 5) Thread.sleep(1_000)
         }
+    }
+
+    private var failures = 0
+
+    /**
+     * One slow or lost reply isn't a lost connection. Shrug it off, and only give up (which means
+     * setting the whole link up again, a protocol search included) after four in a row.
+     */
+    private fun <T> tolerate(block: () -> T?): T? = try {
+        block().also { failures = 0 }
+    } catch (e: IOException) {
+        if (++failures >= 4) throw e
+        null
     }
 
     private fun key(pid: Pid) = when (pid) {
@@ -184,7 +206,9 @@ object Obd {
     }
 
     /** What the car has said, for the Setup screen. */
-    fun report(): String = live?.report() ?: "Not connected, so nothing to report yet."
+    fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.") +
+        "Link dropped and restarted: $reconnects times since the app opened\n" +
+        (lastProblem?.let { "Last problem: $it\n" } ?: "")
 
     fun hasBluetoothPermission(ctx: Context): Boolean =
         Build.VERSION.SDK_INT < 31 ||

@@ -11,6 +11,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.Geo
@@ -48,6 +49,7 @@ data class Snapshot(
     val headingDeg: Float? = null,
     /** Learned from speed and RPM; null until it knows. */
     val gear: Int? = null,
+    val throttlePct: Float? = null,
 )
 
 /**
@@ -59,6 +61,8 @@ data class Snapshot(
 object DriveEngine : SensorEventListener, LocationListener {
     const val PHONE = "phone"
     const val CAR = "car"
+    private const val BACKGROUND = "background"
+    private const val IDLE_STOP_MS = 3 * 60_000L
     private const val REC = "rec"
 
     private const val CALIBRATION_NS = 1_500_000_000L
@@ -159,6 +163,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         position = livePosition(),
         headingDeg = heading,
         gear = gear,
+        throttlePct = Obd.throttlePct,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -184,7 +189,40 @@ object DriveEngine : SensorEventListener, LocationListener {
         // A recording started in the car, with the phone app never opened, has no foreground
         // service to keep it alive once Android Auto disconnects, so save it now.
         if (who == CAR && recording && !serviceOn && PHONE !in holders) toggleRecording(app)
-        if (holders.isEmpty() && running) stop()
+        if (holders.isEmpty() && running) {
+            if (who == PHONE && serviceOn) {
+                // The foreground service keeps the process alive, so keep the OBD2 link and GPS
+                // going while the car is in use (switching apps, screen locking) and stop a few
+                // minutes after it goes quiet.
+                holders += BACKGROUND
+                idleSinceMs = SystemClock.elapsedRealtime()
+                mainHandler.removeCallbacks(backgroundCheck)
+                mainHandler.postDelayed(backgroundCheck, 30_000)
+            } else {
+                stop()
+            }
+        }
+    }
+
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private var idleSinceMs = 0L
+
+    private val backgroundCheck = object : Runnable {
+        override fun run() {
+            if (BACKGROUND !in holders) return
+            if (holders.size > 1) { // the phone app or the car has taken over again
+                holders -= BACKGROUND
+                return
+            }
+            val now = SystemClock.elapsedRealtime()
+            if ((speedMps ?: 0f) > 2f || (Obd.rpm ?: 0f) > 300f) idleSinceMs = now
+            if (now - idleSinceMs >= IDLE_STOP_MS) {
+                holders -= BACKGROUND
+                if (holders.isEmpty() && running) stop()
+                return
+            }
+            mainHandler.postDelayed(this, 30_000)
+        }
     }
 
     /** Call after the user answers the location permission prompt. */
@@ -217,6 +255,8 @@ object DriveEngine : SensorEventListener, LocationListener {
 
     private fun stop() {
         running = false
+        mainHandler.removeCallbacks(backgroundCheck)
+        holders.remove(BACKGROUND)
         Obd.stop()
         Prefs.saveGears(app, gears.save())
         app.getSystemService(SensorManager::class.java).unregisterListener(this)

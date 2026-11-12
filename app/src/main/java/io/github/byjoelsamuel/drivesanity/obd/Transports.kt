@@ -66,6 +66,13 @@ class ClassicTransport(device: BluetoothDevice) : ObdTransport {
         }
     }
 
+    override fun drain() {
+        try {
+            while (input.available() > 0) input.read()
+        } catch (_: IOException) {
+        }
+    }
+
     override fun close() {
         runCatching { socket.close() }
     }
@@ -212,6 +219,10 @@ class BleTransport(context: Context, device: BluetoothDevice) : ObdTransport {
             if (SystemClock.elapsedRealtime() > deadline) throw IOException("Adapter stopped answering")
             Thread.sleep(5)
         }
+    }
+
+    override fun drain() {
+        synchronized(incoming) { incoming.setLength(0) }
     }
 
     override fun close() {

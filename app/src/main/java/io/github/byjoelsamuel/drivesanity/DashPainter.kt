@@ -9,8 +9,10 @@ import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /** A quiet palette: warm off-white on graphite, one dusty blue, and earthy warning colours. */
 object Colors {
@@ -171,25 +173,64 @@ class DashPainter(context: Context) {
         c.drawText("● REC", b.right, b.centerY() + text.textSize * 0.35f, text)
     }
 
+    /**
+     * The Gauges screen on a wide display: brake and two ring gauges (coolant, fuel) on the
+     * left, a big RPM dial with the speed and gear inside it in the middle, and the g-meter
+     * with four slim readouts on the right.
+     */
     private fun drawWide(c: Canvas, r: RectF, s: Snapshot, units: Units) {
         val pad = r.height() * 0.05f
         val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
-        val split = inner.left + inner.width() * 0.68f
-        val h = inner.height()
-        var y = inner.top
-        fun row(frac: Float) = RectF(inner.left, y, split - pad, y + h * frac).also { y += h * frac }
-        drawStatus(c, row(0.07f), s)
-        drawBrake(c, row(0.15f), s)
-        drawSpeed(c, row(0.42f), s, units)
-        drawRpm(c, row(0.19f), s)
-        row(0.02f)
-        drawBoxes(c, row(0.15f), s, units)
+        val statusH = inner.height() * 0.07f
+        drawStatus(c, RectF(inner.left, inner.top, inner.right, inner.top + statusH), s)
+        val body = RectF(inner.left, inner.top + statusH + pad * 0.5f, inner.right, inner.bottom)
+        val h = body.height()
+        val sideW = inner.width() * 0.27f
+        val left = RectF(body.left, body.top, body.left + sideW, body.bottom)
+        val right = RectF(body.right - sideW, body.top, body.right, body.bottom)
+        val mid = RectF(left.right + pad, body.top, right.left - pad, body.bottom)
 
-        val colLeft = split + pad * 0.5f
-        val size = min(inner.right - colLeft, h * 0.70f)
-        val cx = (colLeft + inner.right) / 2f
-        drawGMeter(c, RectF(cx - size / 2, inner.top, cx + size / 2, inner.top + size), s)
-        drawFuel(c, RectF(colLeft, inner.bottom - h * 0.17f, inner.right, inner.bottom), s)
+        drawBrake(c, RectF(left.left, left.top, left.right, left.top + h * 0.2f), s, widthFrac = 0.09f)
+        val dialsTop = left.top + h * 0.22f
+        val half = (left.bottom - dialsTop) / 2f
+        val coolant = s.coolantC
+        drawSmallDial(
+            c, RectF(left.left, dialsTop, left.right, dialsTop + half), "COOLANT",
+            coolant?.let { (it - 40f) / 80f }, tempText(coolant, units),
+            when {
+                coolant == null -> Colors.DIM
+                coolant > 105f -> Colors.RED
+                coolant < 60f -> Colors.ACCENT // still cold: go easy
+                else -> Colors.FG
+            },
+        )
+        val fuel = s.fuelPct
+        drawSmallDial(
+            c, RectF(left.left, dialsTop + half, left.right, left.bottom), "FUEL",
+            fuel?.div(100f), fuel?.let { "${it.roundToInt()}%" } ?: "–",
+            when {
+                fuel == null -> Colors.DIM
+                fuel < 12.5f -> Colors.RED
+                fuel < 25f -> Colors.SAND
+                else -> Colors.FG
+            },
+        )
+
+        drawRpmDial(c, mid, s, units)
+
+        val g = min(right.width(), h * 0.5f)
+        drawGMeter(c, RectF(right.centerX() - g / 2, right.top, right.centerX() + g / 2, right.top + g), s)
+        drawReadouts(c, RectF(right.left, right.top + g + pad * 0.5f, right.right, right.bottom), s, units)
+    }
+
+    private fun tempText(cel: Float?, units: Units): String =
+        cel?.let { if (units == Units.MPH) "${(it * 9 / 5 + 32).roundToInt()}°F" else "${it.roundToInt()}°C" } ?: "–"
+
+    /** More than 5 mph (8 km/h) over the posted limit, when one is known. */
+    private fun overLimit(s: Snapshot, units: Units): Boolean {
+        val mps = s.speedMps ?: return false
+        val l = SpeedLimit.current ?: return false
+        return if (units == Units.MPH) units.speed(mps) > l.inMph() + 5 else units.speed(mps) > l.inKmh() + 8
     }
 
     private fun drawTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
@@ -277,10 +318,10 @@ class DashPainter(context: Context) {
         c.drawText("$second ${other.label}", b.centerX(), base + small * 1.35f, text)
     }
 
-    private fun drawBrake(c: Canvas, b: RectF, s: Snapshot) {
+    private fun drawBrake(c: Canvas, b: RectF, s: Snapshot, widthFrac: Float = 0.07f) {
         val brake = s.g?.brake ?: 0f
         val level = BrakeLevel.of(brake)
-        val size = min(b.height() * 0.36f, b.width() * 0.07f)
+        val size = min(b.height() * 0.36f, b.width() * widthFrac)
 
         asLabel()
         text.textSize = size * 0.7f
@@ -487,6 +528,183 @@ class DashPainter(context: Context) {
         c.drawLine(x + w * 0.2f, baseline - h * 0.62f, x + w * 0.8f, baseline - h * 0.62f, stroke)
         c.drawLine(x + w, baseline - h * 0.75f, x + w * 1.35f, baseline - h * 0.55f, stroke)
         c.drawLine(x + w * 1.35f, baseline - h * 0.55f, x + w * 1.35f, baseline - h * 0.15f, stroke)
+    }
+
+    /** A ring gauge: the value in the middle, its name in the gap at the bottom. */
+    private fun drawSmallDial(c: Canvas, b: RectF, name: String, frac: Float?, value: String, color: Int) {
+        val rad = min(b.width(), b.height()) / 2f * 0.96f
+        val cx = b.centerX()
+        val cy = b.centerY()
+        val sw = rad * 0.13f
+        val arcR = rad - sw / 2
+        val oval = RectF(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
+        stroke.strokeCap = Paint.Cap.ROUND
+        stroke.strokeWidth = sw
+        stroke.color = Colors.GRID
+        c.drawArc(oval, 135f, 270f, false, stroke)
+        if (frac != null && frac > 0.005f) {
+            stroke.color = color
+            c.drawArc(oval, 135f, 270f * frac.coerceIn(0f, 1f), false, stroke)
+        }
+        stroke.strokeCap = Paint.Cap.BUTT
+        asNumber()
+        text.textAlign = Paint.Align.CENTER
+        text.textSize = rad * 0.44f
+        text.color = if (frac == null) Colors.DIM else Colors.FG
+        c.drawText(value, cx, cy + rad * 0.16f, text)
+        asLabel()
+        text.textSize = rad * 0.19f
+        text.color = Colors.DIM
+        c.drawText(name, cx, cy + rad * 0.84f, text)
+    }
+
+    /**
+     * The big dial: 0 to 8,000 rpm around three quarters of a circle, lit up to the current
+     * RPM in white, sand, then red from the 6,300 redline. Speed, units and RPM sit inside it,
+     * the gear in the gap at the bottom.
+     */
+    private fun drawRpmDial(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val rad = min(b.width(), b.height()) / 2f
+        val cx = b.centerX()
+        val cy = b.centerY()
+        val sw = rad * 0.075f
+        val arcR = rad - sw / 2
+        val oval = RectF(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
+        val rpm = s.rpm
+        val start = 135f
+        val sweep = 270f
+
+        stroke.strokeCap = Paint.Cap.BUTT
+        stroke.strokeWidth = sw
+        stroke.color = Colors.GRID
+        c.drawArc(oval, start, sweep, false, stroke)
+        val redFrac = Revs.REDLINE / Revs.MAX
+        stroke.color = Colors.RED_DIM
+        c.drawArc(oval, start + sweep * redFrac, sweep * (1 - redFrac), false, stroke)
+        if (rpm != null) {
+            val steps = 160
+            for (i in 0 until steps) {
+                val from = Revs.MAX * i / steps
+                if (rpm <= from) break
+                stroke.color = Colors.rpm(from + Revs.MAX / steps / 2)
+                c.drawArc(oval, start + sweep * i / steps, sweep / steps + 0.6f, false, stroke)
+            }
+        }
+
+        fun pt(frac: Float, radius: Float): Pair<Float, Float> {
+            val a = Math.toRadians((start + sweep * frac).toDouble())
+            return (cx + radius * cos(a)).toFloat() to (cy + radius * sin(a)).toFloat()
+        }
+
+        // Ticks every 250 rpm, longer every 1,000, and the numbers.
+        val tickOuter = arcR - sw / 2 - rad * 0.03f
+        for (k in 0..32) {
+            val major = k % 4 == 0
+            val f = k / 32f
+            val (x1, y1) = pt(f, tickOuter)
+            val (x2, y2) = pt(f, tickOuter - rad * (if (major) 0.085f else 0.04f))
+            stroke.strokeWidth = rad * (if (major) 0.018f else 0.01f)
+            stroke.color = when {
+                k * 250f >= Revs.REDLINE -> Colors.RED
+                major -> Colors.FG
+                else -> Colors.DIM
+            }
+            c.drawLine(x1, y1, x2, y2, stroke)
+        }
+        asLabel()
+        text.textAlign = Paint.Align.CENTER
+        text.textSize = rad * 0.1f
+        text.letterSpacing = 0f
+        for (k in 0..8) {
+            val (x, y) = pt(k / 8f, tickOuter - rad * 0.185f)
+            text.color = if (k * 1000f >= Revs.REDLINE) Colors.RED else Colors.DIM
+            c.drawText(k.toString(), x, y + text.textSize * 0.35f, text)
+        }
+        // A bright pointer at the current RPM.
+        if (rpm != null) {
+            val f = (rpm / Revs.MAX).coerceIn(0f, 1f)
+            val (x1, y1) = pt(f, arcR + sw * 0.7f)
+            val (x2, y2) = pt(f, arcR - sw * 1.9f)
+            stroke.strokeCap = Paint.Cap.ROUND
+            stroke.strokeWidth = rad * 0.035f
+            stroke.color = Colors.FG
+            c.drawLine(x1, y1, x2, y2, stroke)
+            stroke.strokeCap = Paint.Cap.BUTT
+        }
+
+        // RPM readout, then the speed.
+        asLabel()
+        text.textAlign = Paint.Align.CENTER
+        text.textSize = rad * 0.09f
+        text.color = Colors.DIM
+        c.drawText("RPM", cx, cy - rad * 0.56f, text)
+        asNumber()
+        text.textSize = rad * 0.15f
+        text.color = rpm?.let { Colors.rpm(it) } ?: Colors.DIM
+        c.drawText(rpm?.let { "%,d".format((it / 50f).roundToInt() * 50) } ?: if (s.obdLive) "–" else "no OBD2", cx, cy - rad * 0.38f, text)
+
+        val speed = s.speedMps?.let { units.speed(it).roundToInt() }
+        text.textSize = rad * (if (speed == null) 0.3f else 0.56f)
+        text.color = when {
+            speed == null -> Colors.DIM
+            overLimit(s, units) -> Colors.CLAY
+            else -> Colors.FG
+        }
+        c.drawText(speed?.toString() ?: "–", cx, cy + rad * 0.14f, text)
+        asLabel()
+        text.textSize = rad * 0.13f
+        text.color = Colors.DIM
+        c.drawText(units.label, cx, cy + rad * 0.3f, text)
+        text.textSize = rad * 0.11f
+        val other = units.other
+        c.drawText("${s.speedMps?.let { other.speed(it).roundToInt() } ?: "–"} ${other.label}", cx, cy + rad * 0.45f, text)
+
+        // Gear, in the open gap at the bottom of the ring.
+        asLabel()
+        text.textSize = rad * 0.09f
+        text.color = Colors.DIM
+        c.drawText("GEAR", cx, cy + rad * 0.68f, text)
+        asNumber()
+        text.textSize = rad * 0.26f
+        text.color = if (s.gear == null) Colors.GRID else Colors.FG
+        c.drawText(s.gear?.toString() ?: "–", cx, cy + rad * 0.92f, text)
+    }
+
+    /** Four slim readouts: throttle (with a bar), battery, intake air and trip distance. */
+    private fun drawReadouts(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val rowH = b.height() / 4f
+        val volts = s.volts
+        val voltColor = when {
+            volts == null -> Colors.FG
+            volts < 11.8f || volts > 15.2f -> Colors.RED
+            volts < 12.2f -> Colors.SAND
+            else -> Colors.FG
+        }
+        fun row(i: Int, label: String, value: String, color: Int = Colors.FG, bar: Float? = null) {
+            val top = b.top + i * rowH
+            asLabel()
+            text.textSize = rowH * 0.27f
+            text.textAlign = Paint.Align.LEFT
+            text.color = Colors.DIM
+            c.drawText(label, b.left, top + rowH * 0.42f, text)
+            asNumber()
+            text.textSize = rowH * 0.42f
+            text.textAlign = Paint.Align.RIGHT
+            text.color = if (value == "–") Colors.DIM else color
+            c.drawText(value, b.right, top + rowH * 0.5f, text)
+            val y = top + rowH * 0.74f
+            val thick = rowH * 0.08f
+            fill.color = Colors.GRID
+            c.drawRoundRect(RectF(b.left, y, b.right, y + thick), thick / 2, thick / 2, fill)
+            if (bar != null) {
+                fill.color = Colors.FG
+                c.drawRoundRect(RectF(b.left, y, b.left + b.width() * bar.coerceIn(0f, 1f), y + thick), thick / 2, thick / 2, fill)
+            }
+        }
+        row(0, "THROTTLE", s.throttlePct?.let { "${it.roundToInt()}%" } ?: "–", bar = s.throttlePct?.div(100f))
+        row(1, "BATTERY", volts?.let { "%.1f V".format(it) } ?: "–", voltColor)
+        row(2, "INTAKE", tempText(s.intakeC, units))
+        row(3, "TRIP", "${oneDecimal(units.distance(s.tripM))} ${units.distanceLabel}")
     }
 
     private fun drawGMeter(c: Canvas, b: RectF, s: Snapshot) {

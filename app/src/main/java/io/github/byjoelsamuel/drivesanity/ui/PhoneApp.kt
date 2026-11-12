@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -31,6 +32,7 @@ interface PhoneActions {
     fun toggleRecording()
     fun swapUnits()
     fun setCarLayout(layout: Prefs.Layout)
+    fun setStartupAnim(on: Boolean)
     fun pickObd()
     fun forgetObd()
     fun navigate()
@@ -42,12 +44,14 @@ interface PhoneActions {
 
 /**
  * The phone app: three tabs, Drive, Trips and Setup. Separate from the car screen, which keeps
- * its own dashboards. The live numbers refresh ten times a second.
+ * its own dashboards. The live numbers refresh ten times a second. The power-on animation plays
+ * over it once when the app opens.
  */
 @Composable
 fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
     val ctx = LocalContext.current
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
+    var introDone by rememberSaveable { mutableStateOf(!Prefs.startupAnim(ctx)) }
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -63,33 +67,36 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
         TripLog.dir(ctx.filesDir).listFiles { f -> f.name.endsWith(".csv") }?.sortedByDescending { it.name }.orEmpty() // names are timestamps
     }
 
-    Scaffold(
-        containerColor = Ui.bg,
-        bottomBar = {
-            NavigationBar(containerColor = Ui.card) {
-                listOf("Drive" to TabIcon.DRIVE, "Trips" to TabIcon.TRIPS, "Setup" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
-                    val on = tab == i
-                    NavigationBarItem(
-                        selected = on,
-                        onClick = { tab = i },
-                        icon = { TabGlyph(icon, if (on) Ui.fg else Ui.dim) },
-                        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = Ui.raised,
-                            selectedTextColor = Ui.fg,
-                            unselectedTextColor = Ui.dim,
-                        ),
-                    )
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Ui.bg,
+            bottomBar = {
+                NavigationBar(containerColor = Ui.card) {
+                    listOf("Drive" to TabIcon.DRIVE, "Trips" to TabIcon.TRIPS, "Setup" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
+                        val on = tab == i
+                        NavigationBarItem(
+                            selected = on,
+                            onClick = { tab = i },
+                            icon = { TabGlyph(icon, if (on) Ui.fg else Ui.dim) },
+                            label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = Ui.raised,
+                                selectedTextColor = Ui.fg,
+                                unselectedTextColor = Ui.dim,
+                            ),
+                        )
+                    }
+                }
+            },
+        ) { pad ->
+            Box(Modifier.fillMaxSize().padding(pad)) {
+                when (tab) {
+                    0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 2 })
+                    1 -> TripsTab(units, recordings, tick, actions)
+                    else -> SetupTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
                 }
             }
-        },
-    ) { pad ->
-        Box(Modifier.fillMaxSize().padding(pad)) {
-            when (tab) {
-                0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 2 })
-                1 -> TripsTab(units, recordings, tick, actions)
-                else -> SetupTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
-            }
         }
+        if (!introDone) StartupOverlay { introDone = true }
     }
 }

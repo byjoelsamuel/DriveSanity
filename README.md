@@ -27,10 +27,10 @@ In the app the map is the real OpenStreetMap.*
 
 - **Speed** in MPH, with km/h underneath.
 - **Brake**: how hard you're braking, from light to very hard.
-- **RPM**: a bar that goes from white to sand to red as you near the 6,300 rpm redline.
+- **RPM**: a big round dial that goes from white to sand to red as you near the 6,300 rpm redline, with the speed and gear inside it.
 - **G-meter**: a dot that moves when you speed up, brake or turn.
-- **Fuel**: how much is left in the tank.
-- **Four boxes**: coolant temperature, intake air temperature, battery voltage and trip distance.
+- **Coolant and fuel**: ring gauges on the left.
+- **Slim readouts**: throttle, battery voltage, intake air temperature and trip distance.
 
 The map screen swaps the g-meter for a map, and shows the gear you're in, the speed limit
 and the next turn when you're navigating.
@@ -84,6 +84,26 @@ Any ELM327 Bluetooth adapter works, whether it's classic Bluetooth or Bluetooth 
 
 You only do this once. After that the app connects by itself whenever it's open. Some cars
 don't report fuel level; if yours doesn't, the fuel meter will say so.
+
+**If it keeps disconnecting**
+
+- Open Android's settings → Apps → DriveSanity → Battery and choose **Unrestricted**, so Android
+  doesn't pause the app while you drive.
+- Open the app on the phone once before you drive. That starts the notification that keeps the
+  link going when you switch apps or the screen turns off. It stops a few minutes after the
+  car goes quiet.
+- Close any other app that talks to the adapter (the adapter's own app, Torque, Car Scanner).
+  Most adapters only allow one connection at a time.
+- **Setup → OBD2 adapter → Diagnostics** shows how many times the link restarted and why.
+  "Adapter stopped answering" points at the adapter or the car; "Adapter disconnected" means
+  Bluetooth dropped.
+
+## The startup animation
+
+The app opens with a short old-TV power-on: a bright line stretches across the screen, opens
+up into the picture, and the name flickers in under scanlines. It plays on the phone, and again
+in the car when Android Auto connects. Tap to skip, or turn it off in **Setup → Startup
+animation**.
 
 ## The retro screen
 
