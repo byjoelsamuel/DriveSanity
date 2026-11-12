@@ -51,4 +51,17 @@ class CarProfilesTest {
         assertEquals("–", gear.copy(gear = null).gearText)
         assertEquals("CVT", gear.copy(gearless = true).gearText)
     }
+
+    @Test
+    fun `only the diesel is excluded from the fuel economy estimate`() {
+        assertFalse(CarProfiles.ALCAZAR_DIESEL.petrol)
+        assertTrue(CarProfiles.all.filter { it !== CarProfiles.ALCAZAR_DIESEL }.all { it.petrol })
+    }
+
+    @Test
+    fun `the screen switcher goes round all five screens`() {
+        assertEquals(5, Prefs.Layout.entries.size)
+        assertEquals(Prefs.Layout.SPORT, Prefs.Layout.DIAG.next)
+        assertEquals(Prefs.Layout.GAUGES, Prefs.Layout.SPORT.next)
+    }
 }

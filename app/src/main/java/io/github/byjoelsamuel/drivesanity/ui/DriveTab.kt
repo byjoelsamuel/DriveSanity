@@ -342,6 +342,18 @@ private fun EngineCards(s: Snapshot, units: Units) {
         InfoCard(title = "Trip") {
             BigValue(oneDecimal(units.distance(s.tripM)), units.distanceLabel)
         }
+        InfoCard(title = "Fuel economy (estimate)") {
+            BigValue(units.economyText(s.fuelLper100, s.fuelLph), "")
+            Text(
+                when {
+                    !s.petrol -> "Petrol engines only for now"
+                    s.fuelLph == null -> "Needs the car's air flow reading"
+                    else -> "Trip average ${units.economyText(s.tripLper100, null)}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+        }
         InfoCard(title = "Tires (${Tpms.unit(units)})") {
             Row(Modifier.fillMaxWidth()) {
                 for (i in 0 until 4) {

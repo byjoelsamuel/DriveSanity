@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.core.content.FileProvider
 import io.github.byjoelsamuel.drivesanity.nav.Nav
@@ -29,6 +30,15 @@ class MainActivity : ComponentActivity(), PhoneActions {
         if (!hasLocationPermission(this)) toast("Without location there's no speed, only g-force")
     }
 
+    private val pickSound = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            Prefs.setCustomSound(this, uri.toString())
+            Prefs.setStartupSound(this, StartupSoundMode.CUSTOM)
+            toast("Sound chosen")
+        }
+    }
+
     private val askBluetoothPermission = registerForActivityResult(RequestMultiplePermissions()) {
         if (Obd.hasBluetoothPermission(this)) showObdPicker(this) else toast("OBD2 needs the Nearby devices permission")
     }
@@ -39,6 +49,7 @@ class MainActivity : ComponentActivity(), PhoneActions {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // "tab": open on Drive (0), Trips (1) or Setup (2).
         setContent { DriveTheme { PhoneApp(this, intent.getIntExtra("tab", 0)) } }
+        if (savedInstanceState == null) StartupSound.play(this)
         askLocation()
     }
 
@@ -67,6 +78,14 @@ class MainActivity : ComponentActivity(), PhoneActions {
     override fun setStartupAnim(on: Boolean) = Prefs.setStartupAnim(this, on)
 
     override fun setCar(id: String) = DriveEngine.setCar(this, id)
+
+    override fun setAlerts(on: Boolean) = Prefs.setAlerts(this, on)
+
+    override fun setStartupSound(mode: StartupSoundMode) = Prefs.setStartupSound(this, mode)
+
+    override fun chooseSoundFile() = pickSound.launch(arrayOf("audio/*"))
+
+    override fun playStartupSound() = StartupSound.play(this)
 
     override fun setRedline(rpm: Float) = DriveEngine.setRedline(this, rpm)
 

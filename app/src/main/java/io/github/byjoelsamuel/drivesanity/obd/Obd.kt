@@ -114,6 +114,10 @@ object Obd {
     val fuelPct get() = value("fuel", 60_000)
     val volts get() = value("volts", 20_000)
 
+    /** Air flow into the engine in g/s, and the air/fuel ratio the computer is asking for (1.0 = ideal). */
+    val maf get() = value("maf", 3_000)
+    val lambda get() = value("lambda", 6_000)
+
     // --- the connection thread --------------------------------------------------------------
 
     private fun loop() {
@@ -188,8 +192,10 @@ object Obd {
 
     /** RPM every round, one of the others in turn, fuel and battery every 10 s. */
     private fun poll(s: ObdSession) {
-        val others = listOf(Pid.SPEED, Pid.THROTTLE, Pid.COOLANT, Pid.LOAD, Pid.INTAKE).filter { s.supports(it) }
-        val extras = listOf(Pid.TRIM_SHORT, Pid.TRIM_LONG, Pid.MAF, Pid.MAP, Pid.TIMING, Pid.AMBIENT, Pid.LAMBDA, Pid.RUNTIME)
+        // Air flow and the commanded air/fuel ratio feed the fuel economy estimate, so they're always asked for.
+        val others = listOf(Pid.SPEED, Pid.THROTTLE, Pid.COOLANT, Pid.LOAD, Pid.INTAKE, Pid.MAF, Pid.LAMBDA)
+            .filter { s.supports(it) }
+        val extras = listOf(Pid.TRIM_SHORT, Pid.TRIM_LONG, Pid.MAP, Pid.TIMING, Pid.AMBIENT, Pid.RUNTIME)
             .filter { s.supports(it) }
         var i = 0
         var slowAt = 0L

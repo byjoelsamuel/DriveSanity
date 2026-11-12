@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
@@ -94,7 +95,11 @@ class ClusterPainter(context: Context) {
             fuel < 25f -> Colors.SAND
             else -> Colors.GOOD
         }
-        barRow(c, row(3), "FUEL", fuel?.let { "${it.roundToInt()}%" } ?: "–", fuel?.div(100f), 14, { fuelColor })
+        if (fuel != null) {
+            barRow(c, row(3), "FUEL", "${fuel.roundToInt()}%", fuel / 100f, 14, { fuelColor })
+        } else {
+            economyRow(c, row(3), s, units) // no fuel level from the car: show how much it's using instead
+        }
     }
 
     private fun rightStack(c: Canvas, b: RectF, s: Snapshot, units: Units) {
@@ -166,6 +171,111 @@ class ClusterPainter(context: Context) {
             fill.color = color
             c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * frac, bar.bottom), bar.height() / 2, bar.height() / 2, fill)
         }
+    }
+
+    /** The estimated fuel use, as a bar (more bar = thirstier). */
+    private fun economyRow(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val frac = s.fuelLper100?.div(20f) ?: s.fuelLph?.div(6f)
+        barRow(c, b, "ECONOMY", units.economyText(s.fuelLper100, s.fuelLph), frac, 14, ::rampColor)
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Sport: a performance cluster, with shift lights, pedal bars and the air/fuel ratio
+    // ---------------------------------------------------------------------------------------
+
+    fun drawSport(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+        background(c, r)
+        val pad = r.height() * 0.035f
+        val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
+        val h = inner.height()
+        shiftLights(c, RectF(inner.left, inner.top, inner.right, inner.top + h * 0.075f), s)
+        status(c, RectF(inner.left, inner.top + h * 0.1f, inner.right, inner.top + h * 0.17f), s)
+        val body = RectF(inner.left, inner.top + h * 0.19f, inner.right, inner.bottom)
+        val w = body.width()
+        fun col(x0: Float, x1: Float) = RectF(body.left + w * x0, body.top, body.left + w * x1, body.bottom)
+        sportLeft(c, col(0f, 0.235f), s, units)
+        pedal(c, col(0.255f, 0.345f), "THROTTLE", s.throttlePct?.let { "${it.roundToInt()}%" } ?: "–", s.throttlePct?.div(100f), ::rampColor)
+        sportCentre(c, col(0.365f, 0.635f), s, units)
+        val brake = s.g?.brake ?: 0f
+        pedal(
+            c, col(0.655f, 0.745f), "BRAKE", if (s.g == null) "–" else "%.2f g".format(brake),
+            if (s.g == null) null else (brake / 0.8f).coerceIn(0f, 1f),
+        ) { f -> Colors.brake(BrakeLevel.of(f * 0.8f)) }
+        rightStack(c, col(0.765f, 1f), s, units)
+    }
+
+    /** Shift lights across the top: they fill in from both edges as the revs climb, then flash red at the shift point. */
+    private fun shiftLights(c: Canvas, b: RectF, s: Snapshot) {
+        val n = 18
+        val gap = b.width() * 0.006f
+        val led = (b.width() - gap * (n - 1)) / n
+        val rpm = s.rpm
+        val progress = if (rpm == null) 0f else ((rpm / Revs.REDLINE - 0.62f) / 0.36f).coerceIn(0f, 1f)
+        val level = Alerts.shiftLevel(rpm, Revs.REDLINE)
+        val flashOn = (Alerts.now() / 90) % 2 == 0L
+        val lit = (progress * (n / 2)).roundToInt()
+        for (i in 0 until n) {
+            val fromEdge = if (i < n / 2) i else n - 1 - i
+            fill.color = when {
+                level == 2 -> if (flashOn) Colors.RED else Colors.GRID
+                fromEdge < lit -> when { fromEdge < 4 -> Colors.GOOD; fromEdge < 7 -> Colors.SAND; else -> Colors.RED }
+                else -> Colors.GRID
+            }
+            val x = b.left + i * (led + gap)
+            c.drawRoundRect(RectF(x, b.top, x + led, b.bottom), b.height() * 0.3f, b.height() * 0.3f, fill)
+        }
+    }
+
+    private fun sportLeft(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val rowH = b.height() / 3f
+        fun row(i: Int) = RectF(b.left, b.top + i * rowH, b.right, b.top + (i + 1) * rowH - rowH * 0.1f)
+        val afr = if (s.petrol) s.lambda?.let { it * 14.7f } else null
+        barRow(c, row(0), "AIR / FUEL", afr?.let { "%.1f".format(it) } ?: "–", afr?.let { (it - 10f) / 8f }, 14, { f -> if (f < 0.4f) Colors.SAND else Colors.GOOD })
+        economyRow(c, row(1), s, units)
+        val cool = s.coolantC
+        val coolColor = when {
+            cool == null -> Colors.DIM
+            cool > 105f -> Colors.RED
+            cool < 60f -> Colors.ACCENT
+            else -> Colors.GOOD
+        }
+        barRow(c, row(2), "COOLANT", tempText(cool, units), cool?.let { (it - 40f) / 80f }, 14, { coolColor })
+    }
+
+    private fun sportCentre(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val h = b.height()
+        val cx = b.centerX()
+        number(
+            h * (if (s.gear == null) 0.3f else 0.56f),
+            when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG },
+            Paint.Align.CENTER,
+        )
+        c.drawText(s.gearText, cx, b.top + h * 0.45f, text)
+        label(h * 0.055f, Colors.DIM, Paint.Align.CENTER)
+        c.drawText(if (s.gearless) "NO FIXED GEARS" else "GEAR", cx, b.top + h * 0.52f, text)
+        fill.color = Colors.GRID
+        c.drawRect(cx - b.width() * 0.3f, b.top + h * 0.55f, cx + b.width() * 0.3f, b.top + h * 0.55f + max(2f, h * 0.006f), fill)
+        speedGroup(c, b, s, units, size = h * 0.27f, baseline = b.top + h * 0.86f, centred = true)
+        label(h * 0.05f, Colors.DIM, Paint.Align.CENTER)
+        c.drawText(s.rpm?.let { "%,d rpm".format((it / 50f).roundToInt() * 50) } ?: "no OBD2", cx, b.top + h * 0.97f, text)
+    }
+
+    /** A pedal as a tall bar that fills from the bottom, with its name and value under it. */
+    private fun pedal(c: Canvas, b: RectF, name: String, value: String, frac: Float?, colorOf: (Float) -> Int) {
+        val h = b.height()
+        val area = RectF(b.left, b.top, b.right, b.top + h * 0.78f)
+        val n = 16
+        val seg = area.height() / n
+        val lit = if (frac == null) 0 else (frac.coerceIn(0f, 1f) * n).roundToInt()
+        for (i in 0 until n) { // 0 is the bottom segment
+            val bottom = area.bottom - i * seg
+            fill.color = if (i < lit) colorOf((i + 0.5f) / n) else Colors.GRID
+            c.drawRect(area.left, bottom - seg * 0.88f, area.right, bottom, fill)
+        }
+        label(h * 0.045f, Colors.DIM, Paint.Align.CENTER)
+        c.drawText(name, b.centerX(), b.top + h * 0.855f, text)
+        number(h * 0.075f, if (frac == null) Colors.DIM else Colors.FG, Paint.Align.CENTER)
+        c.drawText(value, b.centerX(), b.top + h * 0.96f, text)
     }
 
     /** A caption and a big value on one line, and a row of bar segments under them. */
@@ -317,7 +427,8 @@ class ClusterPainter(context: Context) {
      * edge. The digits sit in a fixed three-digit slot so the units don't wander as it changes.
      */
     private fun speedGroup(c: Canvas, b: RectF, s: Snapshot, units: Units, size: Float, baseline: Float, centred: Boolean) {
-        val shown = speedRoll.update(s.speedMps?.let { units.speed(it) })
+        // Rounded first, so the digits only roll when the number changes, not sit half-turned at 69.3.
+        val shown = speedRoll.update(s.speedMps?.let { units.speed(it).roundToInt().toFloat() })
         number(size)
         val cell = text.measureText("0")
         val slot = cell * 3
@@ -413,12 +524,15 @@ class ClusterPainter(context: Context) {
         val rb = RectF(b.left + boxesW + gap * 1.5f, b.top, b.right, b.bottom)
         val fuel = s.fuelPct
         val fh = rb.height() * 0.34f
+        // Fuel level when the car reports it; otherwise the estimated fuel use in its place.
         label(fh * 0.4f)
-        c.drawText("FUEL", rb.left, rb.top + fh * 0.5f, text)
-        number(fh * 0.55f, if (fuel == null) Colors.DIM else Colors.FG, Paint.Align.RIGHT)
-        c.drawText(fuel?.let { "${it.roundToInt()}%" } ?: "–", rb.right, rb.top + fh * 0.55f, text)
+        c.drawText(if (fuel != null) "FUEL" else "ECONOMY", rb.left, rb.top + fh * 0.5f, text)
+        val valueText = if (fuel != null) "${fuel.roundToInt()}%" else units.economyText(s.fuelLper100, s.fuelLph)
+        val frac = if (fuel != null) fuel / 100f else (s.fuelLper100?.div(20f) ?: s.fuelLph?.div(6f))
+        number(fh * 0.55f, if (valueText == "–") Colors.DIM else Colors.FG, Paint.Align.RIGHT)
+        c.drawText(valueText, rb.right, rb.top + fh * 0.55f, text)
         val fuelColor = when { fuel == null -> Colors.DIM; fuel < 12.5f -> Colors.RED; fuel < 25f -> Colors.SAND; else -> Colors.GOOD }
-        segments(c, RectF(rb.left, rb.top + fh * 0.75f, rb.right, rb.top + fh * 1.0f), fuel?.div(100f), 12, { fuelColor })
+        segments(c, RectF(rb.left, rb.top + fh * 0.75f, rb.right, rb.top + fh * 1.0f), frac, 12) { f -> if (fuel != null) fuelColor else rampColor(f) }
         tires(c, RectF(rb.left, rb.top + rb.height() * 0.4f, rb.right, rb.bottom), s, units)
     }
 

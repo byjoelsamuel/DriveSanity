@@ -54,6 +54,14 @@ data class Snapshot(
     val tires: List<Float?> = listOf(null, null, null, null),
     /** The car has no fixed gears (a CVT). */
     val gearless: Boolean = false,
+    /** The commanded air/fuel ratio as a multiple of ideal (1.0 = 14.7 : 1 for petrol). */
+    val lambda: Float? = null,
+    /** Fuel use right now: litres per hour, and per 100 km when moving; and this trip's average. */
+    val fuelLph: Float? = null,
+    val fuelLper100: Float? = null,
+    val tripLper100: Float? = null,
+    /** Petrol engine: the air/fuel and economy readings mean something. */
+    val petrol: Boolean = true,
 ) {
     /** What to show for the gear. */
     val gearText: String get() = when {
@@ -109,6 +117,9 @@ object DriveEngine : SensorEventListener, LocationListener {
         private set
 
     private val gears = GearLearner()
+
+    /** Fuel use, estimated from air flow. */
+    val economy = Economy()
 
     /** The car picked in Setup: how its gears work and where its red zone starts. */
     var profile: CarProfile = CarProfiles.default
@@ -181,6 +192,11 @@ object DriveEngine : SensorEventListener, LocationListener {
         throttlePct = Obd.throttlePct,
         tires = Obd.tirePsi,
         gearless = !profile.hasGears,
+        lambda = Obd.lambda,
+        fuelLph = economy.litresPerHour,
+        fuelLper100 = economy.litresPer100Km,
+        tripLper100 = economy.tripLitresPer100Km,
+        petrol = profile.petrol,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -304,6 +320,12 @@ object DriveEngine : SensorEventListener, LocationListener {
 
     // --- the car -----------------------------------------------------------------------------
 
+    /** Starts the trip numbers over: distance, peaks, hard events and fuel use. */
+    fun resetTrip() {
+        stats.reset()
+        economy.reset()
+    }
+
     private fun loadCar() {
         profile = CarProfiles.byId(Prefs.carId(app))
         gears.load(Prefs.gears(app, profile.id))
@@ -391,6 +413,12 @@ object DriveEngine : SensorEventListener, LocationListener {
                 car.gears != null -> car.gears.gearFor(kmh, rpm)
                 else -> gears.feed(kmh, rpm)
             }
+            economy.update(
+                SystemClock.elapsedRealtime(),
+                if (car.petrol) Obd.maf else null,
+                Obd.lambda,
+                speedMps,
+            )
         }
 
         val cal = calibration ?: return

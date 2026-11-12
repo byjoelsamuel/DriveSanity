@@ -61,6 +61,14 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
             Line("Hardest acceleration", "%.2f g".format(st.peakAccelG))
             Line("Hardest turn", "%.2f g".format(st.peakTurnG))
             Spacer(Modifier.height(10.dp))
+            if (DriveEngine.profile.petrol) {
+                val avg = DriveEngine.economy.tripLitresPer100Km
+                Line("Fuel economy (estimate)", units.economyText(avg, null))
+                Line("Fuel used (estimate)", if (avg == null) "–" else if (units == Units.MPH) "%.2f gal".format(DriveEngine.economy.litres / 3.78541) else "%.2f L".format(DriveEngine.economy.litres))
+            } else {
+                Line("Fuel economy", "Petrol engines only")
+            }
+            Spacer(Modifier.height(10.dp))
             Line("Hard brakes", st.hardBrakes.count.toString())
             Line("Hard launches", st.hardLaunches.count.toString())
             Line("Hard turns", st.hardTurns.count.toString())
@@ -103,7 +111,7 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset this trip?") },
             text = { Text("Distance, times, peaks and counts go back to zero. Recordings are kept.") },
-            confirmButton = { TextButton(onClick = { st.reset(); confirmReset = false }) { Text("Reset") } },
+            confirmButton = { TextButton(onClick = { DriveEngine.resetTrip(); confirmReset = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
             containerColor = Ui.raised,
         )

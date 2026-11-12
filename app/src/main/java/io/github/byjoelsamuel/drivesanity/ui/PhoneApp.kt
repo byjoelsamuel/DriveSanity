@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
+import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.TripLog
 import kotlinx.coroutines.delay
 import java.io.File
@@ -34,6 +35,10 @@ interface PhoneActions {
     fun setCarLayout(layout: Prefs.Layout)
     fun setStartupAnim(on: Boolean)
     fun setCar(id: String)
+    fun setAlerts(on: Boolean)
+    fun setStartupSound(mode: StartupSoundMode)
+    fun chooseSoundFile()
+    fun playStartupSound()
     fun setRedline(rpm: Float)
     fun pickObd()
     fun readCodes()
