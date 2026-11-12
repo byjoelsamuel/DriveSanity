@@ -17,6 +17,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -90,6 +95,18 @@ fun SetupTab(
         InfoCard {
             Segments(listOf("MPH · °F · mi", "km/h · °C · km"), if (units == Units.MPH) 0 else 1) { i ->
                 if ((i == 0) != (units == Units.MPH)) actions.swapUnits()
+            }
+        }
+
+        SectionTitle("Startup animation")
+        InfoCard {
+            val ctx = LocalContext.current
+            var on by remember { mutableStateOf(Prefs.startupAnim(ctx)) }
+            Text("A short old-TV power-on when the app opens and when Android Auto connects.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+            Spacer(Modifier.height(10.dp))
+            Segments(listOf("On", "Off"), if (on) 0 else 1) { i ->
+                on = i == 0
+                actions.setStartupAnim(on)
             }
         }
 

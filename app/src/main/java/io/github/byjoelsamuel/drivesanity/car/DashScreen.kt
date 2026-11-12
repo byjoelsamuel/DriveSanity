@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Surface
 import androidx.car.app.AppManager
 import androidx.car.app.CarContext
@@ -22,6 +23,7 @@ import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.RetroPainter
+import io.github.byjoelsamuel.drivesanity.StartupPainter
 
 /**
  * The car screen: the same dashboard as the phone, drawn onto the surface Android Auto gives
@@ -35,12 +37,15 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private var visible = Rect()
     private var shownRecording = false
     private var shownLayout = Prefs.Layout.GAUGES
+    private val intro = StartupPainter(carContext)
+    private var introStartMs: Long? = null
+    private var introPlayed = false
 
     private val tick = object : Runnable {
         override fun run() {
             draw()
             // ~15 fps is plenty for gauges; the map moves, so it gets 30.
-            handler.postDelayed(this, if (Prefs.layout(carContext) == Prefs.Layout.MAP) 33 else 66)
+            handler.postDelayed(this, if (Prefs.layout(carContext) == Prefs.Layout.MAP || introStartMs != null) 33 else 66)
         }
     }
 
@@ -90,6 +95,8 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     override fun onSurfaceAvailable(container: SurfaceContainer) {
         surface = container.surface
         full = Rect(0, 0, container.width, container.height)
+        if (!introPlayed && Prefs.startupAnim(carContext)) introStartMs = SystemClock.elapsedRealtime()
+        introPlayed = true
         draw()
     }
 
@@ -119,6 +126,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             canvas.drawColor(if (Prefs.layout(carContext) == Prefs.Layout.RETRO) RetroPainter.BG else Colors.BG)
             val area = if (visible.isEmpty) full else visible
             painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
+            introStartMs?.let { start ->
+                val t = (SystemClock.elapsedRealtime() - start) / 1000f
+                if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(area), t)
+            }
         } finally {
             s.unlockCanvasAndPost(canvas)
         }

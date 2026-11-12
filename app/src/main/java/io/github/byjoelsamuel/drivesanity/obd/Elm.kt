@@ -65,6 +65,9 @@ object Elm {
 interface ObdTransport : Closeable {
     fun send(text: String)
     fun readReply(timeoutMs: Long): String
+
+    /** Throws away anything the adapter sent that nobody asked for, like a reply that came in late. */
+    fun drain() {}
 }
 
 /** Talks ELM327 over a [ObdTransport]: sets the adapter up, finds what the car supports, reads values. */
@@ -75,6 +78,7 @@ class ObdSession(private val link: ObdTransport) {
     private val lastReply = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     fun command(cmd: String, timeoutMs: Long = 2_000): String {
+        link.drain()
         link.send(cmd + "\r")
         return link.readReply(timeoutMs).also { lastReply[cmd] = it }
     }
