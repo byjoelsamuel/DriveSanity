@@ -404,9 +404,12 @@ class ClusterPainter(context: Context) {
 
     private fun segments(c: Canvas, b: RectF, frac: Float?, n: Int, colorOf: (Float) -> Int) {
         val seg = b.width() / n
-        val lit = if (frac == null) 0 else (frac.coerceIn(0f, 1f) * n).roundToInt()
+        // The segment the level is partway through fades in, so the bar fills smoothly.
+        val pos = if (frac == null) 0f else frac.coerceIn(0f, 1f) * n
         for (i in 0 until n) {
-            fill.color = if (i < lit) colorOf((i + 0.5f) / n) else Colors.GRID
+            val part = (pos - i).coerceIn(0f, 1f)
+            val on = colorOf((i + 0.5f) / n)
+            fill.color = if (part >= 0.98f) on else if (part > 0.02f) Colors.mix(Colors.GRID, on, part) else Colors.GRID
             val x = b.left + i * seg
             c.drawRect(x + seg * 0.1f, b.top, x + seg * 0.9f, b.bottom, fill)
         }
@@ -497,39 +500,46 @@ class ClusterPainter(context: Context) {
 
     fun drawMap(c: Canvas, r: RectF, s: Snapshot, units: Units) {
         background(c, r)
-        val pad = r.height() * 0.035f
+        val pad = r.height() * 0.03f
         val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
         val h = inner.height()
-        val gap = inner.width() * 0.03f
-        val left = RectF(inner.left, inner.top, inner.left + inner.width() * 0.48f, inner.bottom)
+        val w = inner.width()
+        val gap = w * 0.03f
 
-        // The next turn in its own box above the map, when there is a route.
-        var mapTop = left.top
+        // Left: the map takes more than half the screen, with the revs under it and the next turn
+        // laid over its top edge.
+        val left = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
+        val rpmH = h * 0.2f
+        val mapArea = RectF(left.left, left.top, left.right + gap * 0.4f, left.bottom - rpmH - h * 0.02f)
+        map.draw(c, mapArea, s, units)
         if (Nav.route != null || Nav.message != null) {
-            val boxH = h * 0.26f
-            map.drawDirections(c, RectF(left.left, left.top, left.right, left.top + boxH), units)
-            mapTop = left.top + boxH + h * 0.02f
+            map.drawDirections(c, RectF(left.left, left.top, left.right, left.top + h * 0.32f), units, 238)
         }
-        // The map fades out at its edges, so it can run a little into the gap.
-        map.draw(c, RectF(left.left, mapTop, left.right + gap * 0.4f, left.bottom), s, units)
+        rpmBar(c, RectF(left.left, left.bottom - rpmH, left.right, left.bottom), s)
 
+        // Right: speed and gear, how hard the pedal and the brake are pressed, then the temperatures.
         val b = RectF(left.right + gap, inner.top, inner.right, inner.bottom)
         var y = b.top
         fun row(f: Float) = RectF(b.left, y, b.right, y + h * f).also { y += h * f }
         status(c, row(0.07f), s)
-        speedAndGear(c, row(0.355f), s, units)
-        rpmBar(c, row(0.17f), s)
-        row(0.015f)
+        speedAndGear(c, row(0.34f), s, units)
+        row(0.01f)
+        val pedal = s.throttlePct
+        levelBar(c, row(0.12f), "PEDAL", pedal?.let { "${it.roundToInt()}%" } ?: "–", pedal?.div(100f), rampColor((pedal ?: 0f) / 100f))
+        row(0.01f)
         brakeBar(c, row(0.12f), s)
-        row(0.02f)
-        bottomRow(c, row(0.25f), s, units)
+        row(0.03f)
+        temperatures(c, row(0.3f), s, units)
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {
         val h = b.height()
-        val speedW = b.width() * 0.66f
-        speedGroup(c, RectF(b.left, b.top, b.left + speedW, b.bottom), s, units, size = h * 0.78f, baseline = b.top + h * 0.84f, centred = false)
-        val gx = b.left + speedW + b.width() * 0.04f
+        // The gear gets a column of its own at the right; the speed, its units and the other units fit in what's left.
+        val gearW = b.width() * 0.2f
+        val speedW = b.width() - gearW - b.width() * 0.03f
+        val size = min(h * 0.78f, speedW / 3.1f)
+        speedGroup(c, RectF(b.left, b.top, b.left + speedW, b.bottom), s, units, size = size, baseline = b.top + h * 0.84f, centred = false)
+        val gx = b.right - gearW
         label(h * 0.11f)
         c.drawText("GEAR", gx, b.top + h * 0.2f, text)
         number(h * (if (s.gear == null) 0.3f else 0.62f), when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG })
@@ -580,11 +590,9 @@ class ClusterPainter(context: Context) {
         val seg = bar.width() / n
         for (i in 0 until n) {
             val from = i * 250f
-            fill.color = when {
-                rpm != null && rpm > from -> Colors.rpm(from + 125f)
-                from + 250f > Revs.REDLINE -> Colors.RED_DIM
-                else -> Colors.GRID
-            }
+            val off = if (from + 250f > Revs.REDLINE) Colors.RED_DIM else Colors.GRID
+            val part = if (rpm == null) 0f else ((rpm - from) / 250f).coerceIn(0f, 1f)
+            fill.color = if (part >= 0.98f) Colors.rpm(from + 125f) else if (part > 0.02f) Colors.mix(off, Colors.rpm(from + 125f), part) else off
             val x = bar.left + i * seg
             c.drawRect(x + seg * 0.12f, bar.top, x + seg * 0.88f, bar.bottom, fill)
         }
@@ -593,6 +601,23 @@ class ClusterPainter(context: Context) {
             val x = (bar.left + k * 1000f / Revs.MAX * bar.width()).coerceIn(bar.left + h * 0.08f, bar.right - h * 0.08f)
             text.color = if (k * 1000f >= Revs.REDLINE) Colors.RED else Colors.DIM
             c.drawText(k.toString(), x, b.top + h * 0.98f, text)
+        }
+    }
+
+    /** A name, a value, and a rounded bar that fills left to right. */
+    private fun levelBar(c: Canvas, b: RectF, name: String, value: String, frac: Float?, color: Int) {
+        val h = b.height()
+        label(h * 0.3f)
+        c.drawText(name, b.left, b.top + h * 0.38f, text)
+        number(h * 0.38f, if (frac == null) Colors.DIM else color, Paint.Align.RIGHT)
+        c.drawText(value, b.right, b.top + h * 0.42f, text)
+        val bar = RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f)
+        fill.color = Colors.GRID
+        c.drawRoundRect(bar, bar.height() / 2, bar.height() / 2, fill)
+        val f = (frac ?: 0f).coerceIn(0f, 1f)
+        if (f > 0f) {
+            fill.color = color
+            c.drawRoundRect(RectF(bar.left, bar.top, bar.left + max(bar.height(), bar.width() * f), bar.bottom), bar.height() / 2, bar.height() / 2, fill)
         }
     }
 
@@ -622,32 +647,17 @@ class ClusterPainter(context: Context) {
         }
     }
 
-    /** Coolant, battery and intake boxes, with fuel and the tires beside them. */
-    private fun bottomRow(c: Canvas, b: RectF, s: Snapshot, units: Units) {
-        val boxesW = b.width() * 0.54f
-        val gap = b.width() * 0.02f
-        val bw = (boxesW - gap * 2) / 3f
+    /** Coolant, battery and intake boxes. */
+    private fun temperatures(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val gap = b.width() * 0.03f
+        val bw = (b.width() - gap * 2) / 3f
         val cool = s.coolantC
         val v = s.volts
         box(c, RectF(b.left, b.top, b.left + bw, b.bottom), "COOLANT", tempText(cool, units),
             when { cool == null -> Colors.DIM; cool > 105f -> Colors.RED; cool < 60f -> Colors.ACCENT; else -> Colors.FG }, Colors.COOLANT)
         box(c, RectF(b.left + bw + gap, b.top, b.left + 2 * bw + gap, b.bottom), "BATTERY", v?.let { "%.1f V".format(it) } ?: "–",
             when { v == null -> Colors.DIM; v < 11.8f || v > 15.2f -> Colors.RED; v < 12.2f -> Colors.SAND; else -> Colors.FG }, Colors.BATTERY)
-        box(c, RectF(b.left + 2 * (bw + gap), b.top, b.left + boxesW, b.bottom), "INTAKE", tempText(s.intakeC, units), Colors.FG, Colors.INTAKE)
-
-        val rb = RectF(b.left + boxesW + gap * 1.5f, b.top, b.right, b.bottom)
-        val fuel = s.fuelPct
-        val fh = rb.height() * 0.34f
-        // Fuel level when the car reports it; otherwise the estimated fuel use in its place.
-        label(fh * 0.4f)
-        c.drawText(if (fuel != null) "FUEL" else "ECONOMY", rb.left, rb.top + fh * 0.5f, text)
-        val valueText = if (fuel != null) "${fuel.roundToInt()}%" else units.economyText(s.fuelLper100, s.fuelLph)
-        val frac = if (fuel != null) fuel / 100f else (s.fuelLper100?.div(20f) ?: s.fuelLph?.div(6f))
-        number(fh * 0.55f, if (valueText == "–") Colors.DIM else Colors.FG, Paint.Align.RIGHT)
-        c.drawText(valueText, rb.right, rb.top + fh * 0.55f, text)
-        val fuelColor = when { fuel == null -> Colors.DIM; fuel < 12.5f -> Colors.RED; fuel < 25f -> Colors.SAND; else -> Colors.GOOD }
-        segments(c, RectF(rb.left, rb.top + fh * 0.75f, rb.right, rb.top + fh * 1.0f), frac, 12) { f -> if (fuel != null) fuelColor else rampColor(f) }
-        tires(c, RectF(rb.left, rb.top + rb.height() * 0.4f, rb.right, rb.bottom), s, units)
+        box(c, RectF(b.left + 2 * (bw + gap), b.top, b.right, b.bottom), "INTAKE", tempText(s.intakeC, units), Colors.FG, Colors.INTAKE)
     }
 
     private fun box(c: Canvas, b: RectF, name: String, value: String, color: Int, tint: Int) {
@@ -656,7 +666,7 @@ class ClusterPainter(context: Context) {
         c.drawRoundRect(b, h * 0.12f, h * 0.12f, fill)
         val inset = b.width() * 0.08f
         fill.color = tint
-        c.drawCircle(b.left + inset + h * 0.05f, b.top + h * 0.24f, h * 0.05f, fill)
+        c.drawRoundRect(RectF(b.left + inset, b.top + h * 0.19f, b.left + inset + h * 0.1f, b.top + h * 0.29f), h * 0.025f, h * 0.025f, fill)
         label(h * 0.16f)
         c.drawText(name, b.left + inset + h * 0.16f, b.top + h * 0.3f, text)
         number(h * 0.36f, if (value == "–") Colors.DIM else color)

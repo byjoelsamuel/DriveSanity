@@ -45,9 +45,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
     private val tick = object : Runnable {
         override fun run() {
+            val started = SystemClock.uptimeMillis()
             draw()
-            // ~15 fps is plenty for gauges; the map moves, so it gets 30.
-            handler.postDelayed(this, if (Prefs.layout(carContext) == Prefs.Layout.MAP || introStartMs != null) 33 else 66)
+            // About 30 frames a second on every screen, counting the time the drawing took.
+            handler.postDelayed(this, maxOf(4L, FRAME_MS - (SystemClock.uptimeMillis() - started)))
         }
     }
 
@@ -143,6 +144,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         surface = null
     }
 
+    private companion object {
+        const val FRAME_MS = 33L
+    }
+
     private fun draw() {
         // The phone changed something the buttons show.
         if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout) invalidate()
@@ -158,7 +163,9 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         }
         try {
             canvas.drawColor(if (Prefs.layout(carContext) == Prefs.Layout.RETRO) RetroPainter.BG else Colors.BG)
-            val area = if (visible.isEmpty) full else visible
+            // Android Auto's "visible area" leaves room at the top for the button strip even while it's
+            // hidden, which left a blank band. Draw up to the top edge; the buttons float over it when shown.
+            val area = if (visible.isEmpty) full else Rect(visible.left, full.top, visible.right, visible.bottom)
             painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
             introStartMs?.let { start ->
                 val t = (SystemClock.elapsedRealtime() - start) / 1000f

@@ -67,8 +67,16 @@ After a phone restart, Shizuku has to be started again before you can install: t
   Install in UnknownAuto again. If you haven't set Shizuku up yet, do the steps above.
 - **Shizuku won't pair:** keep the pairing box open, stay on Wi-Fi, allow notifications for
   Shizuku, and set its battery use to unrestricted.
-- **Installed fine, but not in the car:** the UnknownAuto message must be green. Reinstall
-  through UnknownAuto, then disconnect and reconnect Android Auto.
+- **Installed fine, but not in the car:** first, the UnknownAuto message must be green. If it
+  says "without the Play mark", Shizuku wasn't running (see above). If it's green, try these in
+  order:
+  1. In Android Auto's settings, tap **Version** about 10 times, open the three-dot menu →
+     **Developer settings** and turn on **Unknown sources**.
+  2. In Android Auto's settings, open **Customize launcher** and make sure DriveSanity is
+     ticked.
+  3. Force stop Android Auto (phone Settings → Apps), then reconnect to the car.
+  4. Update Android Auto and Google Play services.
+  5. Open DriveSanity once on the phone and allow location.
 - **Phone says it can't install over the old version:** the old one was installed a different
   way. Uninstall DriveSanity and install it again.
 - **Other trouble with UnknownAuto:** its own page has more help.
@@ -94,8 +102,9 @@ gear and the speed in the middle, g-force, battery, intake air and tires on the 
 
 ![The Gauges screen, with sample data](docs/car-screen.png)
 
-**Map**: directions in a box, and a live map that fades into the background, on the left. The
-instruments are on the right.
+**Map**: the map takes more than half the screen, with the next turn in a big box over its top
+edge and the rev bar underneath. On the right: speed and gear, how hard the accelerator and the
+brake are pressed, and coolant, battery and intake air.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
@@ -117,6 +126,9 @@ also shows the speed limit.
 
 *The map picture was made where the map server can't be reached, so its streets are a
 stand-in. In the app the map is the real OpenStreetMap.*
+
+Everything glides: bars and numbers ease to their new values between readings instead of
+jumping, and the car screen redraws about 30 times a second.
 
 ## OBD2
 
@@ -161,6 +173,16 @@ zone starts.
   to match your tachometer.
 - If you have exact gear ratios and the final drive, they can go into `CarProfiles` in
   `Cars.kt`.
+
+## Throttle and pedal
+
+Many cars, including newer Mazdas, move the throttle valve themselves to hold the revs, so the
+standard "throttle position" reading follows RPM, not your foot. The app asks the car for the
+accelerator pedal reading instead (the standard readings for pedal position and relative
+throttle), and uses the first one the car has. If the car has none of them, it takes the
+throttle valve and rescales it so idle reads 0% and the widest it has opened reads 100%, and
+that is only an estimate. **Setup → OBD2 adapter → Diagnostics** says which one is in use
+("Pedal reading").
 
 ## Fuel, tires and economy
 
@@ -228,8 +250,8 @@ Map data © OpenStreetMap contributors.
 
 - Hills show up as a small amount of acceleration, because the motion sensor can't tell a
   slope from speeding up.
-- Speed comes from GPS and updates about once a second. If GPS drops out, for example in a
-  tunnel, the car's own speed from OBD2 is used.
+- Speed comes from the car (OBD2) when the adapter is connected, since it updates several
+  times a second, and from GPS (once a second) when it isn't.
 - Keep your eyes on the road. The car screen is made for quick glances.
 
 ## For developers

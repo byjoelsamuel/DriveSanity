@@ -50,7 +50,7 @@ object Colors {
         return if (h <= 1f) mix(FG, SAND, h) else mix(SAND, RED, h - 1f)
     }
 
-    private fun mix(a: Int, b: Int, t: Float): Int {
+    fun mix(a: Int, b: Int, t: Float): Int {
         fun ch(x: Int, y: Int) = (x + (y - x) * t).roundToInt()
         return Color.rgb(
             ch(Color.red(a), Color.red(b)),
@@ -93,9 +93,34 @@ class DashPainter(context: Context) {
 
     private val appContext = context.applicationContext
 
+    private val smooth = Smoother()
+
     fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
-        drawScreen(c, r, s, units, layout)
+        smooth.frame()
+        drawScreen(c, r, eased(s), units, layout)
+        // Warnings go by the real readings, not the eased ones.
         if (Prefs.alerts(appContext)) drawAlerts(c, r, s, units, layout)
+    }
+
+    /**
+     * The readings come a few times a second; this fills in the frames between, so every bar and
+     * number on every screen glides to its new value. The speed does its own rolling.
+     */
+    private fun eased(s: Snapshot): Snapshot {
+        val lon = smooth.ease("lon", s.g?.lon, 0.05f)
+        val lat = smooth.ease("lat", s.g?.lat, 0.05f)
+        return s.copy(
+            rpm = smooth.ease("rpm", s.rpm, 0.07f),
+            throttlePct = smooth.ease("pedal", s.throttlePct, 0.07f),
+            coolantC = smooth.ease("coolant", s.coolantC, 0.5f),
+            intakeC = smooth.ease("intake", s.intakeC, 0.5f),
+            volts = smooth.ease("volts", s.volts, 0.5f),
+            fuelPct = smooth.ease("fuel", s.fuelPct, 0.8f),
+            lambda = smooth.ease("lambda", s.lambda, 0.25f),
+            fuelLph = smooth.ease("lph", s.fuelLph, 0.4f),
+            fuelLper100 = smooth.ease("l100", s.fuelLper100, 0.4f),
+            g = if (lon != null && lat != null) CarG(lon, lat) else null,
+        )
     }
 
     /** The shift light along the top edge, and the most important warning as a flashing banner. */
