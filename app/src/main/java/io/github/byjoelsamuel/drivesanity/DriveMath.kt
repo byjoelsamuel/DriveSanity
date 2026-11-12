@@ -89,8 +89,11 @@ enum class BrakeLevel(val label: String, val from: Float) {
 
 /** The engine's rev range. Redline at 6,300; the limiter lets it rev to 8,000. */
 object Revs {
-    const val REDLINE = 6300f
-    const val MAX = 8000f
+    /** Where the red zone starts, in rpm. Follows the car picked in Setup. */
+    @Volatile var REDLINE = 6300f
+
+    /** The top of the rev scale. */
+    @Volatile var MAX = 8000f
 
     /**
      * How "hot" the RPM bar is at [rpm]: 0 is white, 1 is yellow, 2 is red. White up to 55 % of
@@ -138,17 +141,6 @@ class GearTable(
         }
     }
 }
-
-/**
- * Joel's car: 2023 Mazda3 2.5 sedan (non-turbo), AWD, SKYACTIV-Drive 6-speed automatic,
- * on the Premium trim's 215/45R18 tyres. Ratios and the AWD final drive are from Mazda's 2023
- * spec sheet. For another car, change these (or set this to null to learn the gears instead).
- */
-val MY_CAR: GearTable? = GearTable.fromGearbox(
-    gears = listOf(3.55, 2.02, 1.35, 1.00, 0.74, 0.60),
-    finalDrive = 3.626,
-    tyreWidthMm = 215, aspect = 45, rimInches = 18,
-)
 
 /**
  * Works out the gear from speed and RPM, with nothing to set up. In each gear, km/h per 1,000

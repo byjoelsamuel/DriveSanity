@@ -66,6 +66,10 @@ class MainActivity : ComponentActivity(), PhoneActions {
 
     override fun setStartupAnim(on: Boolean) = Prefs.setStartupAnim(this, on)
 
+    override fun setCar(id: String) = DriveEngine.setCar(this, id)
+
+    override fun setRedline(rpm: Float) = DriveEngine.setRedline(this, rpm)
+
     override fun setCarLayout(layout: Prefs.Layout) {
         while (Prefs.layout(this) != layout) Prefs.toggleLayout(this)
     }

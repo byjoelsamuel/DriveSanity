@@ -59,9 +59,19 @@ object Prefs {
         prefs(ctx).edit { putString("layout", next.name) }
     }
 
-    fun gears(ctx: Context): String = prefs(ctx).getString("gears", "") ?: ""
+    /** Gears learned while driving, kept per car so switching cars doesn't mix them up. */
+    fun gears(ctx: Context, carId: String): String = prefs(ctx).getString("gears_$carId", "") ?: ""
 
-    fun saveGears(ctx: Context, saved: String) = prefs(ctx).edit { putString("gears", saved) }
+    fun saveGears(ctx: Context, carId: String, saved: String) = prefs(ctx).edit { putString("gears_$carId", saved) }
+
+    fun carId(ctx: Context): String = prefs(ctx).getString("car", CarProfiles.DEFAULT_ID) ?: CarProfiles.DEFAULT_ID
+
+    fun setCarId(ctx: Context, id: String) = prefs(ctx).edit { putString("car", id) }
+
+    /** The owner's own redline for a car, or null to use the profile's. */
+    fun redline(ctx: Context, carId: String): Float? = prefs(ctx).getFloat("redline_$carId", 0f).takeIf { it > 0f }
+
+    fun setRedline(ctx: Context, carId: String, rpm: Float) = prefs(ctx).edit { putFloat("redline_$carId", rpm) }
 
     fun startupAnim(ctx: Context): Boolean = prefs(ctx).getBoolean("startup_anim", true)
 

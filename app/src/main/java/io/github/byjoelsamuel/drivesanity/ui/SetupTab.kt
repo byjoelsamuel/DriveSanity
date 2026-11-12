@@ -1,6 +1,16 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.Alignment
+import io.github.byjoelsamuel.drivesanity.CarProfiles
+import io.github.byjoelsamuel.drivesanity.Revs
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -54,6 +64,52 @@ fun SetupTab(
     ) {
         Spacer(Modifier.height(12.dp))
         Text("Setup", style = MaterialTheme.typography.titleLarge, color = Ui.fg)
+
+        SectionTitle("My car")
+        InfoCard {
+            val ctx = LocalContext.current
+            val car = CarProfiles.byId(Prefs.carId(ctx))
+            Text(
+                "Sets how the gear is worked out and where the red zone starts on the rev bar.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(6.dp))
+            for (p in CarProfiles.all) {
+                val on = p.id == car.id
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { actions.setCar(p.id) }.padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(16.dp).clip(CircleShape).background(if (on) Ui.accent else Ui.line))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.name, style = MaterialTheme.typography.titleSmall, color = if (on) Ui.fg else Ui.dim)
+                        Text(p.subtitle, style = MaterialTheme.typography.bodySmall, color = Ui.dim)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(car.note, style = MaterialTheme.typography.bodySmall, color = Ui.dim)
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Redline", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+                    Text("%,d rpm".format(Revs.REDLINE.roundToInt()), style = MaterialTheme.typography.titleMedium, color = Ui.fg)
+                }
+                OutlinedButton(onClick = { actions.setRedline(Revs.REDLINE - 100f) }) { Text("−") }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(onClick = { actions.setRedline(Revs.REDLINE + 100f) }) { Text("+") }
+            }
+            if (!car.redlineChecked && Prefs.redline(ctx, car.id) == null) {
+                Text(
+                    "This is a starting guess. Use − and + to match the red zone on your tachometer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Ui.sand,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
 
         SectionTitle("Calibration")
         InfoCard {

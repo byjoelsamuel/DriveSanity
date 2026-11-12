@@ -127,10 +127,14 @@ class ClusterPainter(context: Context) {
         val h = b.height()
         val cx = b.centerX()
         // Gear: the biggest thing on the screen.
-        number(h * (if (s.gear == null) 0.3f else 0.52f), if (s.gear == null) Colors.GRID else Colors.FG, Paint.Align.CENTER)
-        c.drawText(s.gear?.toString() ?: "–", cx, b.top + h * 0.43f, text)
+        number(
+            h * (if (s.gear == null) 0.3f else 0.52f),
+            when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG },
+            Paint.Align.CENTER,
+        )
+        c.drawText(s.gearText, cx, b.top + h * 0.43f, text)
         label(h * 0.06f, Colors.DIM, Paint.Align.CENTER)
-        c.drawText("GEAR", cx, b.top + h * 0.5f, text)
+        c.drawText(if (s.gearless) "NO FIXED GEARS" else "GEAR", cx, b.top + h * 0.5f, text)
         fill.color = Colors.GRID
         val lineH = max(2f, h * 0.006f)
         c.drawRect(cx - b.width() * 0.3f, b.top + h * 0.53f, cx + b.width() * 0.3f, b.top + h * 0.53f + lineH, fill)
@@ -193,10 +197,11 @@ class ClusterPainter(context: Context) {
     }
 
     private fun rpmColor(f: Float): Int {
+        // Sage up to about 70 % of the redline, then sand, clay and red.
         val rpm = f * Revs.MAX
         return when {
-            rpm < 4500f -> Colors.GOOD
-            rpm < 6000f -> Colors.SAND
+            rpm < Revs.REDLINE * 0.71f -> Colors.GOOD
+            rpm < Revs.REDLINE * 0.95f -> Colors.SAND
             rpm < Revs.REDLINE -> Colors.CLAY
             else -> Colors.RED
         }
@@ -303,8 +308,8 @@ class ClusterPainter(context: Context) {
         val gx = b.left + speedW + b.width() * 0.04f
         label(h * 0.11f)
         c.drawText("GEAR", gx, b.top + h * 0.2f, text)
-        number(h * 0.62f, if (s.gear == null) Colors.GRID else Colors.FG)
-        c.drawText(s.gear?.toString() ?: "–", gx, b.top + h * 0.84f, text)
+        number(h * (if (s.gear == null) 0.3f else 0.62f), when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG })
+        c.drawText(s.gearText, gx, b.top + h * 0.84f, text)
     }
 
     /**

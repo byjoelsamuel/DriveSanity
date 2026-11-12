@@ -33,6 +33,8 @@ interface PhoneActions {
     fun swapUnits()
     fun setCarLayout(layout: Prefs.Layout)
     fun setStartupAnim(on: Boolean)
+    fun setCar(id: String)
+    fun setRedline(rpm: Float)
     fun pickObd()
     fun readCodes()
     fun probeCar()
