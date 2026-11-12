@@ -282,3 +282,28 @@ class SessionTest {
         assertEquals(0.0, Session(emptyList(), emptyList()).distanceM, 0.0)
     }
 }
+
+class ShareTrimTest {
+    private fun line(lonSteps: Int): Session {
+        // A straight line east, one point every 50 m, starting at "home".
+        val mLon = 111_320.0 * Math.cos(Math.toRadians(40.0))
+        val pts = (0..lonSteps).map {
+            SessionPoint(it * 5.0, 40.0, -119.0 + it * 50.0 / mLon, 50f, null, null, 0f, 0f, 0f, null)
+        }
+        return Session(pts, emptyList())
+    }
+
+    @org.junit.Test
+    fun theEndsAreLeftOut() {
+        val s = line(40) // 2 km
+        val trimmed = s.trimmedPath(250.0)
+        org.junit.Assert.assertEquals(s.path.size - 2 * 5 - 1 + 1, trimmed.size + 0) // 250 m is 5 points each end, the 250 m point itself kept
+        org.junit.Assert.assertTrue(trimmed.first().t >= 25.0)
+        org.junit.Assert.assertTrue(trimmed.last().t <= s.path.last().t - 25.0)
+    }
+
+    @org.junit.Test
+    fun aShortDriveShowsNoPathAtAll() {
+        org.junit.Assert.assertTrue(line(10).trimmedPath(250.0).isEmpty()) // 500 m: the ends would be everything
+    }
+}
