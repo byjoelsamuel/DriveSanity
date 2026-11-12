@@ -2,9 +2,13 @@ package io.github.byjoelsamuel.drivesanity.map
 
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.TextUtils
 import android.text.TextPaint
@@ -33,7 +37,6 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
     }
     private val text = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val tilePaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val clip = Path()
     private val path = Path()
     private val dst = RectF()
 
@@ -41,23 +44,27 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
     private var cachedZoom = -1
     private var routeWorld = DoubleArray(0)
 
-    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units) {
-        val corner = min(r.width(), r.height()) * 0.05f
-        c.save()
-        clip.reset()
-        clip.addRoundRect(r, corner, corner, Path.Direction.CW)
-        c.clipPath(clip)
-        fill.color = MAP_BG
-        c.drawRect(r, fill)
+    private val fadePaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
 
+    /** The map, with its edges fading into whatever is behind it. The speed limit sign stays crisp on top. */
+    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+        val layer = c.saveLayer(r, null)
         val pos = s.position
         if (pos == null) {
-            label(r.height() * 0.06f, Colors.DIM, Paint.Align.CENTER)
+            label(r.height() * 0.07f, Colors.DIM, Paint.Align.CENTER)
             c.drawText("Waiting for GPS…", r.centerX(), r.centerY(), text)
-            c.restore()
-            return
+        } else {
+            drawWorld(c, r, s, pos)
         }
+        fadeEdges(c, r)
+        c.restoreToCount(layer)
+        if (pos != null) drawLimit(c, r, units)
+        val inset = min(r.width(), r.height()) * 0.05f
+        label(r.height() * 0.035f, Colors.DIM, Paint.Align.LEFT)
+        c.drawText("© OpenStreetMap", r.left + inset, r.bottom - inset * 0.6f, text)
+    }
 
+    private fun drawWorld(c: Canvas, r: RectF, s: Snapshot, pos: LatLon) {
         // Closer in when slow, further out on the highway.
         val kmh = (s.speedMps ?: 0f) * 3.6f
         val zoom = when {
@@ -65,7 +72,7 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
             kmh < 80f -> 16
             else -> 15
         }
-        val k = (min(r.width(), r.height()) / 380f).coerceIn(1f, 2.6f)
+        val k = (min(r.width(), r.height()) / 320f).coerceIn(1.1f, 3f)
         val carX = r.centerX()
         val carY = r.top + r.height() * 0.66f
         val wx = Geo.worldX(pos.lon, zoom)
@@ -86,14 +93,21 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         }
         Nav.route?.let { drawRoute(c, it, zoom, wx, wy, carX, carY, k) }
         c.restore()
-
         drawCar(c, carX, carY, 11f * k)
-        drawBanner(c, r, units)
-        drawLimit(c, r, units)
+    }
 
-        label(r.height() * 0.032f, Colors.DIM, Paint.Align.LEFT)
-        c.drawText("© OpenStreetMap", r.left + corner * 0.6f, r.bottom - corner * 0.5f, text)
-        c.restore()
+    /** Rubs out the outer fifth of each edge, fading in, so the map has no border. */
+    private fun fadeEdges(c: Canvas, r: RectF) {
+        val f = min(r.width(), r.height()) * 0.2f
+        fun edge(x0: Float, y0: Float, x1: Float, y1: Float, area: RectF) {
+            fadePaint.shader = LinearGradient(x0, y0, x1, y1, Color.BLACK, Color.TRANSPARENT, Shader.TileMode.CLAMP)
+            c.drawRect(area, fadePaint)
+        }
+        // The rubbed-out strips reach 2 px past the edges, so no hairline of tile is left on them.
+        edge(r.left, 0f, r.left + f, 0f, RectF(r.left - 2, r.top - 2, r.left + f, r.bottom + 2))
+        edge(r.right, 0f, r.right - f, 0f, RectF(r.right - f, r.top - 2, r.right + 2, r.bottom + 2))
+        edge(0f, r.top, 0f, r.top + f, RectF(r.left - 2, r.top - 2, r.right + 2, r.top + f))
+        edge(0f, r.bottom, 0f, r.bottom - f, RectF(r.left - 2, r.bottom - f, r.right + 2, r.bottom + 2))
     }
 
     private fun drawRoute(c: Canvas, route: Route, zoom: Int, wx: Double, wy: Double, cx: Float, cy: Float, k: Float) {
@@ -134,37 +148,35 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         c.drawPath(path, stroke)
     }
 
-    /** Next turn, how far, and what's left; or a short message ("Finding a route…"). */
-    private fun drawBanner(c: Canvas, r: RectF, units: Units) {
+    /**
+     * The next turn in a box of its own: the arrow, the distance, the instruction with the street
+     * name, and what's left of the trip. Or a short message ("Finding a route…").
+     */
+    fun drawDirections(c: Canvas, b: RectF, units: Units) {
         val route = Nav.route
         val msg = Nav.message
         if (route == null && msg == null) return
-        val m = r.width() * 0.04f
-        val h = r.height() * (if (route != null) 0.22f else 0.12f)
-        val b = RectF(r.left + m, r.top + m, r.right - m, r.top + m + h)
+        val h = b.height()
         fill.color = Colors.BOX
-        fill.alpha = 240
         c.drawRoundRect(b, h * 0.18f, h * 0.18f, fill)
-        fill.alpha = 255
-
         if (route == null || route.steps.isEmpty()) {
-            label(h * 0.38f, Colors.FG, Paint.Align.LEFT)
-            val line = TextUtils.ellipsize(msg ?: "", text, b.width() - h * 0.5f, TextUtils.TruncateAt.END)
-            c.drawText(line, 0, line.length, b.left + h * 0.25f, b.centerY() + h * 0.13f, text)
+            value(h * 0.3f, Colors.FG, Paint.Align.LEFT)
+            val line = TextUtils.ellipsize(msg ?: "", text, b.width() - h * 0.6f, TextUtils.TruncateAt.END)
+            c.drawText(line, 0, line.length, b.left + h * 0.3f, b.centerY() + h * 0.1f, text)
             return
         }
         val step = route.steps[Nav.next]
-        val icon = h * 0.62f
-        drawArrow(c, step.arrow, b.left + h * 0.2f + icon / 2, b.centerY(), icon)
+        val icon = h * 0.6f
+        drawArrow(c, step.arrow, b.left + h * 0.15f + icon / 2, b.centerY(), icon)
         val tx = b.left + h * 0.3f + icon
-        value(h * 0.3f, Colors.FG, Paint.Align.LEFT)
-        c.drawText(distance(Nav.toNextM, units), tx, b.top + h * 0.38f, text)
+        value(h * 0.34f, Colors.FG, Paint.Align.LEFT)
+        c.drawText(distance(Nav.toNextM, units), tx, b.top + h * 0.4f, text)
         label(h * 0.2f, Colors.FG, Paint.Align.LEFT)
-        val what = TextUtils.ellipsize(step.text, text, b.right - tx - h * 0.15f, TextUtils.TruncateAt.END)
-        c.drawText(what, 0, what.length, tx, b.top + h * 0.63f, text)
-        label(h * 0.17f, Colors.DIM, Paint.Align.LEFT)
+        val what = TextUtils.ellipsize(step.text, text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
+        c.drawText(what, 0, what.length, tx, b.top + h * 0.68f, text)
+        label(h * 0.15f, Colors.DIM, Paint.Align.LEFT)
         val left = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min · ETA ${Nav.arrivalTime()}"
-        c.drawText(left, tx, b.top + h * 0.86f, text)
+        c.drawText(left, tx, b.top + h * 0.9f, text)
     }
 
     private fun drawArrow(c: Canvas, a: Arrow, cx: Float, cy: Float, size: Float) {

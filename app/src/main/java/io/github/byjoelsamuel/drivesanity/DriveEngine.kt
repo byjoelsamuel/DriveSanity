@@ -50,6 +50,8 @@ data class Snapshot(
     /** Learned from speed and RPM; null until it knows. */
     val gear: Int? = null,
     val throttlePct: Float? = null,
+    /** Tire pressures in PSI (front left, front right, rear left, rear right); null until the car can tell us. */
+    val tires: List<Float?> = listOf(null, null, null, null),
 )
 
 /**
@@ -164,6 +166,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         headingDeg = heading,
         gear = gear,
         throttlePct = Obd.throttlePct,
+        tires = Obd.tirePsi,
     )
 
     // --- who's using it ---------------------------------------------------------------------

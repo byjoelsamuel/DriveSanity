@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import io.github.byjoelsamuel.drivesanity.DashView
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Units
+import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 
 @Composable
@@ -42,6 +44,11 @@ fun SetupTab(
     @Suppress("UNUSED_PARAMETER") tick: Long, // the OBD2 status line is live
     actions: PhoneActions,
 ) {
+    // The fault codes and extra readings are only asked for while this screen is open.
+    DisposableEffect(Unit) {
+        Obd.wantDiagnostics("phone", true)
+        onDispose { Obd.wantDiagnostics("phone", false) }
+    }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
@@ -82,6 +89,15 @@ fun SetupTab(
             Text("Diagnostics", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
             Text(Obd.report(), style = MaterialTheme.typography.bodySmall, color = Ui.dim)
             Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Fuel level and tire pressure aren't in the standard data your Mazda shares. This asks the instrument cluster for the few readings other Mazdas have answered with. It only reads, and changes nothing. Do it parked with the engine running; the replies appear in Diagnostics above.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = actions::probeCar, enabled = Obd.status.link == Obd.Link.LIVE) { Text("Ask the car for fuel and tires") }
+            Spacer(Modifier.height(8.dp))
             Row {
                 Button(onClick = actions::pickObd) { Text(if (obdName == null) "Choose adapter" else "Change adapter") }
                 if (obdName != null) {
@@ -89,6 +105,32 @@ fun SetupTab(
                     TextButton(onClick = actions::forgetObd) { Text("Forget $obdName", color = Ui.clay) }
                 }
             }
+        }
+
+        SectionTitle("Fault codes")
+        InfoCard {
+            val report = Obd.dtcReport
+            val live = Obd.status.link == Obd.Link.LIVE
+            when {
+                !live -> Text("Connect the adapter to read the car's fault codes.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                report == null -> Text("Reading…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                else -> {
+                    val lamp = when (report.milOn) { true -> "on"; false -> "off"; null -> "unknown" }
+                    Text(
+                        if (report.all.isEmpty()) "No fault codes. Check-engine lamp $lamp." else "${report.all.size} fault code(s). Check-engine lamp $lamp.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (report.all.isEmpty()) Ui.good else Ui.fg,
+                    )
+                    for (code in report.all) {
+                        Row(Modifier.padding(top = 6.dp)) {
+                            Text(code, style = MaterialTheme.typography.titleSmall, color = Ui.sand, modifier = Modifier.width(72.dp))
+                            Text(Dtc.describe(code), style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = actions::readCodes, enabled = live) { Text("Read codes again") }
         }
 
         SectionTitle("Units")
@@ -119,9 +161,10 @@ fun SetupTab(
             Spacer(Modifier.height(8.dp))
             Text(
                 when (carLayout) {
-                    Prefs.Layout.GAUGES -> "Speed, braking, RPM, the four boxes, a g-meter and fuel."
-                    Prefs.Layout.MAP -> "A live map with directions, plus gear, speed, RPM and fuel."
+                    Prefs.Layout.GAUGES -> "A digital cluster: bar gauges for RPM, throttle, coolant and fuel, a huge gear number, speed, g-force and tire pressures."
+                    Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
                     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
+                    Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,

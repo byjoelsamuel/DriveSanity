@@ -8,32 +8,45 @@ The phone and the car each get their own view:
 - **On the phone**, a regular app with three tabs: **Drive** (live numbers in plain words),
   **Trips** (this trip's stats and your recordings) and **Setup** (calibration, OBD2, units,
   and which screen the car shows).
-- **In the car**, a full-screen dashboard. Pick one of three in Setup → Car screen:
+- **In the car**, a full-screen dashboard. Pick one of four in Setup → Car screen, or with the
+  button at the top of the car screen:
 
-![The Android Auto screen, with sample data](docs/car-screen.png)
+**Gauges**: a digital cluster. Bar gauges for RPM, throttle, coolant and fuel on the left, a huge
+gear number and the speed in the middle, g-force, battery, intake air and tire pressures on the
+right. No round dials.
 
-- **Gauges** (above): the everyday screen.
-- **Map:** a live map with simple navigation.
-- **Retro:** everything in Saab green, after early-2000s dashboards.
+![The Gauges screen, with sample data](docs/car-screen.png)
+
+**Map**: directions in their own box and a live map that fades into the background take the left
+half. Speed, gear, RPM, brake and the rest are on the right.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
 *This picture was made where the map server can't be reached, so its streets are a stand-in.
 In the app the map is the real OpenStreetMap.*
 
+**Retro**: everything in Saab green, after early-2000s dashboards.
+
 ![The retro screen, with sample data](docs/retro-screen.png)
+
+**OBD2**: the check-engine lamp, fault codes, live engine readings and facts about the car and
+the adapter. For parked moments.
+
+![The OBD2 screen, with sample data](docs/obd-screen.png)
 
 ## What you see
 
-- **Speed** in MPH, with km/h underneath.
+- **Speed** in MPH, with km/h underneath. The number counts up and down smoothly and its digits
+  roll like an odometer, with a motion smear while it's changing fast.
 - **Brake**: how hard you're braking, from light to very hard.
-- **RPM**: a big round dial that goes from white to sand to red as you near the 6,300 rpm redline, with the speed and gear inside it.
-- **G-meter**: a dot that moves when you speed up, brake or turn.
-- **Coolant and fuel**: ring gauges on the left.
-- **Slim readouts**: throttle, battery voltage, intake air temperature and trip distance.
+- **RPM** and **throttle**, as bars that go from green to sand to red toward the 6,300 rpm redline.
+- **Coolant, fuel, battery and intake air**, as bars or boxes. Coolant shows blue while the engine
+  is cold.
+- **Gear**, worked out from speed and RPM.
+- **G-force**, a dot that moves when you speed up, brake or turn.
+- **Tire pressures**, once the car can tell us (see below).
 
-The map screen swaps the g-meter for a map, and shows the gear you're in, the speed limit
-and the next turn when you're navigating.
+The map screen adds directions, a live map and the speed limit.
 
 The phone also shows trip stats: distance, average and top speed, peak g-force, and a count
 of hard brakes, launches and turns.
@@ -54,7 +67,8 @@ flowchart LR
 |---|---|
 | Speed | Phone GPS. If GPS drops out, for example in a tunnel, the car's own speed from OBD2 |
 | Braking and g-force | The phone's motion sensor |
-| RPM, fuel, temperatures, battery | The OBD2 adapter |
+| RPM, throttle, temperatures, battery | The OBD2 adapter |
+| Fault codes and the OBD2 screen's readings | The OBD2 adapter |
 | Gear | Worked out from speed and RPM (see below) |
 | Map, routes, address search, speed limits | OpenStreetMap, through free public services |
 
@@ -97,6 +111,36 @@ don't report fuel level; if yours doesn't, the fuel meter will say so.
 - **Setup → OBD2 adapter → Diagnostics** shows how many times the link restarted and why.
   "Adapter stopped answering" points at the adapter or the car; "Adapter disconnected" means
   Bluetooth dropped.
+
+## Fuel level and tire pressure
+
+Your car's standard OBD2 data doesn't include these. A 2023 Mazda3 doesn't list the standard
+fuel-level reading, and tire pressures aren't part of the standard data on any car. They live in
+the car's own modules and need manufacturer-specific requests, which differ from model to model.
+I couldn't find a verified set for the 2019+ Mazda3.
+
+So the fuel gauge and the tire readouts show a dash until that's sorted out. To help with it,
+**Setup → OBD2 adapter → Ask the car for fuel and tires** sends a handful of read-only
+requests that people have used on other Mazdas, and shows the raw replies under Diagnostics.
+Compare them with the numbers the car's own screen shows (fuel in the cluster, tire pressures in
+Information → Vehicle Status Monitor) and the right decoding can be filled in.
+
+## The OBD2 screen
+
+The fourth car screen. It shows:
+
+- **Fault codes**: whether the check-engine lamp is on, and the stored, pending and permanent
+  codes with a short meaning. The app reads them when it connects and every minute while the
+  screen is open. **Read codes** at the top of the car screen reads them now. It never clears
+  codes.
+- **Live data**: short and long fuel trim, air flow, manifold pressure, timing, commanded
+  air/fuel ratio, outside temperature and how long the engine has been on. Only the readings
+  your car supports appear, and they're only asked for while this screen (or Setup) is open, so
+  they don't slow down RPM.
+- **Car**: the protocol, battery voltage, VIN, how many readings the car supports, how many
+  times the link restarted, and the tire pressures.
+
+The fault codes are also in **Setup → Fault codes** on the phone.
 
 ## The startup animation
 

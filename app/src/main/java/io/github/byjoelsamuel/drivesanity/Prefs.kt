@@ -40,7 +40,8 @@ object Prefs {
     enum class Layout(val title: String) {
         GAUGES("Gauges"),
         MAP("Map"),
-        RETRO("Retro");
+        RETRO("Retro"),
+        DIAG("OBD2");
 
         val next get() = entries[(ordinal + 1) % entries.size]
     }

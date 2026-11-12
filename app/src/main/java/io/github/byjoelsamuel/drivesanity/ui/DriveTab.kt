@@ -41,6 +41,7 @@ import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Revs
 import io.github.byjoelsamuel.drivesanity.Snapshot
+import io.github.byjoelsamuel.drivesanity.Tpms
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
 import io.github.byjoelsamuel.drivesanity.map.MapView
@@ -340,6 +341,35 @@ private fun EngineCards(s: Snapshot, units: Units) {
         }
         InfoCard(title = "Trip") {
             BigValue(oneDecimal(units.distance(s.tripM)), units.distanceLabel)
+        }
+        InfoCard(title = "Tires (${Tpms.unit(units)})") {
+            Row(Modifier.fillMaxWidth()) {
+                for (i in 0 until 4) {
+                    val psi = s.tires.getOrNull(i)
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            Tpms.text(psi, units),
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = when {
+                                psi == null -> Ui.dim
+                                Tpms.level(psi) == 2 -> Ui.red
+                                Tpms.level(psi) == 1 -> Ui.sand
+                                else -> Ui.fg
+                            },
+                        )
+                        Text(Tpms.NAMES[i], style = MaterialTheme.typography.labelSmall, color = Ui.dim)
+                    }
+                }
+            }
+            if (s.tires.all { it == null }) {
+                Text(
+                    "Not readable from this car yet. Setup → OBD2 adapter has a test that can help.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Ui.dim,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 }

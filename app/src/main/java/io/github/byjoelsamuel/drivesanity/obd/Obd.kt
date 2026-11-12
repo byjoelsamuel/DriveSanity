@@ -36,6 +36,34 @@ object Obd {
     @Volatile var lastProblem: String? = null
         private set
 
+    // The OBD2 screen's extra readings and fault codes are only asked for while something shows them.
+    @Volatile private var diagFromCar = false
+    @Volatile private var diagFromPhone = false
+    private val diagnosticsOn get() = diagFromCar || diagFromPhone
+
+    fun wantDiagnostics(from: String, on: Boolean) {
+        if (from == "car") diagFromCar = on else diagFromPhone = on
+    }
+
+    @Volatile var dtcReport: DtcReport? = null
+        private set
+    @Volatile var vin: String? = null
+        private set
+    @Volatile var protocol: String = ""
+        private set
+    @Volatile var probeResult: String? = null
+        private set
+    @Volatile private var readCodesRequested = false
+    @Volatile private var probeRequested = false
+
+    fun requestReadCodes() {
+        readCodesRequested = true
+    }
+
+    fun requestProbe() {
+        probeRequested = true
+    }
+
     private val readings = ConcurrentHashMap<String, Pair<Float, Long>>()
     private lateinit var app: Context
     @Volatile private var running = false
@@ -141,6 +169,8 @@ object Obd {
         live = session
         val id = session.start()
         supported = session.supported
+        protocol = session.protocolName
+        readCodesRequested = true
         status = Status(Link.LIVE, "${saved.name} · $id")
         poll(session)
     }
@@ -159,15 +189,20 @@ object Obd {
     /** RPM every round, one of the others in turn, fuel and battery every 10 s. */
     private fun poll(s: ObdSession) {
         val others = listOf(Pid.SPEED, Pid.THROTTLE, Pid.COOLANT, Pid.LOAD, Pid.INTAKE).filter { s.supports(it) }
+        val extras = listOf(Pid.TRIM_SHORT, Pid.TRIM_LONG, Pid.MAF, Pid.MAP, Pid.TIMING, Pid.AMBIENT, Pid.LAMBDA, Pid.RUNTIME)
+            .filter { s.supports(it) }
         var i = 0
         var slowAt = 0L
+        var codesAt = 0L
+        var vinTried = false
         var misses = 0
         failures = 0
         while (running) {
             val rpm = tolerate { s.read(Pid.RPM) }
             put("rpm", rpm)
-            if (others.isNotEmpty()) {
-                val pid = others[i++ % others.size]
+            val rotation = if (diagnosticsOn) others + extras else others
+            if (rotation.isNotEmpty()) {
+                val pid = rotation[i++ % rotation.size]
                 put(key(pid), tolerate { s.read(pid) })
             }
             val now = SystemClock.elapsedRealtime()
@@ -175,6 +210,19 @@ object Obd {
                 put("fuel", tolerate { s.read(Pid.FUEL) })
                 put("volts", tolerate { s.volts() })
                 slowAt = now + 10_000
+            }
+            if (readCodesRequested || (diagnosticsOn && now - codesAt > 60_000)) {
+                readCodesRequested = false
+                codesAt = now
+                tolerate { s.readDtcReport() }?.let { dtcReport = it }
+            }
+            if (diagnosticsOn && vin == null && !vinTried) {
+                vinTried = true
+                vin = tolerate { s.vin() }
+            }
+            if (probeRequested) {
+                probeRequested = false
+                probeResult = tolerate { s.probe().joinToString("\n") }
             }
             // The adapter stays powered with the engine off; stop hammering a sleeping car.
             misses = if (rpm == null && s.supports(Pid.RPM)) misses + 1 else 0
@@ -195,20 +243,19 @@ object Obd {
         null
     }
 
-    private fun key(pid: Pid) = when (pid) {
-        Pid.RPM -> "rpm"
-        Pid.SPEED -> "speed"
-        Pid.COOLANT -> "coolant"
-        Pid.INTAKE -> "intake"
-        Pid.THROTTLE -> "throttle"
-        Pid.LOAD -> "load"
-        Pid.FUEL -> "fuel"
-    }
+    private fun key(pid: Pid) = pid.name.lowercase()
+
+    /** The readings the car sends. */
+    fun extra(p: Pid): Float? = value(p.name.lowercase(), 15_000)
+
+    /** Tire pressures in PSI: front left, front right, rear left, rear right. */
+    val tirePsi: List<Float?> get() = listOf("tire_fl", "tire_fr", "tire_rl", "tire_rr").map { value(it, 30_000) }
 
     /** What the car has said, for the Setup screen. */
     fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.") +
         "Link dropped and restarted: $reconnects times since the app opened\n" +
-        (lastProblem?.let { "Last problem: $it\n" } ?: "")
+        (lastProblem?.let { "Last problem: $it\n" } ?: "") +
+        (probeResult?.let { "\nMazda-specific probe:\n$it\n" } ?: "")
 
     fun hasBluetoothPermission(ctx: Context): Boolean =
         Build.VERSION.SDK_INT < 31 ||

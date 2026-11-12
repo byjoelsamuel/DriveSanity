@@ -43,7 +43,7 @@ class ElmTest {
         val fake = FakeElm(car)
         val s = ObdSession(fake)
         assertEquals("ELM327 v1.5", s.start())
-        assertEquals(listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "ATAT2", "0100", "0120", "0140"), fake.sent)
+        assertEquals(listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "ATAT2", "0100", "0120", "0140", "ATDP"), fake.sent)
         for (pid in listOf(Pid.RPM, Pid.SPEED, Pid.COOLANT, Pid.INTAKE, Pid.THROTTLE, Pid.LOAD, Pid.FUEL)) {
             assertTrue("$pid", s.supports(pid))
         }
@@ -86,5 +86,35 @@ class ElmTest {
         assertEquals(14.1f, Elm.volts("14.1V")!!, 0.01f)
         assertNull(Elm.volts("?"))
         assertEquals(setOf(0x01), Elm.supported("4100 80 00 00 00", 0x00))
+    }
+
+    @Test
+    fun `extra readings decode`() {
+        assertEquals(12.5f, Pid.TRIM_SHORT.value(intArrayOf(0x90))!!, 0.01f)
+        assertEquals(-25f, Pid.TRIM_LONG.value(intArrayOf(0x60))!!, 0.01f)
+        assertEquals(5f, Pid.MAF.value(intArrayOf(0x01, 0xF4))!!, 0.01f)
+        assertEquals(8f, Pid.TIMING.value(intArrayOf(0x90))!!, 0.01f)
+        assertEquals(1f, Pid.LAMBDA.value(intArrayOf(0x80, 0x00))!!, 0.001f)
+        assertEquals(21f, Pid.AMBIENT.value(intArrayOf(61))!!, 0.01f)
+    }
+
+    @Test
+    fun `reads the check engine lamp and fault codes`() {
+        val withCodes = car + mapOf(
+            "ATDP" to "AUTO, ISO 15765-4 (CAN 11/500)",
+            "0101" to "410183070000",
+            "03" to "430201330300",
+            "07" to "NO DATA",
+            "0A" to "430000000000".replace("43", "4A"),
+        )
+        val s = ObdSession(FakeElm(withCodes)).apply { start() }
+        assertEquals("ISO 15765-4 (CAN 11/500)", s.protocolName)
+        assertEquals(true to 3, s.milStatus())
+        val report = s.readDtcReport()
+        assertEquals(true, report.milOn)
+        assertEquals(3, report.count)
+        assertEquals(listOf("P0133", "P0300"), report.stored)
+        assertTrue(report.pending.isEmpty() && report.permanent.isEmpty())
+        assertEquals(listOf("P0133", "P0300"), report.all)
     }
 }

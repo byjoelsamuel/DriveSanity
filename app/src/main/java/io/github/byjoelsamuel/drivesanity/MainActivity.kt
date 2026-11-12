@@ -79,6 +79,16 @@ class MainActivity : ComponentActivity(), PhoneActions {
         showObdPicker(this)
     }
 
+    override fun readCodes() {
+        Obd.requestReadCodes()
+        toast("Reading fault codes…")
+    }
+
+    override fun probeCar() {
+        Obd.requestProbe()
+        toast("Asking the car. The answer shows in Setup in a few seconds.")
+    }
+
     override fun forgetObd() {
         Prefs.saveObdDevice(this, null)
         Obd.restart()
