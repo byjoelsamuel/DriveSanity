@@ -107,6 +107,23 @@ class MainActivity : ComponentActivity(), PhoneActions {
         toast("Reading fault codes…")
     }
 
+    override fun setDemo(on: Boolean) {
+        if (on) {
+            if (!io.github.byjoelsamuel.drivesanity.demo.Demo.start(this)) toast("Couldn't start the demo")
+        } else {
+            io.github.byjoelsamuel.drivesanity.demo.Demo.stop()
+        }
+    }
+
+    override fun setRawRecording(on: Boolean) {
+        DriveEngine.setRawRecording(this, on)
+        toast(if (on) "Recording a raw session" else "Saved")
+    }
+
+    override fun playRaw(file: File) {
+        if (!io.github.byjoelsamuel.drivesanity.demo.Demo.start(this, file)) toast("Couldn't play that file")
+    }
+
     override fun probeCar() {
         Obd.requestProbe()
         toast("Asking the car. The answer shows in Setup in a few seconds.")
@@ -134,7 +151,7 @@ class MainActivity : ComponentActivity(), PhoneActions {
         if (DriveEngine.recordingFile == file) return toast("Stop recording first")
         val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
         val send = Intent(Intent.ACTION_SEND)
-            .setType("text/csv")
+            .setType(if (file.name.endsWith(".csv")) "text/csv" else "text/plain")
             .putExtra(Intent.EXTRA_STREAM, uri)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(Intent.createChooser(send, file.name))

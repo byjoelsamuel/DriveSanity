@@ -102,6 +102,26 @@ object Prefs {
     }
 
     /** Flashing warnings and the shift light. */
+    /** True for the modern dark map (CARTO's Dark Matter); false for the classic OpenStreetMap look. */
+    fun modernMap(ctx: Context): Boolean = prefs(ctx).getBoolean("modern_map", true)
+
+    fun setModernMap(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("modern_map", on) }
+
+    /** Saved start/finish lines, as JSON (see Track). */
+    fun tracksJson(ctx: Context): String = prefs(ctx).getString("tracks", "[]") ?: "[]"
+
+    fun setTracksJson(ctx: Context, json: String) = prefs(ctx).edit { putString("tracks", json) }
+
+    /** Manufacturer-specific reads (fuel level, tire pressure) are off until the person turns them on. They are still only reads. */
+    fun advancedReads(ctx: Context): Boolean = prefs(ctx).getBoolean("advanced_reads", false)
+
+    fun setAdvancedReads(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("advanced_reads", on) }
+
+    /** Stop asking the car anything once it's switched off, so it can go to sleep. On unless the person turns it off. */
+    fun letCarSleep(ctx: Context): Boolean = prefs(ctx).getBoolean("let_car_sleep", true)
+
+    fun setLetCarSleep(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("let_car_sleep", on) }
+
     fun alerts(ctx: Context): Boolean = prefs(ctx).getBoolean("alerts", true)
 
     fun setAlerts(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("alerts", on) }

@@ -21,7 +21,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.produceState
 import io.github.byjoelsamuel.drivesanity.DriveEngine
+import io.github.byjoelsamuel.drivesanity.Session
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.hms
 import io.github.byjoelsamuel.drivesanity.oneDecimal
@@ -35,8 +40,15 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
     val st = DriveEngine.stats
     var confirmReset by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<File?>(null) }
+    var open by remember { mutableStateOf<File?>(null) }
 
-    Column(
+    // A recording opened up: its path, graphs and laps.
+    open?.takeIf { it.exists() }?.let { f ->
+        SessionScreen(f, units, onBack = { open = null }, onShare = { actions.share(f) }, onDelete = { deleting = f })
+    }
+    val showing = open?.takeIf { it.exists() }
+
+    if (showing == null) Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
         Spacer(Modifier.height(12.dp))
@@ -85,7 +97,7 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
         if (recordings.isEmpty()) {
             InfoCard {
                 Text(
-                    "Nothing recorded yet. Tap Start recording on the Drive tab and the drive is saved here as a spreadsheet (CSV) you can share.",
+                    "Nothing recorded yet. Tap Start recording on the Drive tab, or start lap timing on the Track tab, and the drive is saved here: tap it to see the path, graphs and laps, or share it as a spreadsheet (CSV).",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Ui.dim,
                 )
@@ -93,14 +105,7 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             for (f in recordings) {
-                InfoCard {
-                    Text(prettyName(f), style = MaterialTheme.typography.titleSmall, color = Ui.fg)
-                    Text("%.1f MB".format(f.length() / 1_000_000.0).replace("0.0 MB", "under 0.1 MB"), style = MaterialTheme.typography.bodySmall, color = Ui.dim)
-                    Row(Modifier.align(Alignment.End)) {
-                        TextButton(onClick = { actions.share(f) }) { Text("Share") }
-                        TextButton(onClick = { deleting = f }) { Text("Delete", color = Ui.clay) }
-                    }
-                }
+                RecordingCard(f, units, onOpen = { open = f }, onShare = { actions.share(f) }, onDelete = { deleting = f })
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -125,6 +130,29 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
             containerColor = Ui.raised,
         )
+    }
+}
+
+/** One recording in the list: when, how far and how fast, and how many laps; tap it to open it. */
+@Composable
+private fun RecordingCard(f: File, units: Units, onOpen: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
+    val session by produceState<Session?>(null, f) { value = withContext(Dispatchers.IO) { Session.read(f) } }
+    InfoCard(onClick = onOpen) {
+        Text(prettyName(f), style = MaterialTheme.typography.titleSmall, color = Ui.fg)
+        val s = session
+        Text(
+            if (s == null || s.points.isEmpty()) "%.1f KB".format(f.length() / 1000.0)
+            else buildString {
+                append("${oneDecimal(units.distance(s.distanceM))} ${units.distanceLabel} · ${hms(s.durationS)} · top ${units.speed(s.topKmh / 3.6f).roundToInt()} ${units.label}")
+                if (s.laps.isNotEmpty()) append(" · ${s.laps.size} laps")
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = Ui.dim,
+        )
+        Row(Modifier.align(Alignment.End)) {
+            TextButton(onClick = onShare) { Text("Share") }
+            TextButton(onClick = onDelete) { Text("Delete", color = Ui.clay) }
+        }
     }
 }
 

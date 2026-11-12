@@ -8,39 +8,68 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** One recording: a CSV file with a row every 0.1 s. */
+/**
+ * One recording: a CSV file that opens in a spreadsheet. It gets a row every five seconds, plus one
+ * whenever something happens (see [LogPolicy]), and every second while lap timing. The hardest
+ * braking, acceleration, cornering and the highest revs since the last row are written on each row,
+ * so the file stays small without losing the moments that matter. Laps go in a small file beside it.
+ */
 class TripLog private constructor(val file: File) {
     private val out = file.bufferedWriter()
     private val startMs = SystemClock.elapsedRealtime()
+    val policy = LogPolicy()
+
+    /** Laps timed during this recording, one line each. */
+    val lapsFile = File(file.path.removeSuffix(".csv") + ".laps")
+
+    private var peakBrake = 0f
+    private var peakAccel = 0f
+    private var peakLat = 0f
+    private var peakRpm = 0f
 
     init {
-        out.write("time_s,lat,lon,gps_speed_kmh,gps_accuracy_m,gps_accel_g,long_g,lat_g,brake_g,brake_level,rpm,obd_speed_kmh,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v\n")
+        out.write("time_s,lat,lon,speed_kmh,gps_accuracy_m,heading_deg,peak_brake_g,peak_accel_g,peak_lat_g,rpm,rpm_max,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v,lap\n")
     }
 
-    fun write(g: CarG, fix: Location?, speedMps: Float?, gpsAccelG: Float?) {
+    /** Called with every motion sample: remembers the biggest values until the next row. */
+    fun feed(g: CarG) {
+        if (g.brake > peakBrake) peakBrake = g.brake
+        if (g.lon > peakAccel) peakAccel = g.lon
+        if (kotlin.math.abs(g.lat) > peakLat) peakLat = kotlin.math.abs(g.lat)
+        Obd.rpm?.let { if (it > peakRpm) peakRpm = it }
+    }
+
+    fun write(fix: Location?, speedMps: Float?, headingDeg: Float?, lap: Int?) {
         val t = (SystemClock.elapsedRealtime() - startMs) / 1000.0
         val row = listOf(
-            "%.2f".format(Locale.US, t),
+            "%.1f".format(Locale.US, t),
             fix?.let { "%.6f".format(Locale.US, it.latitude) } ?: "",
             fix?.let { "%.6f".format(Locale.US, it.longitude) } ?: "",
             speedMps?.let { "%.1f".format(Locale.US, it * 3.6f) } ?: "",
             fix?.let { "%.0f".format(Locale.US, it.accuracy) } ?: "",
-            gpsAccelG?.let { "%.3f".format(Locale.US, it) } ?: "",
-            "%.3f".format(Locale.US, g.lon),
-            "%.3f".format(Locale.US, g.lat),
-            "%.3f".format(Locale.US, g.brake),
-            BrakeLevel.of(g.brake).name,
+            headingDeg?.let { "%.0f".format(Locale.US, it) } ?: "",
+            "%.2f".format(Locale.US, peakBrake),
+            "%.2f".format(Locale.US, peakAccel),
+            "%.2f".format(Locale.US, peakLat),
             num(Obd.rpm, "%.0f"),
-            num(Obd.speedKmh, "%.0f"),
-            num(Obd.pedalPct, "%.1f"),
-            num(Obd.loadPct, "%.1f"),
+            if (peakRpm > 0f) "%.0f".format(Locale.US, peakRpm) else "",
+            num(Obd.pedalPct, "%.0f"),
+            num(Obd.loadPct, "%.0f"),
             num(Obd.coolantC, "%.0f"),
             num(Obd.intakeC, "%.0f"),
-            num(Obd.fuelPct, "%.1f"),
+            num(Obd.fuelPct, "%.0f"),
             num(Obd.volts, "%.1f"),
+            lap?.toString() ?: "",
         )
         out.write(row.joinToString(","))
         out.write("\n")
+        peakBrake = 0f; peakAccel = 0f; peakLat = 0f; peakRpm = 0f
+    }
+
+    fun appendLap(trackName: String, lapNumber: Int, ms: Long, topKmh: Float) {
+        runCatching {
+            lapsFile.appendText("${trackName.replace(',', ' ')},$lapNumber,$ms,${"%.0f".format(Locale.US, topKmh)}\n")
+        }
     }
 
     private fun num(v: Float?, fmt: String) = v?.let { fmt.format(Locale.US, it) } ?: ""

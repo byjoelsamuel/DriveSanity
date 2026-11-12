@@ -29,6 +29,7 @@ class ClusterPainter(context: Context) {
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val map = MapPainter(labels, numbers)
+    private val sport = SportPainter(context)
     private val speedRoll = RollingNumber()
 
     private fun label(size: Float, color: Int = Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
@@ -179,80 +180,8 @@ class ClusterPainter(context: Context) {
         barRow(c, b, "ECONOMY", units.economyText(s.fuelLper100, s.fuelLph), frac, 14, ::rampColor)
     }
 
-    // ---------------------------------------------------------------------------------------
-    // Sport: the Gauges look with performance readings only. Engine on the left, gear and speed in
-    // the middle, g-force, braking and acceleration on the right. No temperatures, battery or tires.
-    // ---------------------------------------------------------------------------------------
-
-    fun drawSport(c: Canvas, r: RectF, s: Snapshot, units: Units) {
-        background(c, r)
-        val pad = r.height() * 0.035f
-        val body = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
-        val gap = body.width() * 0.035f
-        val sideW = body.width() * 0.285f
-        val left = RectF(body.left, body.top, body.left + sideW, body.bottom)
-        val right = RectF(body.right - sideW, body.top, body.right, body.bottom)
-        val mid = RectF(left.right + gap, body.top, right.left - gap, body.bottom)
-        sportLeft(c, left, s)
-        sportCentre(c, mid, s, units)
-        sportRight(c, right, s)
-    }
-
-    private fun sportLeft(c: Canvas, b: RectF, s: Snapshot) {
-        val rowH = b.height() / 4f
-        fun row(i: Int) = RectF(b.left, b.top + i * rowH, b.right, b.top + (i + 1) * rowH - rowH * 0.1f)
-        val rpm = s.rpm
-        barRow(c, row(0), "RPM", rpm?.let { "%,d".format((it / 50f).roundToInt() * 50) } ?: if (s.obdLive) "–" else "no OBD2", rpm?.div(Revs.MAX), 16, ::rpmColor)
-        val thr = s.throttlePct
-        barRow(c, row(1), "THROTTLE", thr?.let { "${it.roundToInt()}%" } ?: "–", thr?.div(100f), 14, ::rampColor)
-        val load = s.loadPct
-        barRow(c, row(2), "ENGINE LOAD", load?.let { "${it.roundToInt()}%" } ?: "–", load?.div(100f), 14, ::rampColor)
-        // 14.7 is ideal for petrol; below it the engine is running rich, above it lean.
-        val afr = if (s.petrol) s.lambda?.let { it * 14.7f } else null
-        barRow(c, row(3), "AIR / FUEL", afr?.let { "%.1f".format(it) } ?: "–", afr?.let { (it - 10f) / 8f }, 14, { f -> if (f < 0.4f) Colors.SAND else Colors.GOOD })
-    }
-
-    /** The gear, huge, with the speed under it. The gear goes sand near the redline and flashes red at the shift point. */
-    private fun sportCentre(c: Canvas, b: RectF, s: Snapshot, units: Units) {
-        val h = b.height()
-        val cx = b.centerX()
-        val level = Alerts.shiftLevel(s.rpm, Revs.REDLINE)
-        val flashOn = (Alerts.now() / 110) % 2 == 0L
-        val gearColor = when {
-            s.gearless -> Colors.DIM
-            s.gear == null -> Colors.GRID
-            level == 2 -> if (flashOn) Colors.RED else Colors.GRID
-            level == 1 -> Colors.SAND
-            else -> Colors.FG
-        }
-        number(h * (if (s.gear == null) 0.3f else 0.58f), gearColor, Paint.Align.CENTER)
-        c.drawText(s.gearText, cx, b.top + h * 0.47f, text)
-        label(h * 0.06f, Colors.DIM, Paint.Align.CENTER)
-        c.drawText(if (s.gearless) "NO FIXED GEARS" else "GEAR", cx, b.top + h * 0.55f, text)
-        fill.color = Colors.GRID
-        c.drawRect(cx - b.width() * 0.3f, b.top + h * 0.585f, cx + b.width() * 0.3f, b.top + h * 0.585f + max(2f, h * 0.006f), fill)
-        speedGroup(c, b, s, units, size = h * 0.3f, baseline = b.top + h * 0.92f, centred = true)
-    }
-
-    private fun sportRight(c: Canvas, b: RectF, s: Snapshot) {
-        val h = b.height()
-        val scopeSize = min(b.width() * 0.5f, h * 0.4f)
-        val g = s.g
-        label(h * 0.055f)
-        c.drawText("G-FORCE", b.left, b.top + h * 0.1f, text)
-        number(h * 0.11f, if (g == null) Colors.DIM else Colors.FG)
-        c.drawText(g?.let { "%.2f".format(it.total) } ?: "–", b.left, b.top + h * 0.24f, text)
-        scope(c, RectF(b.right - scopeSize, b.top, b.right, b.top + scopeSize), s)
-
-        val rowsTop = b.top + scopeSize + h * 0.05f
-        val rowH = (b.bottom - rowsTop) / 2f
-        fun row(i: Int) = RectF(b.left, rowsTop + i * rowH, b.right, rowsTop + (i + 1) * rowH - rowH * 0.1f)
-        val brake = g?.brake ?: 0f
-        val brakeColor = Colors.brake(BrakeLevel.of(brake)).let { if (BrakeLevel.of(brake) == BrakeLevel.NONE) Colors.GOOD else it }
-        barRow(c, row(0), "BRAKE", if (g == null) "–" else "%.2f g".format(brake), if (g == null) null else (brake / 0.8f).coerceIn(0f, 1f), 14, { f -> if (f < 0.3f) Colors.GOOD else brakeColor })
-        val accel = g?.let { maxOf(0f, it.lon) } ?: 0f
-        barRow(c, row(1), "ACCEL", if (g == null) "–" else "%.2f g".format(accel), if (g == null) null else (accel / 0.8f).coerceIn(0f, 1f), 14, ::rampColor)
-    }
+    // Sport lives in SportPainter.
+    fun drawSport(c: Canvas, r: RectF, s: Snapshot, units: Units) = sport.draw(c, r, s, units)
 
     /** A caption and a big value on one line, and a row of bar segments under them. */
     private fun barRow(c: Canvas, b: RectF, name: String, value: String, frac: Float?, n: Int, colorOf: (Float) -> Int) {

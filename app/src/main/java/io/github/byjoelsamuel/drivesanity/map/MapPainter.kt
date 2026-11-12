@@ -61,7 +61,7 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         if (pos != null) drawLimit(c, r, units)
         val inset = min(r.width(), r.height()) * 0.05f
         label(r.height() * 0.035f, Colors.DIM, Paint.Align.LEFT)
-        c.drawText("© OpenStreetMap", r.left + inset, r.bottom - inset * 0.6f, text)
+        c.drawText(Tiles.attribution, r.left + inset, r.bottom - inset * 0.6f, text)
     }
 
     private fun drawWorld(c: Canvas, r: RectF, s: Snapshot, pos: LatLon) {

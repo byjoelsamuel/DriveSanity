@@ -9,22 +9,44 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.os.SystemClock
 import android.util.LruCache
+import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.nav.Http
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * OpenStreetMap's standard map tiles, fetched as needed, kept on disk for a week and in memory,
- * and turned into a dark, grey version that matches the dashboard. Only tiles on screen are
- * asked for. Map data © OpenStreetMap contributors.
+ * Map tiles, fetched as needed, kept on disk for a week and in memory. Only tiles on screen are
+ * asked for. Two looks:
+ *
+ *  - Modern (the default): CARTO's "Dark Matter", a dark map that's already styled for this, fetched
+ *    at double resolution so it stays sharp on the car's screen.
+ *  - Classic: OpenStreetMap's standard tiles, turned into a dark grey version here.
+ *
+ * Map data © OpenStreetMap contributors, and for the modern look the style © CARTO.
  */
 object Tiles {
-    private const val URL = "https://tile.openstreetmap.org/%d/%d/%d.png"
+    private const val CLASSIC_URL = "https://tile.openstreetmap.org/%d/%d/%d.png"
+    private const val MODERN_URL = "https://%s.basemaps.cartocdn.com/dark_all/%d/%d/%d@2x.png"
     private const val WEEK_MS = 7L * 24 * 3600 * 1000
 
     private var dir: File? = null
-    private val memory = object : LruCache<String, Bitmap>(32 * 1024 * 1024) {
+
+    /** Which look is on. Changing it starts the map afresh, since the two don't share tiles. */
+    @Volatile var modern = true
+        private set
+
+    val attribution: String get() = if (modern) "© OpenStreetMap © CARTO" else "© OpenStreetMap"
+
+    fun setModern(on: Boolean) {
+        if (on == modern) return
+        modern = on
+        memory.evictAll()
+        failedAt.clear()
+        loading.clear()
+    }
+
+    private val memory = object : LruCache<String, Bitmap>(64 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
     private val loading = ConcurrentHashMap.newKeySet<String>()
@@ -44,6 +66,7 @@ object Tiles {
 
     fun init(context: Context) {
         if (dir == null) dir = File(context.cacheDir, "tiles")
+        modern = Prefs.modernMap(context)
     }
 
     /** The tile if it's ready; otherwise null, and it gets fetched in the background. */
@@ -51,30 +74,37 @@ object Tiles {
         val n = 1 shl z
         if (y !in 0 until n) return null
         val wx = ((x % n) + n) % n
-        val key = "$z/$wx/$y"
+        val key = (if (modern) "m" else "c") + "$z/$wx/$y"
         memory.get(key)?.let { return it }
         val failed = failedAt[key]
         if (failed != null && SystemClock.elapsedRealtime() - failed < 30_000) return null
         if (dir == null || !loading.add(key)) return null
-        pool.execute { load(key, z, wx, y) }
+        val isModern = modern
+        pool.execute { load(key, z, wx, y, isModern) }
         return null
     }
 
-    private fun load(key: String, z: Int, x: Int, y: Int) {
+    private fun load(key: String, z: Int, x: Int, y: Int, isModern: Boolean) {
         try {
             val file = File(dir, "$key.png")
             val bytes = if (file.exists() && System.currentTimeMillis() - file.lastModified() < WEEK_MS) {
                 file.readBytes()
             } else {
-                Http.get(URL.format(z, x, y)).also { b ->
+                Http.get(if (isModern) MODERN_URL.format("abcd"[(x + y) and 3].toString(), z, x, y) else CLASSIC_URL.format(z, x, y)).also { b ->
                     file.parentFile?.mkdirs()
                     file.writeBytes(b)
                 }
             }
             val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("bad tile")
-            val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
-            Canvas(out).drawBitmap(src, 0f, 0f, Paint().apply { colorFilter = darken })
-            src.recycle()
+            val out = if (isModern) {
+                src // already dark
+            } else {
+                Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also {
+                    Canvas(it).drawBitmap(src, 0f, 0f, Paint().apply { colorFilter = darken })
+                    src.recycle()
+                }
+            }
+            if (isModern != modern) return // the look was changed while this was loading
             memory.put(key, out)
             failedAt.remove(key)
         } catch (_: Exception) {

@@ -44,6 +44,8 @@ import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
+import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
+import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 
 @Composable
@@ -156,7 +158,10 @@ fun SetupTab(
                 color = Ui.dim,
             )
             Spacer(Modifier.height(8.dp))
-            Button(onClick = actions::probeCar, enabled = Obd.status.link == Obd.Link.LIVE) { Text("Ask the car for fuel and tires") }
+            Button(onClick = actions::probeCar, enabled = Obd.status.link == Obd.Link.LIVE && Prefs.advancedReads(LocalContext.current)) { Text("Ask the car for fuel and tires") }
+            if (!Prefs.advancedReads(LocalContext.current)) {
+                Text("Turn on \"Manufacturer-specific reads\" below first.", style = MaterialTheme.typography.bodySmall, color = Ui.sand)
+            }
             Spacer(Modifier.height(8.dp))
             Row {
                 Button(onClick = actions::pickObd) { Text(if (obdName == null) "Choose adapter" else "Change adapter") }
@@ -164,6 +169,97 @@ fun SetupTab(
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = actions::forgetObd) { Text("Forget $obdName", color = Ui.clay) }
                 }
+            }
+        }
+
+        SectionTitle("Read-only, and the car's battery")
+        InfoCard {
+            val ctx = LocalContext.current
+            Text(
+                "The app only ever asks the car questions. It never clears fault codes, changes a setting or starts a test; anything like that is blocked inside the app.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.fg,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Let the car sleep", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+            Text(
+                "Asking a car questions keeps its computers awake, which drains the battery and can stop a dashcam from going into parking mode. With this on, the app stops asking once the engine has been off for a little while and only reads the adapter's own voltage, then wakes when you open the app, drive off, or the voltage shows the engine running. Leave it on.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(8.dp))
+            var sleep by remember { mutableStateOf(Prefs.letCarSleep(ctx)) }
+            Segments(listOf("On", "Off"), if (sleep) 0 else 1) { sleep = it == 0; Prefs.setLetCarSleep(ctx, sleep) }
+            Spacer(Modifier.height(14.dp))
+            Text("Manufacturer-specific reads", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+            Text(
+                "Fuel level and tire pressure aren't in the standard data. This lets the app send the few extra read requests other Mazdas have answered. They are still only reads, and they are off until you turn them on.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(8.dp))
+            var adv by remember { mutableStateOf(Prefs.advancedReads(ctx)) }
+            Segments(listOf("Off", "On"), if (adv) 1 else 0) { adv = it == 1; Prefs.setAdvancedReads(ctx, adv) }
+            Text(
+                "Adapter: ${Prefs.obdDevice(ctx)?.name ?: "none chosen"}. Unplug it if the car sits for days, since cheap adapters keep drawing a little current.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        }
+
+        SectionTitle("Demo and raw recordings")
+        InfoCard {
+            val ctx = LocalContext.current
+            Text(
+                "Demo mode plays a made-up drive through the whole app in place of the car, the GPS and the motion sensor: three timed laps and a standing start. Every screen, the lap timer and the car screen run off it, so you can try the app or show it to someone with no car.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (s.demo) {
+                    Button(onClick = { actions.setDemo(false) }) { Text("Stop demo") }
+                    Spacer(Modifier.width(10.dp))
+                    Text("Playing", style = MaterialTheme.typography.bodyMedium, color = Ui.good)
+                } else {
+                    Button(onClick = { actions.setDemo(true) }) { Text("Start demo") }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("Record a raw session", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+            Text(
+                "Writes everything the GPS, the motion sensor and the adapter report into a small file you can send me for a bug report, or play back as a demo. It's off until you start it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(8.dp))
+            val rawOn = RawRecorder.on
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { actions.setRawRecording(!rawOn) }) { Text(if (rawOn) "Stop recording" else "Start recording") }
+                val last = RawRecorder.file
+                if (!rawOn && last != null && last.exists()) {
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { actions.share(last) }) { Text("Share last") }
+                    TextButton(onClick = { actions.playRaw(last) }) { Text("Play it") }
+                }
+            }
+        }
+
+        SectionTitle("Map look")
+        InfoCard {
+            val ctx = LocalContext.current
+            Text(
+                "Modern is a dark map styled for dashboards (by CARTO, from OpenStreetMap data), fetched sharp for the car screen. Classic is the standard OpenStreetMap map turned dark. Both need mobile data.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+            Spacer(Modifier.height(10.dp))
+            var modern by remember { mutableStateOf(Prefs.modernMap(ctx)) }
+            Segments(listOf("Modern", "Classic"), if (modern) 0 else 1) {
+                modern = it == 0
+                Prefs.setModernMap(ctx, modern)
+                Tiles.setModern(modern)
             }
         }
 
@@ -324,5 +420,6 @@ private fun obdSentence(): String {
         Obd.Link.CONNECTING -> "Connecting to ${st.detail}…"
         Obd.Link.LIVE -> "Connected: ${st.detail}"
         Obd.Link.RETRYING -> "Not connected: ${st.detail}. Retrying every few seconds."
+        Obd.Link.SLEEPING -> "The car is off, so the app isn't asking it anything and the car can sleep. It wakes when you open the app or drive off."
     }
 }

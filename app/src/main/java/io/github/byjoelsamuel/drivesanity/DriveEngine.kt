@@ -14,6 +14,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import io.github.byjoelsamuel.drivesanity.demo.Demo
+import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
 import io.github.byjoelsamuel.drivesanity.map.Geo
 import io.github.byjoelsamuel.drivesanity.map.LatLon
 import io.github.byjoelsamuel.drivesanity.map.Tiles
@@ -21,6 +23,9 @@ import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.obd.Pid
+import io.github.byjoelsamuel.drivesanity.track.LapView
+import io.github.byjoelsamuel.drivesanity.track.RunView
+import io.github.byjoelsamuel.drivesanity.track.Track
 import java.io.File
 
 /** What the screens draw, taken in one go. */
@@ -64,6 +69,15 @@ data class Snapshot(
     val tripLper100: Float? = null,
     /** Petrol engine: the air/fuel and economy readings mean something. */
     val petrol: Boolean = true,
+    /** The lap timer, when it's armed. */
+    val lap: LapView? = null,
+    /** The standing-start timer, once a car is ready to launch or a run has been timed. */
+    val run: RunView? = null,
+    /** This trip's top speed and biggest g-force. */
+    val topSpeedMps: Float = 0f,
+    val peakG: Float = 0f,
+    /** Playing the built-in or a recorded session instead of the real car. */
+    val demo: Boolean = false,
 ) {
     /** What to show for the gear. */
     val gearText: String get() = when {
@@ -85,11 +99,11 @@ object DriveEngine : SensorEventListener, LocationListener {
     private const val BACKGROUND = "background"
     private const val IDLE_STOP_MS = 3 * 60_000L
     private const val REC = "rec"
+    private const val RAW = "raw"
 
     private const val CALIBRATION_NS = 1_500_000_000L
     private const val TRAIL_EVERY_NS = 50_000_000L   // 20 Hz
     private const val TRAIL_POINTS = 40              // 2 s
-    private const val LOG_EVERY_NS = 100_000_000L    // 10 Hz
     private const val STALE_FIX_MS = 3_000L
 
     private lateinit var app: Context
@@ -132,7 +146,6 @@ object DriveEngine : SensorEventListener, LocationListener {
 
     val stats = TripStats()
     private var log: TripLog? = null
-    private var lastLogNs = 0L
     val recording get() = log != null
     /** When the current recording started (elapsedRealtime), or null. */
     var recordingSinceMs: Long? = null
@@ -179,7 +192,7 @@ object DriveEngine : SensorEventListener, LocationListener {
         accuracyM = freshFix?.accuracy,
         g = carG,
         trail = trail.toList(),
-        calibrated = calibration != null,
+        calibrated = calibration != null || Demo.active,
         calibrating = calSamples != null,
         recording = recording,
         gpsOn = gpsOn,
@@ -203,6 +216,11 @@ object DriveEngine : SensorEventListener, LocationListener {
         fuelLper100 = economy.litresPer100Km,
         tripLper100 = economy.tripLitresPer100Km,
         petrol = profile.petrol,
+        lap = Track.lapView(),
+        run = Track.runView(),
+        topSpeedMps = stats.topSpeedMps,
+        peakG = maxOf(stats.peakBrakeG, stats.peakAccelG, stats.peakTurnG),
+        demo = Demo.active,
     )
 
     // --- who's using it ---------------------------------------------------------------------
@@ -214,9 +232,13 @@ object DriveEngine : SensorEventListener, LocationListener {
             calibration = Prefs.loadRest(app)?.let { Calibration.fromRest(it) }
             loadCar()
             Tiles.init(app)
+            Track.onLap = { lap, name -> log?.appendLap(name, lap.number, lap.ms, lap.topKmh) }
+            Obd.onSpeed = { t, mps -> Track.onSpeed(t, mps) }
             status = if (calibration != null) "Calibrated" else "Not calibrated"
         }
         holders += who
+        // Opening the app or connecting to the car means it's in use: wake the OBD2 link if it was resting.
+        if (who == PHONE || who == CAR) Obd.wake()
         if (!running) start()
         // The foreground service keeps GPS going when the phone app is in the background.
         // It may only be started while the phone app is on screen.
@@ -386,8 +408,87 @@ object DriveEngine : SensorEventListener, LocationListener {
             hold(context, REC)
             log = TripLog.open(app.filesDir)
             recordingSinceMs = SystemClock.elapsedRealtime()
-            lastLogNs = 0L
             status = "Recording"
+        }
+    }
+
+    // --- lap timing ------------------------------------------------------------------------
+
+    private var recordingStartedByLaps = false
+
+    /** A start/finish line where the car is now, pointing the way it's going. Null if that isn't known yet. */
+    fun lineHere(name: String): io.github.byjoelsamuel.drivesanity.track.FinishLine? {
+        val f = freshFix ?: return null
+        val h = heading ?: return null
+        return io.github.byjoelsamuel.drivesanity.track.FinishLine(name, f.latitude, f.longitude, h.toDouble())
+    }
+
+    /** Starts lap timing on [line], and records the drive at one row a second so the laps end up in the history. */
+    fun armLaps(context: Context, line: io.github.byjoelsamuel.drivesanity.track.FinishLine) {
+        app = context.applicationContext
+        Track.arm(line)
+        if (!recording) {
+            toggleRecording(app)
+            recordingStartedByLaps = true
+        }
+    }
+
+    fun disarmLaps(context: Context) {
+        Track.disarm()
+        if (recordingStartedByLaps && recording) toggleRecording(context)
+        recordingStartedByLaps = false
+    }
+
+    // --- demo and raw recordings -----------------------------------------------------------
+
+    /** A demo pass is starting (or starting over): the trip begins from nothing and the demo's start line is armed. */
+    fun demoRestarted() {
+        stats.reset()
+        economy.reset()
+        Demo.line?.let { Track.arm(it) }
+    }
+
+    fun demoStopped() {
+        Track.disarm()
+        carG = null
+        trail.clear()
+        lastFix = null
+        gpsAccelG = null
+    }
+
+    /** The car's g-force, from a recording rather than the phone's sensor. */
+    fun demoG(lon: Float, lat: Float) {
+        val g = CarG(lon, lat)
+        carG = g
+        if (moving) stats.feedG(g)
+        val now = SystemClock.elapsedRealtimeNanos()
+        if (now - lastTrailNs >= TRAIL_EVERY_NS) {
+            trail.addLast(g)
+            if (trail.size > TRAIL_POINTS) trail.removeFirst()
+            lastTrailNs = now
+        }
+        feedLog(g)
+    }
+
+    private fun feedLog(g: CarG) {
+        val l = log ?: return
+        l.feed(g)
+        l.policy.fast = Track.armed
+        val kmh = speedMps?.let { it * 3.6f }
+        if (l.policy.due(SystemClock.elapsedRealtime(), kmh, heading, g.total)) {
+            l.write(freshFix, speedMps, heading, Track.lapView()?.number)
+        }
+    }
+
+    /** Starts or stops writing a raw session for support or a demo. */
+    fun setRawRecording(context: Context, on: Boolean) {
+        app = context.applicationContext
+        if (on && !RawRecorder.on) {
+            RawRecorder.start(app.filesDir)
+            hold(app, RAW)
+        } else if (!on && RawRecorder.on) {
+            RawRecorder.stop()
+            release(RAW)
         }
     }
 
@@ -427,9 +528,11 @@ object DriveEngine : SensorEventListener, LocationListener {
             )
         }
 
+        if (Demo.active) return // the demo supplies its own g-force
         val cal = calibration ?: return
         val g = cal.toCar(v)
         carG = g
+        RawRecorder.g(g.lon, g.lat)
         // Parked, the phone gets picked up and bumped; only driving counts towards the trip.
         if (moving) stats.feedG(g)
         if (e.timestamp - lastTrailNs >= TRAIL_EVERY_NS) {
@@ -437,12 +540,7 @@ object DriveEngine : SensorEventListener, LocationListener {
             if (trail.size > TRAIL_POINTS) trail.removeFirst()
             lastTrailNs = e.timestamp
         }
-        log?.let {
-            if (e.timestamp - lastLogNs >= LOG_EVERY_NS) {
-                it.write(g, freshFix, speedMps, gpsAccelG)
-                lastLogNs = e.timestamp
-            }
-        }
+        feedLog(g)
     }
 
     private fun finishCalibration(samples: List<Vec3>) {
@@ -464,6 +562,9 @@ object DriveEngine : SensorEventListener, LocationListener {
     // --- GPS --------------------------------------------------------------------------------
 
     override fun onLocationChanged(loc: Location) {
+        // While a demo is playing, only its own fixes count.
+        if (Demo.active && loc.provider != "demo") return
+        if (!Demo.active) RawRecorder.fix(loc.latitude, loc.longitude, if (loc.hasSpeed()) loc.speed else 0f, if (loc.hasBearing()) loc.bearing else 0f, loc.accuracy)
         val prev = lastFix
         if (prev != null && loc.hasSpeed() && prev.hasSpeed()) {
             val dt = (loc.elapsedRealtimeNanos - prev.elapsedRealtimeNanos) / 1e9f
@@ -481,6 +582,14 @@ object DriveEngine : SensorEventListener, LocationListener {
         lastFixAtMs = SystemClock.elapsedRealtime()
         // Below walking pace GPS bearing wanders; keep the last good one.
         if (loc.hasBearing() && loc.hasSpeed() && loc.speed > 2f) heading = loc.bearing
+        // Lap timing, and the standing-start timer when there's no speed from the car.
+        Track.onFix(
+            loc.elapsedRealtimeNanos / 1_000_000, loc.latitude, loc.longitude,
+            if (loc.hasSpeed()) gpsSpeed(loc) else 0f,
+            gpsSpeedForRuns = Obd.speedLiveKmh == null,
+        )
+        // Driving off means the car is in use, so the OBD2 link can stop resting.
+        if (loc.hasSpeed() && loc.speed > 3f) Obd.wake()
         val p = LatLon(loc.latitude, loc.longitude)
         Nav.onLocation(p)
         SpeedLimit.onLocation(p, heading)

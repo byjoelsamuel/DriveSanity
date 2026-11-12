@@ -100,14 +100,19 @@ one. The ones that matter most:
 1. Mount the phone firmly, facing you or lying flat with its top pointing forward.
 2. Stop on level ground and tap **Calibrate** (Drive tab, or in Setup). The app uses this to
    find which way is forward. Do it again if you move the mount.
-3. Drive. To record, tap **Start recording** on the Drive tab. Recordings show up in **Trips**,
-   where you can share them as a CSV file.
+3. Drive. To record, tap **Start recording** on the Drive tab. Recordings show up in **Trips**:
+   tap one to see its path, graphs and laps, or share it as a spreadsheet (CSV).
 
 Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
 
+**No car handy?** **Setup → Demo and raw recordings → Start demo** plays a made-up drive
+through the whole app (all the screens, the car screen, the lap timer), so you can try
+everything first.
+
 ## The screens
 
-The phone app has three tabs: **Drive**, **Trips** and **Setup**. The car shows one of five
+The phone app has four tabs: **Drive**, **Track** (lap timer and standing starts), **Trips**
+(your recordings) and **Setup**. The car shows one of five
 full-screen dashboards. Pick it in Setup → Car screen, or with the buttons at the top of the
 car screen.
 
@@ -122,12 +127,17 @@ brake are pressed, and coolant, battery and intake air.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
-**Sport**: performance readings only. RPM, throttle, engine load and the air/fuel ratio on the
-left, a huge gear and the speed in the middle, and g-force, braking and acceleration on the
-right. No temperatures, battery or tires. It's the top-row button **SPORT** in the car, and
-**Exit Sport** takes you back.
+**Sport**: laid out like a race car's display, for driving hard. A long rev ribbon across the top
+fills towards the redline, holds a thin marker at your highest recent revs and flashes at the
+shift point. In the middle are the gear and the speed, as big as they'll go. Throttle and brake
+are two tall pedal bars on the left, like the pedal traces on a racing display. On the right is a
+g-g plot: a dot for the car's g-force with a trail, and a mark where your hardest braking,
+acceleration and corners have been. Along the bottom is the lap timer with a delta bar against
+your best lap, or your last standing-start times, or air/fuel, load, coolant, top speed and peak
+g when neither is running. It's the top-row button **SPORT** in the car, and on that screen the
+first button becomes **Set line** / **End laps**.
 
-![The Sport screen, with sample data](docs/sport-screen.png)
+![The Sport screen with the lap timer running, with sample data](docs/sport-screen.png)
 
 **Retro**: everything in Saab green, after early-2000s dashboards.
 
@@ -151,6 +161,54 @@ Poppins.
 Everything glides: bars and numbers ease to their new values between readings instead of
 jumping, and the car screen redraws about 30 times a second.
 
+## Lap timer and standing starts
+
+On the **Track** tab (or the **Set line** button on the car's Sport screen):
+
+1. Drive to the spot you want as the start/finish line and tap **Set start/finish line here**
+   while moving. The line goes across the road where you are, in the direction you're heading.
+   Lines are saved by name.
+2. Cross it. The first crossing starts the clock; every crossing after that is a lap. Laps are
+   timed between GPS fixes, to a few hundredths of a second, and a quick bounce back over the
+   line is ignored.
+3. The Sport screen shows the current lap, the last and best laps, and a delta bar: left of the
+   middle is faster than your best lap so far, right is slower. The **Track** tab lists every lap.
+
+Lap timing records the drive at one row a second, so the laps are saved in **Trips** afterwards.
+
+**Standing start:** stop the car, then launch. 0–60 mph, 0–100 km/h and the quarter mile with its
+trap speed are timed on their own, from the car's speed when the adapter is connected (a lot
+better than GPS for this) and from GPS when it isn't. They show on the Track tab and the Sport
+screen. The start is worked out from the moment the speed first rises, so a slow first reading
+doesn't cost you time.
+
+Phone GPS gives one fix a second, which limits lap timing; it's fine for finding a rough lap
+time and a delta, not for settling a tenth of a second. An external GPS would be better.
+
+## Trips and recordings
+
+Every recording is a spreadsheet (CSV) with a row **every five seconds**, plus an extra row
+(never more than one a second) the moment something happens: speed changes by 10 km/h, you turn
+15 degrees, or you pull 0.35 g. Each row also carries the hardest braking, acceleration and
+cornering and the highest revs since the last row, so a hard stop between two rows isn't lost.
+That's about 100 KB an hour, instead of several MB at ten rows a second. While lap timing runs it
+writes a row every second, because laps need it.
+
+Tap a recording in **Trips** to see its distance, time, top and average speed, peaks, the path
+drawn on a plain map and coloured by speed, speed and revs against time with a scrubber you drag
+along the drive, and the laps. Older recordings still open.
+
+## Demo mode and raw recordings
+
+**Setup → Demo and raw recordings → Start demo** plays a made-up drive in place of the real car,
+GPS and motion sensor: a standing start and three laps of a loop, with the Mazda3's gears, revs,
+g-forces and a lap timer already armed. It runs every screen and the car screen too. (It's a
+simulation, built by `tools/make_demo.py`; nothing in it is a real person's drive.)
+
+**Record a raw session** writes what the GPS, the motion sensor and the adapter report into one
+small file. **Share last** sends it, for a bug report with exactly what the car said, and **Play
+it** replays it through the app like a demo. It's off until you start it.
+
 ## OBD2
 
 Any ELM327 Bluetooth adapter works, classic or Bluetooth LE. It's what gives RPM, throttle,
@@ -172,8 +230,23 @@ temperatures, battery voltage and fault codes.
   "Adapter stopped answering" points at the adapter or car; "Adapter disconnected" means
   Bluetooth dropped.
 
-The fault codes are on the OBD2 screen and in **Setup → Fault codes**. The app only reads
-them. It never clears them.
+The fault codes are on the OBD2 screen and in **Setup → Fault codes**.
+
+**Read-only.** The app only asks the car questions. Anything that could change something (clearing
+fault codes, writing a setting, starting a test, diagnostic sessions, security requests) is blocked
+inside the app before it reaches the adapter, and there's a test for that. The extra
+manufacturer-specific reads used to look for fuel level and tire pressure are still only reads, and
+they're **off until you turn them on** in Setup.
+
+**Letting the car sleep.** A car that's being asked questions can't go to sleep, which drains the
+battery and can stop a dashcam from going into parking mode. So once the engine has been off for a
+little while (20 seconds if the car stops answering, two minutes if it's on but not running), the
+app stops asking and only reads the adapter's own voltage, which doesn't touch the car. It wakes
+when you open the app, the car connects to Android Auto, you drive off, or the voltage shows the
+engine running. If the car isn't answering when the app connects, it waits longer between tries,
+up to two minutes, instead of asking every few seconds. It's on by default; **Setup → Read-only,
+and the car's battery** turns it off. If the car sits for days, unplug the adapter anyway: cheap
+adapters keep drawing a little current.
 
 ## Your car
 
@@ -246,6 +319,11 @@ reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Setup → St
 
 ## The map
 
+**Look:** Setup → Map look. *Modern* (the default) is CARTO's dark map, already styled for a
+dashboard and fetched at double resolution so it's sharp on the car screen. *Classic* is the
+standard OpenStreetMap map turned dark, as before. Both need mobile data, and both are credited
+on the map.
+
 **On the phone**, tap **Where to?** on the Drive tab and type an address.
 
 **On the car screen**, show the Map screen and tap the magnifying glass over the map. Android
@@ -306,6 +384,10 @@ with JDK 17 and the Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `car/` | The Android Auto screen |
 | `obd/` | The OBD2 Bluetooth connection |
 | `map/`, `nav/` | Map tiles, address search, directions and speed limits |
+
+The built-in demo drive comes from `tools/make_demo.py`; run it to rebuild `demo.dsr`. The tests
+include one that plays the whole demo through the app (`DemoFlowTest`) and checks the laps, the
+delta and the standing start come out.
 
 The fonts are [Oxanium](https://fonts.google.com/specimen/Oxanium) and
 [Poppins](https://fonts.google.com/specimen/Poppins), both used under the SIL Open Font License
