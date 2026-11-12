@@ -24,6 +24,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
+import io.github.byjoelsamuel.drivesanity.obd.Obd
 
 /**
  * The car screen: the same dashboard as the phone, drawn onto the surface Android Auto gives
@@ -58,6 +59,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
 
             override fun onStop(owner: LifecycleOwner) {
                 handler.removeCallbacks(tick)
+                Obd.wantDiagnostics("car", false)
             }
         })
     }
@@ -65,11 +67,23 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     override fun onGetTemplate(): Template {
         shownRecording = DriveEngine.recording
         shownLayout = Prefs.layout(carContext)
+        val onDiag = Prefs.layout(carContext) == Prefs.Layout.DIAG
         val calibrate = Action.Builder()
-            .setTitle(if (DriveEngine.snapshot().calibrating) "Calibrating…" else "Calibrate")
+            .setTitle(
+                when {
+                    onDiag -> "Read codes"
+                    DriveEngine.snapshot().calibrating -> "Calibrating…"
+                    else -> "Calibrate"
+                },
+            )
             .setOnClickListener {
-                DriveEngine.calibrate()
-                CarToast.makeText(carContext, DriveEngine.status, CarToast.LENGTH_SHORT).show()
+                if (onDiag) {
+                    Obd.requestReadCodes()
+                    CarToast.makeText(carContext, "Reading fault codes…", CarToast.LENGTH_SHORT).show()
+                } else {
+                    DriveEngine.calibrate()
+                    CarToast.makeText(carContext, DriveEngine.status, CarToast.LENGTH_SHORT).show()
+                }
             }
             .build()
         val record = Action.Builder()
@@ -115,6 +129,8 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         // The phone changed something the buttons show.
         if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout) invalidate()
 
+        // The OBD2 screen's extra readings are only asked for while it's showing.
+        Obd.wantDiagnostics("car", Prefs.layout(carContext) == Prefs.Layout.DIAG)
         val s = surface ?: return
         if (!s.isValid) return
         val canvas = try {

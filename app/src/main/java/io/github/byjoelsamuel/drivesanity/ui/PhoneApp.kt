@@ -34,6 +34,8 @@ interface PhoneActions {
     fun setCarLayout(layout: Prefs.Layout)
     fun setStartupAnim(on: Boolean)
     fun pickObd()
+    fun readCodes()
+    fun probeCar()
     fun forgetObd()
     fun navigate()
     fun endRoute()

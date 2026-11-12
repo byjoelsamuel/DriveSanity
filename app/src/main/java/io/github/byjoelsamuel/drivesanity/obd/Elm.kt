@@ -11,7 +11,17 @@ enum class Pid(val code: Int, val bytes: Int, private val decode: (IntArray) -> 
     INTAKE(0x0F, 1, { it[0] - 40f }),                   // °C
     THROTTLE(0x11, 1, { it[0] * 100f / 255f }),         // %
     LOAD(0x04, 1, { it[0] * 100f / 255f }),             // %
-    FUEL(0x2F, 1, { it[0] * 100f / 255f });             // % of the tank
+    FUEL(0x2F, 1, { it[0] * 100f / 255f }),            // % of the tank
+
+    // Extra readings, asked for only while the OBD2 screen is showing.
+    TRIM_SHORT(0x06, 1, { (it[0] - 128) * 100f / 128f }), // %
+    TRIM_LONG(0x07, 1, { (it[0] - 128) * 100f / 128f }),  // %
+    MAP(0x0B, 1, { it[0].toFloat() }),                    // kPa
+    TIMING(0x0E, 1, { it[0] / 2f - 64f }),                // degrees before top dead centre
+    MAF(0x10, 2, { (it[0] * 256 + it[1]) / 100f }),       // g/s of air
+    RUNTIME(0x1F, 2, { (it[0] * 256 + it[1]).toFloat() }), // seconds since the engine started
+    LAMBDA(0x44, 2, { (it[0] * 256 + it[1]) / 32768f }),  // commanded air/fuel, 1.0 = ideal
+    AMBIENT(0x46, 1, { it[0] - 40f });                    // °C outside
 
     val command get() = "01%02X".format(code)
 
@@ -29,6 +39,35 @@ object Elm {
     fun lines(raw: String): List<String> =
         raw.replace(">", "").split('\r', '\n').map { it.trim() }
             .filter { it.isNotEmpty() && !it.startsWith("SEARCHING") }
+
+    private fun hexBytes(hex: String): List<Int> = hex.chunked(2).filter { it.length == 2 }.map { it.toInt(16) }
+
+    /**
+     * The bytes of each ECU's reply. Handles one-line replies and the adapter's multi-line form:
+     * a byte-count line ("014"), then "0: 49 02 …", "1: …" with the pieces in order.
+     */
+    fun replies(raw: String): List<IntArray> {
+        val out = mutableListOf<IntArray>()
+        var multi: MutableList<Int>? = null
+        for (line in lines(raw)) {
+            val t = line.replace(" ", "").uppercase()
+            val m = Regex("^([0-9A-F]):([0-9A-F]*)$").find(t)
+            if (m != null) {
+                if (m.groupValues[1] == "0") {
+                    multi?.let { out += it.toIntArray() }
+                    multi = mutableListOf()
+                }
+                multi?.addAll(hexBytes(m.groupValues[2]))
+                continue
+            }
+            multi?.let { out += it.toIntArray() }
+            multi = null
+            if (t.isEmpty() || t.length % 2 == 1) continue // nothing, or a byte-count line like "014"
+            if (t.all { it in "0123456789ABCDEF" }) out += hexBytes(t).toIntArray()
+        }
+        multi?.let { out += it.toIntArray() }
+        return out
+    }
 
     fun isError(raw: String) = lines(raw).any { line -> line == "?" || errors.any { line.contains(it) } }
 
@@ -75,6 +114,10 @@ class ObdSession(private val link: ObdTransport) {
     var supported: Set<Int> = emptySet()
         private set
 
+    /** What the adapter says it is talking to the car in, e.g. "ISO 15765-4 (CAN 11/500)". */
+    var protocolName: String = ""
+        private set
+
     private val lastReply = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     fun command(cmd: String, timeoutMs: Long = 2_000): String {
@@ -85,6 +128,7 @@ class ObdSession(private val link: ObdTransport) {
 
     /** For Setup: which readings the car lists, and the last raw reply to each one. */
     fun report(): String = buildString {
+        appendLine("Protocol: " + protocolName.ifEmpty { "unknown" })
         appendLine("Lists fuel level: " + if (Pid.FUEL.code in supported) "yes" else "no")
         for ((cmd, reply) in lastReply.toSortedMap()) {
             if (cmd.startsWith("01")) appendLine("$cmd: " + Elm.lines(reply).joinToString(" ").ifEmpty { "no reply" })
@@ -104,6 +148,7 @@ class ObdSession(private val link: ObdTransport) {
         supported = Elm.supported(first, 0x00)
         if (0x20 in supported) supported = supported + Elm.supported(command("0120"), 0x20)
         if (0x40 in supported) supported = supported + Elm.supported(command("0140"), 0x40)
+        protocolName = protocol()
         return id
     }
 
@@ -116,4 +161,40 @@ class ObdSession(private val link: ObdTransport) {
     }
 
     fun volts(): Float? = Elm.volts(command("ATRV"))
+
+    private fun protocol(): String =
+        Elm.lines(command("ATDP")).lastOrNull()?.removePrefix("AUTO, ")?.trim() ?: "unknown"
+
+    /** The check-engine lamp and how many codes are stored, from reading 01 01. */
+    fun milStatus(): Pair<Boolean, Int>? {
+        val d = Elm.mode01(command("0101"), 0x01) ?: return null
+        if (d.isEmpty()) return null
+        return (d[0] and 0x80 != 0) to (d[0] and 0x7F)
+    }
+
+    /** Fault codes: stored (03), pending (07) and permanent (0A). Each can take a second or two. */
+    fun readDtcReport(): DtcReport {
+        val mil = milStatus()
+        val can = protocolName.contains("CAN", ignoreCase = true)
+        fun fetch(service: Int) = Dtc.parse(command("%02X".format(service - 0x40), 5_000), service, hasCount = can)
+        return DtcReport(mil?.first, mil?.second, fetch(0x43), fetch(0x47), fetch(0x4A), System.currentTimeMillis())
+    }
+
+    fun vin(): String? = Dtc.vin(command("0902", 5_000))
+
+    /**
+     * A one-off look at a few manufacturer-specific readings people have used on other Mazdas
+     * (fuel level and tire pressures, asked of the instrument cluster). It only asks; it changes
+     * nothing in the car. The raw replies are shown in Setup so they can be matched to what the
+     * car's own screen says.
+     */
+    fun probe(): List<String> {
+        val out = mutableListOf<String>()
+        command("ATSH720")
+        for (req in listOf("2261B1", "222A05", "222A06", "222A07", "222A08", "22C901")) {
+            out += "720 $req: " + Elm.lines(command(req)).joinToString(" ").ifEmpty { "no reply" }
+        }
+        command("ATSH7DF") // back to the normal request address
+        return out
+    }
 }

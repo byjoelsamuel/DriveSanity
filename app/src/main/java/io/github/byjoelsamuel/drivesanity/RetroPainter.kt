@@ -40,7 +40,7 @@ class RetroPainter(context: Context) {
     }
 
     private fun drawWide(c: Canvas, r: RectF, s: Snapshot, units: Units) {
-        val pad = r.height() * 0.06f
+        val pad = r.height() * 0.035f
         val b = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
         val w = b.width()
         val h = b.height()
@@ -51,9 +51,10 @@ class RetroPainter(context: Context) {
         drawSpeed(c, box(0.33f, 0.36f, 0.72f, 0.80f), s, units)
         val scope = min(w * 0.25f, h * 0.46f)
         drawScope(c, RectF(b.right - scope, b.top + h * 0.35f, b.right, b.top + h * 0.35f + scope), s)
-        drawBrake(c, box(0f, 0.86f, 0.44f, 1f), s)
-        drawTrip(c, box(0.48f, 0.86f, 0.70f, 1f), s, units)
-        drawLamps(c, box(0.74f, 0.88f, 1f, 1f), s)
+        drawBrake(c, box(0f, 0.86f, 0.27f, 1f), s)
+        drawTires(c, box(0.30f, 0.84f, 0.62f, 1f), s, units)
+        drawTrip(c, box(0.65f, 0.86f, 0.80f, 1f), s, units)
+        drawLamps(c, box(0.83f, 0.88f, 1f, 1f), s)
     }
 
     private fun drawTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
@@ -228,6 +229,22 @@ class RetroPainter(context: Context) {
         val g = s.g ?: return
         val (x, y) = px(g)
         c.drawCircle(x, y, rad * 0.09f, lit)
+    }
+
+    /** The four tire pressures in small digits (front left, front right, rear left, rear right). Empty until the car can tell us. */
+    private fun drawTires(c: Canvas, b: RectF, s: Snapshot, units: Units) {
+        val cells = if (units == Units.MPH) 2 else 3
+        val labelH = b.height() * 0.22f
+        val cellW = b.width() * 0.21f
+        val digitH = min(b.height() * 0.58f, cellW * 0.92f / (if (cells == 2) 1.32f else 2.08f))
+        for (i in 0 until 4) {
+            val x = b.left + i * cellW
+            label(labelH, MID, Paint.Align.LEFT)
+            c.drawText(Tpms.NAMES[i], x, b.top + labelH, text)
+            drawDigits(c, Tpms.digits(s.tires.getOrNull(i), units), x, b.bottom - digitH, digitH, cells)
+        }
+        label(labelH, MID, Paint.Align.LEFT)
+        c.drawText(Tpms.unit(units).uppercase(), b.left + 4 * cellW, b.bottom, text)
     }
 
     /** Odometer-style trip distance. */
