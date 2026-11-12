@@ -74,6 +74,9 @@ fun SetupTab(
                 "Choose it below. After that it connects by itself.",
             )
             Spacer(Modifier.height(12.dp))
+            Text("Diagnostics", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+            Text(Obd.report(), style = MaterialTheme.typography.bodySmall, color = Ui.dim)
+            Spacer(Modifier.height(12.dp))
             Row {
                 Button(onClick = actions::pickObd) { Text(if (obdName == null) "Choose adapter" else "Change adapter") }
                 if (obdName != null) {
