@@ -9,6 +9,7 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.os.SystemClock
 import android.util.LruCache
+import io.github.byjoelsamuel.drivesanity.MapLook
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.nav.Http
 import java.io.File
@@ -17,34 +18,48 @@ import java.util.concurrent.Executors
 
 /**
  * Map tiles, fetched as needed, kept on disk for a week and in memory. Only tiles on screen are
- * asked for. Two looks:
+ * asked for. Three looks:
  *
- *  - Modern (the default): CARTO's "Dark Matter", a dark map that's already styled for this, fetched
- *    at double resolution so it stays sharp on the car's screen.
+ *  - Simplified (the default): CARTO's "Dark Matter" without the street names, so it's only the
+ *    roads and the blocks, with your route and car on top.
+ *  - Modern: the same dark map with the names on.
  *  - Classic: OpenStreetMap's standard tiles, turned into a dark grey version here.
  *
- * Map data © OpenStreetMap contributors, and for the modern look the style © CARTO.
+ * The dark ones are fetched at double resolution so they stay sharp on the car's screen.
+ * Map data © OpenStreetMap contributors, and for the CARTO looks the style © CARTO.
  */
 object Tiles {
     private const val CLASSIC_URL = "https://tile.openstreetmap.org/%d/%d/%d.png"
     private const val MODERN_URL = "https://%s.basemaps.cartocdn.com/dark_all/%d/%d/%d@2x.png"
+    private const val SIMPLE_URL = "https://%s.basemaps.cartocdn.com/dark_nolabels/%d/%d/%d@2x.png"
     private const val WEEK_MS = 7L * 24 * 3600 * 1000
 
     private var dir: File? = null
 
     /** Which look is on. Changing it starts the map afresh, since the two don't share tiles. */
-    @Volatile var modern = true
+    @Volatile var look = MapLook.SIMPLIFIED
         private set
 
-    val attribution: String get() = if (modern) "© OpenStreetMap © CARTO" else "© OpenStreetMap"
+    val attribution: String get() = if (look == MapLook.CLASSIC) "© OpenStreetMap" else "© OpenStreetMap © CARTO"
 
-    fun setModern(on: Boolean) {
-        if (on == modern) return
-        modern = on
+    fun setLook(to: MapLook) {
+        if (to == look) return
+        look = to
         memory.evictAll()
         failedAt.clear()
         loading.clear()
     }
+
+    /** Throws away every saved tile, in memory and on disk; they're fetched again as the map needs them. */
+    fun clear(context: Context) {
+        memory.evictAll()
+        failedAt.clear()
+        loading.clear()
+        File(context.cacheDir, "tiles").listFiles()?.forEach { it.delete() }
+    }
+
+    /** What the saved tiles take on disk, in bytes. */
+    fun cacheBytes(context: Context): Long = File(context.cacheDir, "tiles").listFiles()?.sumOf { it.length() } ?: 0L
 
     private val memory = object : LruCache<String, Bitmap>(64 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
@@ -66,7 +81,7 @@ object Tiles {
 
     fun init(context: Context) {
         if (dir == null) dir = File(context.cacheDir, "tiles")
-        modern = Prefs.modernMap(context)
+        look = Prefs.mapLook(context)
     }
 
     /** The tile if it's ready; otherwise null, and it gets fetched in the background. */
@@ -74,29 +89,35 @@ object Tiles {
         val n = 1 shl z
         if (y !in 0 until n) return null
         val wx = ((x % n) + n) % n
-        val key = (if (modern) "m" else "c") + "$z/$wx/$y"
+        val key = look.key + "$z/$wx/$y"
         memory.get(key)?.let { return it }
         val failed = failedAt[key]
         if (failed != null && SystemClock.elapsedRealtime() - failed < 30_000) return null
         if (dir == null || !loading.add(key)) return null
-        val isModern = modern
-        pool.execute { load(key, z, wx, y, isModern) }
+        val wanted = look
+        pool.execute { load(key, z, wx, y, wanted) }
         return null
     }
 
-    private fun load(key: String, z: Int, x: Int, y: Int, isModern: Boolean) {
+    private fun load(key: String, z: Int, x: Int, y: Int, wanted: MapLook) {
         try {
             val file = File(dir, "$key.png")
             val bytes = if (file.exists() && System.currentTimeMillis() - file.lastModified() < WEEK_MS) {
                 file.readBytes()
             } else {
-                Http.get(if (isModern) MODERN_URL.format("abcd"[(x + y) and 3].toString(), z, x, y) else CLASSIC_URL.format(z, x, y)).also { b ->
+                Http.get(
+                    when (wanted) {
+                        MapLook.SIMPLIFIED -> SIMPLE_URL.format("abcd"[(x + y) and 3].toString(), z, x, y)
+                        MapLook.MODERN -> MODERN_URL.format("abcd"[(x + y) and 3].toString(), z, x, y)
+                        MapLook.CLASSIC -> CLASSIC_URL.format(z, x, y)
+                    },
+                ).also { b ->
                     file.parentFile?.mkdirs()
                     file.writeBytes(b)
                 }
             }
             val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("bad tile")
-            val out = if (isModern) {
+            val out = if (wanted != MapLook.CLASSIC) {
                 src // already dark
             } else {
                 Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also {
@@ -104,7 +125,7 @@ object Tiles {
                     src.recycle()
                 }
             }
-            if (isModern != modern) return // the look was changed while this was loading
+            if (wanted != look) return // the look was changed while this was loading
             memory.put(key, out)
             failedAt.remove(key)
         } catch (_: Exception) {

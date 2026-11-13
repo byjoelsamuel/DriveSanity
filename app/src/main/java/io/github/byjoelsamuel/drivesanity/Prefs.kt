@@ -27,6 +27,13 @@ enum class Units(val perMps: Float, val label: String) {
     }
 }
 
+/** The looks the map can have. [key] keeps their saved tiles apart. */
+enum class MapLook(val title: String, val key: String) {
+    SIMPLIFIED("Simplified", "s"),
+    MODERN("Modern", "m"),
+    CLASSIC("Classic", "c"),
+}
+
 /** Small things kept between launches: the units, and the calibration (the phone usually stays in its mount). */
 object Prefs {
     private const val FILE = "drive"
@@ -85,6 +92,9 @@ object Prefs {
 
     fun setRedline(ctx: Context, carId: String, rpm: Float) = prefs(ctx).edit { putFloat("redline_$carId", rpm) }
 
+    /** Back to the profile's own redline. */
+    fun clearRedline(ctx: Context, carId: String) = prefs(ctx).edit { remove("redline_$carId") }
+
     fun setLayout(ctx: Context, to: Layout) {
         layout = to
         prefs(ctx).edit { putString("layout", to.name) }
@@ -101,10 +111,15 @@ object Prefs {
 
     fun setLaunchCountdown(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("launch_countdown", on) }
 
-    /** True for the modern dark map (CARTO's Dark Matter); false for the classic OpenStreetMap look. */
-    fun modernMap(ctx: Context): Boolean = prefs(ctx).getBoolean("modern_map", true)
+    /** How the map looks. Simplified unless the person picked another; anyone who chose Modern or Classic before keeps that. */
+    fun mapLook(ctx: Context): MapLook {
+        val p = prefs(ctx)
+        p.getString("map_look", null)?.let { saved -> MapLook.entries.firstOrNull { it.name == saved }?.let { return it } }
+        if (p.contains("modern_map")) return if (p.getBoolean("modern_map", true)) MapLook.MODERN else MapLook.CLASSIC
+        return MapLook.SIMPLIFIED
+    }
 
-    fun setModernMap(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("modern_map", on) }
+    fun setMapLook(ctx: Context, look: MapLook) = prefs(ctx).edit { putString("map_look", look.name) }
 
     /** Manufacturer-specific reads (fuel level, tire pressure) are off until the person turns them on. They are still only reads. */
     fun advancedReads(ctx: Context): Boolean = prefs(ctx).getBoolean("advanced_reads", false)

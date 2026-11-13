@@ -66,6 +66,8 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
     val ctx = LocalContext.current
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
     var introDone by rememberSaveable { mutableStateOf(!Prefs.startupAnim(ctx)) }
+    // Kept here, not inside Settings, so a change you haven't applied survives a visit to another tab.
+    val settings = remember { SettingsDraft(ctx) }
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -109,7 +111,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
                         0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 })
                         1 -> LaunchTab(s, units)
                         2 -> TripsTab(units, recordings, tick, actions)
-                        else -> SettingsTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
+                        else -> SettingsTab(s, settings, Prefs.obdDevice(ctx)?.name, tick, actions)
                     }
                 }
             }
