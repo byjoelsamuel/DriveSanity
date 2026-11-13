@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -46,7 +48,7 @@ import androidx.compose.ui.unit.sp
  */
 
 /** The little pictures on the left of each settings row. Drawn here so no icon library is needed. */
-enum class SettingsIcon { CAR, CALIBRATE, UNITS, PLUG, CODES, SHIELD, PHONE, SCREEN, MAP, BELL, SOUND, MUSIC, FLASK, WHEEL, INFO }
+enum class SettingsIcon { CAR, CALIBRATE, UNITS, PLUG, CODES, SHIELD, PHONE, SCREEN, MAP, BELL, SOUND, MUSIC, FLASK, WHEEL, INFO, RESET, STORAGE, LINK }
 
 /** A group of rows on one rounded card, with an optional small heading above it. */
 @Composable
@@ -149,7 +151,7 @@ fun SwitchRow(title: String, detail: String? = null, checked: Boolean, onChange:
 @Composable
 fun ChoiceRow(title: String, detail: String? = null, selected: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -330,10 +332,99 @@ private fun DrawScope.drawSettingsIcon(icon: SettingsIcon, c: Color) {
             drawLine(c, p(0.6f, 0.5f), p(0.9f, 0.5f), strokeWidth = sw, cap = StrokeCap.Round)
             drawLine(c, p(0.5f, 0.6f), p(0.5f, 0.92f), strokeWidth = sw, cap = StrokeCap.Round)
         }
+        SettingsIcon.RESET -> {
+            drawArc(c, -50f, 290f, false, topLeft = p(0.14f, 0.14f), size = Size(w * 0.72f, w * 0.72f), style = line)
+            drawLine(c, p(0.377f, 0.162f), p(0.261f, 0.311f), strokeWidth = sw, cap = StrokeCap.Round)
+            drawLine(c, p(0.377f, 0.162f), p(0.55f, 0.1f), strokeWidth = sw, cap = StrokeCap.Round)
+        }
+        SettingsIcon.STORAGE -> {
+            for (k in 0..2) {
+                val y = 0.1f + k * 0.28f
+                drawRoundRect(c, p(0.12f, y), Size(w * 0.76f, w * 0.22f), CornerRadius(w * 0.07f), style = line)
+                drawCircle(c, w * 0.04f, p(0.72f, y + 0.11f))
+            }
+        }
+        SettingsIcon.LINK -> {
+            val box = Path().apply { moveTo(w * 0.72f, w * 0.6f); lineTo(w * 0.72f, w * 0.84f); lineTo(w * 0.14f, w * 0.84f); lineTo(w * 0.14f, w * 0.28f); lineTo(w * 0.4f, w * 0.28f) }
+            drawPath(box, c, style = line)
+            drawLine(c, p(0.44f, 0.56f), p(0.86f, 0.14f), strokeWidth = sw, cap = StrokeCap.Round)
+            val head = Path().apply { moveTo(w * 0.58f, w * 0.14f); lineTo(w * 0.86f, w * 0.14f); lineTo(w * 0.86f, w * 0.42f) }
+            drawPath(head, c, style = line)
+        }
         SettingsIcon.INFO -> {
             drawCircle(c, w * 0.42f, p(0.5f, 0.5f), style = line)
             drawLine(c, p(0.5f, 0.46f), p(0.5f, 0.7f), strokeWidth = sw, cap = StrokeCap.Round)
             drawCircle(c, w * 0.055f, p(0.5f, 0.3f))
         }
+    }
+}
+
+/** A "Are you sure?" box in the app's own colours. [destructive] paints the confirm button red. */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    destructive: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ui.card,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, color = Ui.fg) },
+        text = content,
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onConfirm) {
+                Text(confirmLabel, color = if (destructive) Ui.red else Ui.accent, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel", color = Ui.dim) }
+        },
+    )
+}
+
+/** The bar that slides up over Settings while there are changes waiting: how many, Discard, and Apply. */
+@Composable
+fun ApplyBar(count: Int, onDiscard: () -> Unit, onApply: () -> Unit) {
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Ui.raised, shadowElevation = 8.dp) {
+        Row(Modifier.padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(Ui.sand))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                if (count == 1) "1 unsaved change" else "$count unsaved changes",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.fg,
+                modifier = Modifier.weight(1f),
+            )
+            androidx.compose.material3.TextButton(onClick = onDiscard) { Text("Discard", color = Ui.dim) }
+            androidx.compose.material3.Button(onClick = onApply) { Text("Apply") }
+        }
+    }
+}
+
+/** A small pill that confirms something happened ("3 changes applied"). */
+@Composable
+fun NoticePill(text: String) {
+    Surface(shape = CircleShape, color = Ui.raised, shadowElevation = 6.dp) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(Ui.good))
+            Spacer(Modifier.width(10.dp))
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = Ui.fg)
+        }
+    }
+}
+
+/** "Reset to default" at the foot of a page. Greyed out when the page is already on its defaults. */
+@Composable
+fun ResetRow(enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Text("Reset to default", style = MaterialTheme.typography.bodyLarge, color = if (enabled) Ui.clay else Ui.dim.copy(alpha = 0.5f))
     }
 }

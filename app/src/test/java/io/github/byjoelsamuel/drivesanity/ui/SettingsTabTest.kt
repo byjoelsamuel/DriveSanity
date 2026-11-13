@@ -50,12 +50,15 @@ class SettingsTabTest {
         }
     } as PhoneActions
 
+    private var draft: SettingsDraft? = null
+
     private fun show() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val d = SettingsDraft(ctx).also { draft = it }
         rule.setContent {
             DriveTheme {
                 Box(Modifier.fillMaxSize().background(Ui.bg)) {
-                    SettingsTab(DriveEngine.snapshot(), Prefs.units(ctx), Prefs.layout(ctx), null, 0L, actions)
+                    SettingsTab(DriveEngine.snapshot(), d, null, 0L, actions)
                 }
             }
         }
@@ -74,6 +77,20 @@ class SettingsTabTest {
         view.draw(android.graphics.Canvas(bmp))
         File(dir).mkdirs()
         File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test
+    fun unsavedChangesShowTheBar() {
+        show()
+        rule.onNodeWithText("Units").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("km/h · °C · km").performClick()
+        rule.waitForIdle()
+        rule.onAllNodesWithText("1 unsaved change").onFirst().assertIsDisplayed()
+        shot("unsaved-bar")
+        rule.onNodeWithText("Apply").performClick()
+        rule.waitForIdle()
+        shot("apply-dialog")
     }
 
     @Test
@@ -97,8 +114,8 @@ class SettingsTabTest {
             "OBD2 adapter" to "Setting up", "Fault codes" to "Read codes again",
             "Battery and read-only" to "Let the car sleep", "Car screens" to "Preview",
             "Map look" to "Classic", "Alerts and shift light" to "banner for a hot engine",
-            "Startup" to "Startup animation", "Music" to "How it works", "Demo and recordings" to "Start demo",
-            "Android Auto" to "UnknownAuto", "About" to "OpenStreetMap",
+            "Startup" to "Startup animation", "Music" to "How it works", "Storage and data" to "Map cache", "Demo and recordings" to "Start demo",
+            "Android Auto" to "UnknownAuto", "About" to "Report a problem",
         )
         for ((row, marker) in pages) {
             rule.onNodeWithText(row).performScrollTo().performClick()

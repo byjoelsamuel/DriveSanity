@@ -4,6 +4,9 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +14,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,10 +49,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.byjoelsamuel.drivesanity.BuildConfig
 import io.github.byjoelsamuel.drivesanity.CarProfiles
+import io.github.byjoelsamuel.drivesanity.DriveEngine
+import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.DashView
+import io.github.byjoelsamuel.drivesanity.MapLook
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
-import io.github.byjoelsamuel.drivesanity.Revs
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.Units
@@ -56,6 +63,8 @@ import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
+import kotlinx.coroutines.delay
+import java.io.File
 import kotlin.math.roundToInt
 
 /** The pages of Settings. HOME is the list; every other one opens from a row on it. */
@@ -73,6 +82,7 @@ private enum class Page(val title: String) {
     ALERTS("Alerts and shift light"),
     STARTUP("Startup"),
     MUSIC("Music"),
+    STORAGE("Storage and data"),
     DEMO("Demo and recordings"),
     AUTO("Android Auto"),
     ABOUT("About"),
@@ -86,8 +96,7 @@ private enum class Page(val title: String) {
 @Composable
 fun SettingsTab(
     s: Snapshot,
-    units: Units,
-    carLayout: Prefs.Layout,
+    draft: SettingsDraft,
     obdName: String?,
     tick: Long, // the OBD2 status line and the phone check are live
     actions: PhoneActions,
@@ -97,44 +106,92 @@ fun SettingsTab(
         Obd.wantDiagnostics("phone", true)
         onDispose { Obd.wantDiagnostics("phone", false) }
     }
+    // Pick up changes made elsewhere, like the car's own button switching the screen.
+    LaunchedEffect(draft) {
+        while (true) {
+            draft.refresh()
+            delay(500)
+        }
+    }
+    LaunchedEffect(draft.notice) {
+        if (draft.notice != null) {
+            delay(2400)
+            draft.notice = null
+        }
+    }
     var saved by rememberSaveable { mutableStateOf(Page.HOME.name) }
+    var confirmApply by remember { mutableStateOf(false) }
     val page = Page.entries.firstOrNull { it.name == saved } ?: Page.HOME
     BackHandler(enabled = page != Page.HOME) { saved = Page.HOME.name }
 
-    AnimatedContent(
-        targetState = page,
-        modifier = Modifier.fillMaxSize(),
-        transitionSpec = {
-            val forward = targetState != Page.HOME
-            if (forward) {
-                (slideInHorizontally(tween()) { it / 5 } + fadeIn(tween())) togetherWith (slideOutHorizontally(tween()) { -it / 8 } + fadeOut(tween())) using SizeTransform(clip = false)
+    Box(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = page,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                val forward = targetState != Page.HOME
+                if (forward) {
+                    (slideInHorizontally(tween()) { it / 5 } + fadeIn(tween())) togetherWith (slideOutHorizontally(tween()) { -it / 8 } + fadeOut(tween())) using SizeTransform(clip = false)
+                } else {
+                    (slideInHorizontally(tween()) { -it / 8 } + fadeIn(tween())) togetherWith (slideOutHorizontally(tween()) { it / 5 } + fadeOut(tween())) using SizeTransform(clip = false)
+                }
+            },
+            label = "settings",
+        ) { p ->
+            if (p == Page.HOME) {
+                Home(s, draft, obdName, tick, actions) { saved = it.name }
             } else {
-                (slideInHorizontally(tween()) { -it / 8 } + fadeIn(tween())) togetherWith (slideOutHorizontally(tween()) { it / 5 } + fadeOut(tween())) using SizeTransform(clip = false)
+                PageFrame(p.title, onBack = { saved = Page.HOME.name }, bottomRoom = draft.dirty) {
+                    when (p) {
+                        Page.CAR -> CarPage(draft)
+                        Page.CALIBRATION -> CalibrationPage(s, actions)
+                        Page.UNITS -> UnitsPage(draft)
+                        Page.ADAPTER -> AdapterPage(obdName, tick, actions)
+                        Page.FAULTS -> FaultsPage(tick, actions)
+                        Page.BATTERY -> BatteryPage(draft)
+                        Page.PHONE_CHECK -> PhoneCheckCard(tick)
+                        Page.SCREENS -> ScreensPage(draft)
+                        Page.MAP -> MapPage(draft)
+                        Page.ALERTS -> AlertsPage(draft)
+                        Page.STARTUP -> StartupPage(draft, actions)
+                        Page.MUSIC -> MusicPage(tick)
+                        Page.STORAGE -> StoragePage(actions)
+                        Page.DEMO -> DemoPage(s, tick, actions)
+                        Page.AUTO -> AutoPage()
+                        Page.ABOUT -> AboutPage()
+                        Page.HOME -> {}
+                    }
+                }
             }
-        },
-        label = "settings",
-    ) { p ->
-        if (p == Page.HOME) {
-            Home(s, units, carLayout, obdName, tick) { saved = it.name }
-        } else {
-            PageFrame(p.title, onBack = { saved = Page.HOME.name }) {
-                when (p) {
-                    Page.CAR -> CarPage(tick, actions)
-                    Page.CALIBRATION -> CalibrationPage(s, actions)
-                    Page.UNITS -> UnitsPage(units, actions)
-                    Page.ADAPTER -> AdapterPage(obdName, tick, actions)
-                    Page.FAULTS -> FaultsPage(tick, actions)
-                    Page.BATTERY -> BatteryPage(tick)
-                    Page.PHONE_CHECK -> PhoneCheckCard(tick)
-                    Page.SCREENS -> ScreensPage(carLayout, actions)
-                    Page.MAP -> MapPage(tick)
-                    Page.ALERTS -> AlertsPage(tick, actions)
-                    Page.STARTUP -> StartupPage(tick, actions)
-                    Page.MUSIC -> MusicPage(tick)
-                    Page.DEMO -> DemoPage(s, tick, actions)
-                    Page.AUTO -> AutoPage()
-                    Page.ABOUT -> AboutPage()
-                    Page.HOME -> {}
+        }
+
+        Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            val notice = draft.notice
+            AnimatedVisibility(notice != null && !draft.dirty, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
+                NoticePill(notice ?: "")
+            }
+            AnimatedVisibility(draft.dirty, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+                ApplyBar(draft.changes().size, onDiscard = draft::discard, onApply = { confirmApply = true })
+            }
+        }
+    }
+
+    if (confirmApply) {
+        val changes = draft.changes()
+        ConfirmDialog(
+            title = "Apply changes?",
+            confirmLabel = "Apply",
+            onConfirm = { confirmApply = false; draft.apply(actions) },
+            onDismiss = { confirmApply = false },
+        ) {
+            Column {
+                Text("These take effect now, on the phone and in the car.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                Spacer(Modifier.height(12.dp))
+                for (c in changes) {
+                    Column(Modifier.padding(vertical = 5.dp)) {
+                        Text(c.label, style = MaterialTheme.typography.labelMedium, color = Ui.dim)
+                        Text("${c.from}  →  ${c.to}", style = MaterialTheme.typography.bodyMedium, color = Ui.fg)
+                    }
                 }
             }
         }
@@ -144,13 +201,13 @@ fun SettingsTab(
 private fun <T> tween() = androidx.compose.animation.core.tween<T>(durationMillis = 260, easing = androidx.compose.animation.core.FastOutSlowInEasing)
 
 @Composable
-private fun PageFrame(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+private fun PageFrame(title: String, onBack: () -> Unit, bottomRoom: Boolean, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
         PageHeader(title, onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
             Spacer(Modifier.height(4.dp))
             content()
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(if (bottomRoom) 110.dp else 32.dp))
         }
     }
 }
@@ -160,20 +217,21 @@ private fun PageFrame(title: String, onBack: () -> Unit, content: @Composable ()
 @Composable
 private fun Home(
     s: Snapshot,
-    units: Units,
-    carLayout: Prefs.Layout,
+    draft: SettingsDraft,
     obdName: String?,
     tick: Long,
+    actions: PhoneActions,
     open: (Page) -> Unit,
 ) {
     val ctx = LocalContext.current
-    val car = CarProfiles.byId(Prefs.carId(ctx))
+    val v = draft.values
+    val car = CarProfiles.byId(v.carId)
     val link = Obd.status.link
     val phoneItems = remember(tick / 10) { PhoneCheck.items(ctx) }
     val toFix = phoneItems.count { !it.ok }
     val report = Obd.dtcReport
     val access = MediaWatcher.hasAccess(ctx)
-    val soundMode = Prefs.startupSound(ctx)
+    var confirmReset by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
@@ -209,7 +267,7 @@ private fun Home(
                 Ui.good, if (s.calibrated || s.calibrating) Ui.dim else Ui.sand,
             ) { open(Page.CALIBRATION) }
             RowDivider()
-            SettingsRow(SettingsIcon.UNITS, "Units", if (units == Units.MPH) "MPH · °F · mi" else "km/h · °C · km", Ui.sand) { open(Page.UNITS) }
+            SettingsRow(SettingsIcon.UNITS, "Units", if (v.units == Units.MPH) "MPH · °F · mi" else "km/h · °C · km", Ui.sand) { open(Page.UNITS) }
         }
 
         SettingsGroup("Connection") {
@@ -228,7 +286,7 @@ private fun Home(
             RowDivider()
             SettingsRow(
                 SettingsIcon.SHIELD, "Battery and read-only",
-                if (Prefs.letCarSleep(ctx)) "Car sleeps when off" else "Car stays awake",
+                if (v.letCarSleep) "Car sleeps when off" else "Car stays awake",
                 Ui.good,
             ) { open(Page.BATTERY) }
             RowDivider()
@@ -240,15 +298,15 @@ private fun Home(
         }
 
         SettingsGroup("On the car screen") {
-            SettingsRow(SettingsIcon.SCREEN, "Car screens", carLayout.title, Ui.accent) { open(Page.SCREENS) }
+            SettingsRow(SettingsIcon.SCREEN, "Car screens", v.layout.title, Ui.accent) { open(Page.SCREENS) }
             RowDivider()
-            SettingsRow(SettingsIcon.MAP, "Map look", if (Prefs.modernMap(ctx)) "Modern" else "Classic", Ui.good) { open(Page.MAP) }
+            SettingsRow(SettingsIcon.MAP, "Map look", v.mapLook.title, Ui.good) { open(Page.MAP) }
             RowDivider()
-            SettingsRow(SettingsIcon.BELL, "Alerts and shift light", if (Prefs.alerts(ctx)) "On" else "Off", Ui.clay) { open(Page.ALERTS) }
+            SettingsRow(SettingsIcon.BELL, "Alerts and shift light", if (v.alerts) "On" else "Off", Ui.clay) { open(Page.ALERTS) }
             RowDivider()
             SettingsRow(
                 SettingsIcon.SOUND, "Startup",
-                (if (Prefs.startupAnim(ctx)) "Animation on" else "Animation off") + " · " + soundMode.title,
+                (if (v.startupAnim) "Animation on" else "Animation off") + " · " + v.sound.title,
                 Ui.sand,
             ) { open(Page.STARTUP) }
             RowDivider()
@@ -260,13 +318,35 @@ private fun Home(
         }
 
         SettingsGroup("More") {
+            SettingsRow(SettingsIcon.STORAGE, "Storage and data", "Trips, recordings and the map cache", Ui.accent) { open(Page.STORAGE) }
+            RowDivider()
             SettingsRow(SettingsIcon.FLASK, "Demo and recordings", if (s.demo) "Demo is playing" else "Try the app without a car", Ui.sand, if (s.demo) Ui.good else Ui.dim) { open(Page.DEMO) }
             RowDivider()
             SettingsRow(SettingsIcon.WHEEL, "Android Auto", "Installing for the car", Ui.accent) { open(Page.AUTO) }
             RowDivider()
             SettingsRow(SettingsIcon.INFO, "About", "DriveSanity ${BuildConfig.VERSION_NAME}", Ui.dim) { open(Page.ABOUT) }
         }
-        Spacer(Modifier.height(28.dp))
+
+        SettingsGroup(footer = "Puts the car, units, screens, map, alerts and startup settings back to how the app first came. Your adapter, calibration and recordings stay.") {
+            SettingsRow(SettingsIcon.RESET, "Reset all settings", null, Ui.red) { confirmReset = true }
+        }
+        Spacer(Modifier.height(if (draft.dirty) 120.dp else 28.dp))
+    }
+
+    if (confirmReset) {
+        ConfirmDialog(
+            title = "Reset all settings?",
+            confirmLabel = "Reset",
+            destructive = true,
+            onConfirm = { confirmReset = false; draft.resetAll(actions) },
+            onDismiss = { confirmReset = false },
+        ) {
+            Text(
+                "This puts every setting back to its default straight away, and drops any change you haven't applied. Your adapter, calibration, trips and recordings are kept.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+        }
     }
 }
 
@@ -281,29 +361,38 @@ private fun obdShort(name: String?): String = when (Obd.status.link) {
     Obd.Link.OFF -> "Not running"
 }
 
+/** "Reset to default" for one part of the settings, shown at the foot of its page. */
+@Composable
+private fun ResetGroup(draft: SettingsDraft, group: SettingsDraft.Group) {
+    SettingsGroup(footer = "Puts this page back to its default. It still needs Apply.") {
+        ResetRow(enabled = !draft.isDefault(group)) { draft.resetStaged(group) }
+    }
+}
+
 // --- Car and sensors --------------------------------------------------------------------------
 
 @Composable
-private fun CarPage(tick: Long, actions: PhoneActions) {
-    val ctx = LocalContext.current
-    val car = CarProfiles.byId(Prefs.carId(ctx))
+private fun CarPage(draft: SettingsDraft) {
+    val v = draft.values
+    val car = CarProfiles.byId(v.carId)
     SettingsGroup(footer = car.note) {
         CarProfiles.all.forEachIndexed { i, p ->
             if (i > 0) RowDivider()
-            ChoiceRow(p.name, p.subtitle, p.id == car.id) { actions.setCar(p.id) }
+            ChoiceRow(p.name, p.subtitle, p.id == car.id) { draft.setCar(p.id) }
         }
     }
     SettingsGroup("Redline", footer = "Sets where the red zone starts on the rev bar.") {
         GroupBody {
+            val rpm = draft.redlineOf(v)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("%,d rpm".format(Revs.REDLINE.roundToInt()), style = MaterialTheme.typography.titleLarge, color = Ui.fg)
+                    Text("%,d rpm".format(rpm.roundToInt()), style = MaterialTheme.typography.titleLarge, color = Ui.fg)
                 }
-                OutlinedButton(onClick = { actions.setRedline(Revs.REDLINE - 100f) }) { Text("−") }
+                OutlinedButton(onClick = { draft.nudgeRedline(-100f) }) { Text("−") }
                 Spacer(Modifier.width(8.dp))
-                OutlinedButton(onClick = { actions.setRedline(Revs.REDLINE + 100f) }) { Text("+") }
+                OutlinedButton(onClick = { draft.nudgeRedline(100f) }) { Text("+") }
             }
-            if (!car.redlineChecked && Prefs.redline(ctx, car.id) == null) {
+            if (!car.redlineChecked && v.redline == null && Prefs.redline(LocalContext.current, car.id) == null) {
                 Text(
                     "This is a starting guess. Use − and + to match the red zone on your tachometer.",
                     style = MaterialTheme.typography.bodySmall,
@@ -313,6 +402,7 @@ private fun CarPage(tick: Long, actions: PhoneActions) {
             }
         }
     }
+    ResetGroup(draft, SettingsDraft.Group.CAR)
 }
 
 @Composable
@@ -341,12 +431,14 @@ private fun CalibrationPage(s: Snapshot, actions: PhoneActions) {
 }
 
 @Composable
-private fun UnitsPage(units: Units, actions: PhoneActions) {
+private fun UnitsPage(draft: SettingsDraft) {
+    val units = draft.values.units
     SettingsGroup(footer = "Applies to the phone, the car screen, trips and the pictures you share.") {
-        ChoiceRow("MPH · °F · mi", "Miles per hour, Fahrenheit, miles", units == Units.MPH) { if (units != Units.MPH) actions.swapUnits() }
+        ChoiceRow("MPH · °F · mi", "Miles per hour, Fahrenheit, miles", units == Units.MPH) { draft.edit { it.copy(units = Units.MPH) } }
         RowDivider()
-        ChoiceRow("km/h · °C · km", "Kilometres per hour, Celsius, kilometres", units != Units.MPH) { if (units == Units.MPH) actions.swapUnits() }
+        ChoiceRow("km/h · °C · km", "Kilometres per hour, Celsius, kilometres", units == Units.KMH) { draft.edit { it.copy(units = Units.KMH) } }
     }
+    ResetGroup(draft, SettingsDraft.Group.UNITS)
 }
 
 // --- Connection -------------------------------------------------------------------------------
@@ -354,6 +446,7 @@ private fun UnitsPage(units: Units, actions: PhoneActions) {
 @Composable
 private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
     val ctx = LocalContext.current
+    var confirmForget by remember { mutableStateOf(false) }
     SettingsGroup {
         GroupBody {
             Text(obdSentence(), style = MaterialTheme.typography.bodyLarge, color = if (Obd.status.link == Obd.Link.LIVE) Ui.good else Ui.fg)
@@ -362,7 +455,7 @@ private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
                 Button(onClick = actions::pickObd) { Text(if (obdName == null) "Choose adapter" else "Change adapter") }
                 if (obdName != null) {
                     Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = actions::forgetObd) { Text("Forget $obdName", color = Ui.clay) }
+                    TextButton(onClick = { confirmForget = true }) { Text("Forget $obdName", color = Ui.clay) }
                 }
             }
         }
@@ -393,6 +486,21 @@ private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
             )
             Spacer(Modifier.height(10.dp))
             Button(onClick = actions::probeCar, enabled = Obd.status.link == Obd.Link.LIVE && Prefs.advancedReads(ctx)) { Text("Ask the car for fuel and tires") }
+        }
+    }
+    if (confirmForget) {
+        ConfirmDialog(
+            title = "Forget this adapter?",
+            confirmLabel = "Forget",
+            destructive = true,
+            onConfirm = { confirmForget = false; actions.forgetObd() },
+            onDismiss = { confirmForget = false },
+        ) {
+            Text(
+                "The app stops connecting to ${obdName ?: "it"} until you choose an adapter again. Nothing on the adapter or in the car changes.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
         }
     }
 }
@@ -428,8 +536,9 @@ private fun FaultsPage(tick: Long, actions: PhoneActions) {
 }
 
 @Composable
-private fun BatteryPage(tick: Long) {
+private fun BatteryPage(draft: SettingsDraft) {
     val ctx = LocalContext.current
+    val v = draft.values
     SettingsGroup {
         GroupBody {
             Text(
@@ -439,19 +548,17 @@ private fun BatteryPage(tick: Long) {
             )
         }
     }
-    var sleep by remember { mutableStateOf(Prefs.letCarSleep(ctx)) }
     SettingsGroup(
         "The car's battery",
         footer = "Asking a car questions keeps its computers awake, which drains the battery and can stop a dashcam from going into parking mode. With this on, the app stops asking once the engine has been off for a little while and only reads the adapter's own voltage, then wakes when you open the app, drive off, or the voltage shows the engine running. Leave it on.",
     ) {
-        SwitchRow("Let the car sleep", "Stop asking once the engine is off", sleep) { sleep = it; Prefs.setLetCarSleep(ctx, it) }
+        SwitchRow("Let the car sleep", "Stop asking once the engine is off", v.letCarSleep) { on -> draft.edit { it.copy(letCarSleep = on) } }
     }
-    var adv by remember { mutableStateOf(Prefs.advancedReads(ctx)) }
     SettingsGroup(
         "Extra readings",
         footer = "Fuel level and tire pressure aren't in the standard data. This lets the app send the few extra read requests other Mazdas have answered. They are still only reads, and they are off until you turn them on.",
     ) {
-        SwitchRow("Manufacturer-specific reads", "Off by default", adv) { adv = it; Prefs.setAdvancedReads(ctx, it) }
+        SwitchRow("Manufacturer-specific reads", "Off by default", v.advancedReads) { on -> draft.edit { it.copy(advancedReads = on) } }
     }
     SettingsGroup {
         GroupBody {
@@ -462,24 +569,27 @@ private fun BatteryPage(tick: Long) {
             )
         }
     }
+    ResetGroup(draft, SettingsDraft.Group.BATTERY)
 }
 
 // --- On the car screen ------------------------------------------------------------------------
 
 @Composable
-private fun ScreensPage(carLayout: Prefs.Layout, actions: PhoneActions) {
+private fun ScreensPage(draft: SettingsDraft) {
+    val layout = draft.values.layout
     SettingsGroup(footer = "What Android Auto shows. The phone always uses this app view. In the car, the \"Show\" button on the top row steps through them.") {
         Prefs.Layout.entries.forEachIndexed { i, l ->
             if (i > 0) RowDivider()
-            ChoiceRow(l.title, layoutNote(l), l == carLayout) { actions.setCarLayout(l) }
+            ChoiceRow(l.title, layoutNote(l), l == layout) { draft.edit { it.copy(layout = l) } }
         }
     }
-    SettingsGroup("Preview") {
+    SettingsGroup("Preview now") {
         AndroidView(
             factory = { DashView(it) },
             modifier = Modifier.fillMaxWidth().aspectRatio(2f).clip(RoundedCornerShape(20.dp)),
         )
     }
+    ResetGroup(draft, SettingsDraft.Group.SCREEN)
 }
 
 private fun layoutNote(l: Prefs.Layout) = when (l) {
@@ -492,33 +602,34 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
 }
 
 @Composable
-private fun MapPage(tick: Long) {
-    val ctx = LocalContext.current
-    var modern by remember { mutableStateOf(Prefs.modernMap(ctx)) }
-    SettingsGroup(footer = "Both need mobile data. Modern is by CARTO, from OpenStreetMap data, fetched sharp for the car screen. Classic is the standard OpenStreetMap map turned dark.") {
-        ChoiceRow("Modern", "A dark map styled for dashboards", modern) { modern = true; Prefs.setModernMap(ctx, true); Tiles.setModern(true) }
+private fun MapPage(draft: SettingsDraft) {
+    val look = draft.values.mapLook
+    SettingsGroup(footer = "All of them need mobile data. The first two are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. Classic is the standard OpenStreetMap map turned dark.") {
+        ChoiceRow("Simplified", "Roads and blocks only, no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
         RowDivider()
-        ChoiceRow("Classic", "OpenStreetMap, turned dark", !modern) { modern = false; Prefs.setModernMap(ctx, false); Tiles.setModern(false) }
+        ChoiceRow("Modern", "The same dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
+        RowDivider()
+        ChoiceRow("Classic", "OpenStreetMap, turned dark", look == MapLook.CLASSIC) { draft.edit { it.copy(mapLook = MapLook.CLASSIC) } }
     }
+    ResetGroup(draft, SettingsDraft.Group.MAP)
 }
 
 @Composable
-private fun AlertsPage(tick: Long, actions: PhoneActions) {
-    val ctx = LocalContext.current
-    var on by remember { mutableStateOf(Prefs.alerts(ctx)) }
+private fun AlertsPage(draft: SettingsDraft) {
     SettingsGroup(footer = "A flashing banner for a hot engine, low battery, low tire, low fuel or speeding, and a shift light along the top of the car screen as the revs near the redline.") {
-        SwitchRow("Alerts and shift light", null, on) { on = it; actions.setAlerts(it) }
+        SwitchRow("Alerts and shift light", null, draft.values.alerts) { on -> draft.edit { it.copy(alerts = on) } }
     }
+    ResetGroup(draft, SettingsDraft.Group.ALERTS)
 }
 
 @Composable
-private fun StartupPage(tick: Long, actions: PhoneActions) {
+private fun StartupPage(draft: SettingsDraft, actions: PhoneActions) {
     val ctx = LocalContext.current
-    var anim by remember { mutableStateOf(Prefs.startupAnim(ctx)) }
+    val v = draft.values
     SettingsGroup(footer = "A short old-TV power-on when the app opens and when Android Auto connects.") {
-        SwitchRow("Startup animation", null, anim) { anim = it; actions.setStartupAnim(it) }
+        SwitchRow("Startup animation", null, v.startupAnim) { on -> draft.edit { it.copy(startupAnim = on) } }
     }
-    val mode = Prefs.startupSound(ctx)
+    val mode = v.sound
     SettingsGroup(
         "Sound",
         footer = "The chime is a sound I made, not a recording of a real reader. To use a real one, record it or find one yourself and choose it under My file.",
@@ -535,7 +646,7 @@ private fun StartupPage(tick: Long, actions: PhoneActions) {
                 color = Ui.dim,
             )
             Spacer(Modifier.height(12.dp))
-            Segments(StartupSoundMode.entries.map { it.title }, mode.ordinal) { actions.setStartupSound(StartupSoundMode.entries[it]) }
+            Segments(StartupSoundMode.entries.map { it.title }, mode.ordinal) { i -> draft.edit { it.copy(sound = StartupSoundMode.entries[i]) } }
             Spacer(Modifier.height(12.dp))
             Row {
                 OutlinedButton(onClick = actions::playStartupSound) { Text("Play it") }
@@ -544,8 +655,15 @@ private fun StartupPage(tick: Long, actions: PhoneActions) {
                     Button(onClick = actions::chooseSoundFile) { Text("Choose file") }
                 }
             }
+            Text(
+                "\"Play it\" plays the sound that's applied now, not one you've only picked here.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
+    ResetGroup(draft, SettingsDraft.Group.STARTUP)
 }
 
 @Composable
@@ -589,6 +707,70 @@ private fun MusicPage(tick: Long) {
 }
 
 // --- More -------------------------------------------------------------------------------------
+
+private fun bytesText(b: Long): String = when {
+    b >= 1L shl 20 -> "%.1f MB".format(b / 1048576.0)
+    b >= 1L shl 10 -> "%d KB".format(b shr 10)
+    else -> "$b bytes"
+}
+
+@Composable
+private fun StoragePage(actions: PhoneActions) {
+    val ctx = LocalContext.current
+    var rev by remember { mutableStateOf(0) }
+    var confirm by remember { mutableStateOf<String?>(null) }
+    val trips = remember(rev) { TripLog.dir(ctx.filesDir).listFiles { f -> f.name.endsWith(".csv") }?.toList().orEmpty() }
+    val raws = remember(rev) { RawRecorder.dir(ctx.filesDir).listFiles()?.toList().orEmpty() }
+    val tiles = remember(rev) { Tiles.cacheBytes(ctx) }
+    val recording = DriveEngine.recordingFile
+
+    SettingsGroup(footer = "Everything stays on this phone. The only things fetched from the internet are map tiles, directions, search results and speed limits.") {
+        StorageRow("Trips", "${trips.size} recorded · ${bytesText(trips.sumOf { it.length() })}", "Delete all", trips.isNotEmpty()) { confirm = "trips" }
+        RowDivider()
+        StorageRow("Raw recordings", "${raws.size} saved · ${bytesText(raws.sumOf { it.length() })}", "Delete all", raws.isNotEmpty() && !RawRecorder.on) { confirm = "raw" }
+        RowDivider()
+        StorageRow("Map cache", bytesText(tiles), "Clear", tiles > 0) { confirm = "tiles" }
+    }
+
+    confirm?.let { what ->
+        ConfirmDialog(
+            title = when (what) { "trips" -> "Delete all trips?"; "raw" -> "Delete all raw recordings?"; else -> "Clear the map cache?" },
+            confirmLabel = if (what == "tiles") "Clear" else "Delete",
+            destructive = what != "tiles",
+            onConfirm = {
+                when (what) {
+                    "trips" -> trips.filter { it != recording }.forEach { it.delete() }
+                    "raw" -> raws.forEach { it.delete() }
+                    else -> Tiles.clear(ctx)
+                }
+                rev++
+                confirm = null
+            },
+            onDismiss = { confirm = null },
+        ) {
+            Text(
+                when (what) {
+                    "trips" -> "Every saved trip is removed from this phone${if (recording != null) " (the one being recorded now is kept)" else ""}. This can't be undone."
+                    "raw" -> "Every raw recording is removed from this phone. This can't be undone."
+                    else -> "The saved map pictures are removed. They're fetched again as the map needs them."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ui.dim,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StorageRow(title: String, value: String, button: String, enabled: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
+            Text(value, style = MaterialTheme.typography.bodySmall, color = Ui.dim)
+        }
+        TextButton(onClick = onClick, enabled = enabled) { Text(button, color = if (enabled) Ui.clay else Ui.dim.copy(alpha = 0.5f)) }
+    }
+}
 
 @Composable
 private fun DemoPage(s: Snapshot, tick: Long, actions: PhoneActions) {
@@ -646,14 +828,36 @@ private fun AutoPage() {
     }
 }
 
+private const val REPO = "https://github.com/byjoelsamuel/DriveSanity"
+
 @Composable
 private fun AboutPage() {
+    val ctx = LocalContext.current
+    fun open(url: String) {
+        runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
     SettingsGroup {
         GroupBody {
-            Text("DriveSanity ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
+            Text("DriveSanity ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium, color = Ui.fg)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Map data © OpenStreetMap contributors. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License).",
+                "A dashboard for your car on the phone and on Android Auto. It only reads from the car and keeps everything on this phone.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
+        }
+    }
+    SettingsGroup("Help") {
+        SettingsRow(SettingsIcon.LINK, "Report a problem", "Opens GitHub", Ui.clay) { open("$REPO/issues/new") }
+        RowDivider()
+        SettingsRow(SettingsIcon.LINK, "What's new", "Release notes and downloads", Ui.accent) { open("$REPO/releases") }
+        RowDivider()
+        SettingsRow(SettingsIcon.LINK, "Source code", "github.com/byjoelsamuel/DriveSanity", Ui.dim) { open(REPO) }
+    }
+    SettingsGroup("Credits") {
+        GroupBody {
+            Text(
+                "Map data © OpenStreetMap contributors. Dark map styling by CARTO. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License).",
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,
             )

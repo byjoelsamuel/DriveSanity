@@ -372,6 +372,13 @@ object DriveEngine : SensorEventListener, LocationListener {
         applyRevs()
     }
 
+    /** Puts the red zone back to the car profile's own value. */
+    fun resetRedline(context: Context) {
+        app = context.applicationContext
+        Prefs.clearRedline(app, profile.id)
+        applyRevs()
+    }
+
     /** Starts a 1.5 s calibration. The car has to be stopped and the phone in its mount. */
     fun calibrate() {
         if (!running) return
