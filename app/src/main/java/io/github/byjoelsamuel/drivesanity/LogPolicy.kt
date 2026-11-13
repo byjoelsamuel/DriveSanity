@@ -13,12 +13,9 @@ class LogPolicy(private val baseMs: Long = 5_000, private val minMs: Long = 1_00
     private var lastKmh = 0f
     private var lastHeading: Float? = null
 
-    /** Rows every second while lap timing, since a lap needs more than a point every five seconds. */
-    var fast = false
-
     fun due(nowMs: Long, speedKmh: Float?, headingDeg: Float?, gTotal: Float): Boolean {
         val since = nowMs - lastMs
-        val every = if (fast) minMs else baseMs
+        val every = baseMs
         val change = since >= minMs && (
             abs((speedKmh ?: 0f) - lastKmh) >= 10f ||
                 (headingDeg != null && lastHeading != null && angle(headingDeg, lastHeading!!) >= 15f) ||

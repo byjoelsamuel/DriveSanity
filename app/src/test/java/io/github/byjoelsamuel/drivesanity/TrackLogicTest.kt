@@ -4,8 +4,6 @@ import io.github.byjoelsamuel.drivesanity.demo.RawEvent
 import io.github.byjoelsamuel.drivesanity.demo.RawPlayer
 import io.github.byjoelsamuel.drivesanity.obd.CommandGuard
 import io.github.byjoelsamuel.drivesanity.track.AccelTimer
-import io.github.byjoelsamuel.drivesanity.track.FinishLine
-import io.github.byjoelsamuel.drivesanity.track.LapTimer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -16,102 +14,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class TrackLogicTest {
-    // A circle of 100 m radius, driven clockwise from the north, with the line on the north point
-    // facing east (heading 90).
-    private val lat0 = 40.0
-    private val lon0 = -119.0
-    private val mLat = 111_320.0
-    private val mLon = 111_320.0 * cos(Math.toRadians(lat0))
-    private val line = FinishLine("Test", lat0 + 100 / mLat, lon0, 90.0)
-
-    private fun at(angleDeg: Double): Pair<Double, Double> {
-        val a = Math.toRadians(angleDeg)
-        return (lat0 + 100 * cos(a) / mLat) to (lon0 + 100 * sin(a) / mLon)
-    }
-
-    /** Drives [laps] laps at a constant [mps], a fix a second, starting a bit before the line. */
-    private fun drive(t: LapTimer, laps: Int, mps: Double, startMs: Long = 0, fixEveryMs: Long = 1000): Long {
-        val perDeg = 2 * Math.PI * 100 / 360.0
-        var angle = -20.0
-        var now = startMs
-        val end = 360.0 * laps + 20
-        while (angle < end) {
-            val (la, lo) = at(angle)
-            t.onFix(now, la, lo, mps.toFloat())
-            angle += mps * (fixEveryMs / 1000.0) / perDeg
-            now += fixEveryMs
-        }
-        return now
-    }
-
-    @Test
-    fun timesLapsBetweenFixes() {
-        val t = LapTimer(line)
-        drive(t, laps = 3, mps = 20.0)
-        assertEquals(3, t.laps.size)
-        val expected = (2 * Math.PI * 100 / 20.0 * 1000).toLong() // 31,416 ms
-        for (lap in t.laps) assertEquals(expected.toDouble(), lap.ms.toDouble(), 60.0) // far better than the one-second spacing
-        assertEquals(4, t.lapNumber)
-    }
-
-    @Test
-    fun firstCrossingOnlyStartsTheClock() {
-        val t = LapTimer(line)
-        drive(t, laps = 1, mps = 20.0)
-        assertEquals(1, t.laps.size)
-        assertNotNull(t.currentMs(40_000))
-    }
-
-    @Test
-    fun crossingTheWrongWayDoesNotCount() {
-        val t = LapTimer(line)
-        // Anticlockwise past the line.
-        var a = 20.0
-        var now = 0L
-        while (a > -20.0) {
-            val (la, lo) = at(a)
-            t.onFix(now, la, lo, 15f)
-            a -= 5.0
-            now += 1000
-        }
-        assertEquals(0, t.lapNumber)
-    }
-
-    @Test
-    fun deltaAgainstTheBestLap() {
-        val t = LapTimer(line)
-        var now = drive(t, laps = 1, mps = 25.0)             // out lap + one lap at 25 m/s (best)
-        assertNull(t.deltaMs.takeIf { t.laps.isEmpty() })
-        // A slower lap: partway round it should read behind.
-        val perDeg = 2 * Math.PI * 100 / 360.0
-        var a = 20.0
-        now += 0
-        val start = now
-        var behind: Long? = null
-        while (a < 200.0) {
-            val (la, lo) = at(a)
-            t.onFix(now, la, lo, 18f)
-            a += 18.0 / perDeg
-            now += 1000
-            behind = t.deltaMs
-        }
-        assertTrue("delta should be positive when slower, was $behind", (behind ?: 0) > 500)
-        assertNotNull(start)
-    }
-
-    @Test
-    fun aBounceOverTheLineIsIgnored() {
-        val t = LapTimer(line, minLapMs = 15_000)
-        val end = drive(t, laps = 1, mps = 20.0)
-        val before = t.laps.size
-        // Back over the line the wrong way and forward again within a couple of seconds.
-        val (la1, lo1) = at(-3.0)
-        val (la2, lo2) = at(3.0)
-        t.onFix(end + 1_000, la1, lo1, 5f)
-        t.onFix(end + 2_000, la2, lo2, 5f)
-        assertEquals(before, t.laps.size)
-    }
-
     @Test
     fun zeroToSixtyAndTheQuarterMile() {
         val a = AccelTimer()
@@ -192,26 +94,13 @@ class TrackLogicTest {
         assertTrue(p.due(7_300, 70f, 120f, 0.1f))          // turned 30 degrees
         assertTrue(p.due(8_400, 70f, 120f, 0.5f))          // hard braking
         assertFalse(p.due(8_900, 70f, 120f, 0.6f))         // but not more than once a second
-        p.fast = true
-        assertTrue(p.due(9_500, 70f, 120f, 0.0f))          // lap timing: every second
     }
 }
 
-/** The built-in demo drive has to do what the demo promises: three timed laps and a standing start. */
+/** The built-in demo drive has to do what the demo promises: a standing start. */
 class DemoDriveTest {
     private val text = java.io.File("src/main/assets/demo.dsr").readText()
     private val events = RawEvent.parse(text)
-
-    @Test
-    fun hasAStartLineAndThreeLaps() {
-        val l = text.lineSequence().first { it.startsWith("# line,") }.split(',')
-        val line = FinishLine(l[1], l[2].toDouble(), l[3].toDouble(), l[4].toDouble())
-        val timer = LapTimer(line)
-        for (e in events.filterIsInstance<RawEvent.Fix>()) timer.onFix(e.t, e.lat, e.lon, e.speedMps)
-        assertEquals(3, timer.laps.size)
-        for (lap in timer.laps) assertTrue("lap ${lap.ms}", lap.ms in 45_000..60_000)
-        assertTrue("laps should differ, so the delta has something to show", timer.laps.map { it.ms }.distinct().size == 3)
-    }
 
     @Test
     fun hasAStandingStartWorthTiming() {
@@ -231,10 +120,10 @@ class DemoDriveTest {
 
 class SessionTest {
     private val newCsv = """
-        time_s,lat,lon,speed_kmh,gps_accuracy_m,heading_deg,peak_brake_g,peak_accel_g,peak_lat_g,rpm,rpm_max,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v,lap
-        0.0,40.000000,-119.000000,0.0,3,90,0.00,0.00,0.00,750,760,0,19,88,27,63,14.0,
-        5.0,40.000000,-118.999000,36.0,3,90,0.05,0.42,0.10,3100,5200,40,45,88,27,63,14.0,1
-        10.0,40.000000,-118.998000,72.0,3,90,0.62,0.30,0.55,4200,6100,60,70,88,27,63,14.0,1
+        time_s,lat,lon,speed_kmh,gps_accuracy_m,heading_deg,peak_brake_g,peak_accel_g,peak_lat_g,rpm,rpm_max,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v
+        0.0,40.000000,-119.000000,0.0,3,90,0.00,0.00,0.00,750,760,0,19,88,27,63,14.0
+        5.0,40.000000,-118.999000,36.0,3,90,0.05,0.42,0.10,3100,5200,40,45,88,27,63,14.0
+        10.0,40.000000,-118.998000,72.0,3,90,0.62,0.30,0.55,4200,6100,60,70,88,27,63,14.0
     """.trimIndent().lines()
 
     private val oldCsv = """
@@ -247,7 +136,7 @@ class SessionTest {
     fun readsTheCurrentFormat() {
         val pts = Session.parse(newCsv)
         assertEquals(3, pts.size)
-        val s = Session(pts, emptyList())
+        val s = Session(pts)
         assertEquals(72f, s.topKmh, 0f)
         assertEquals(4200f, pts[2].rpm!!, 0f)
         assertEquals(0.62f, s.peakBrakeG, 0f)
@@ -256,9 +145,7 @@ class SessionTest {
         assertEquals(10.0, s.durationS, 0.0)
         // 0.002 degrees of longitude at 40 N is about 170 m.
         assertEquals(170.0, s.distanceM, 8.0)
-        assertEquals(1, pts[1].lap)
-        assertEquals(null, pts[0].lap)
-    }
+            }
 
     @Test
     fun stillReadsTheOlderFormat() {
@@ -270,16 +157,9 @@ class SessionTest {
     }
 
     @Test
-    fun readsLaps() {
-        val laps = Session.parseLaps(listOf("Demo loop,1,52600,96", "Demo loop,2,51480,101", "junk"))
-        assertEquals(2, laps.size)
-        assertEquals(51480L, Session(emptyList(), laps).bestLap!!.ms)
-    }
-
-    @Test
     fun anEmptyFileIsFine() {
         assertEquals(0, Session.parse(emptyList()).size)
-        assertEquals(0.0, Session(emptyList(), emptyList()).distanceM, 0.0)
+        assertEquals(0.0, Session(emptyList()).distanceM, 0.0)
     }
 }
 
@@ -288,9 +168,9 @@ class ShareTrimTest {
         // A straight line east, one point every 50 m, starting at "home".
         val mLon = 111_320.0 * Math.cos(Math.toRadians(40.0))
         val pts = (0..lonSteps).map {
-            SessionPoint(it * 5.0, 40.0, -119.0 + it * 50.0 / mLon, 50f, null, null, 0f, 0f, 0f, null)
+            SessionPoint(it * 5.0, 40.0, -119.0 + it * 50.0 / mLon, 50f, null, null, 0f, 0f, 0f)
         }
-        return Session(pts, emptyList())
+        return Session(pts)
     }
 
     @org.junit.Test
@@ -311,7 +191,7 @@ class ShareTrimTest {
 class ShareConfigTest {
     @org.junit.Test
     fun aConfigSurvivesBeingSaved() {
-        val c = ShareConfig(setOf(Block.TOP_SPEED, Block.PATH, Block.BEST_LAP), 0.75f, PanelStyle.SOLID, Place.BOTTOM)
+        val c = ShareConfig(setOf(Block.TOP_SPEED, Block.PATH, Block.ZERO_60), 0.75f, PanelStyle.SOLID, Place.BOTTOM)
         val back = ShareConfig.decode(c.encode())
         org.junit.Assert.assertEquals(c, back)
     }
@@ -341,16 +221,14 @@ class ShareConfigTest {
     fun aCardOnlyOffersWhatThereIsData_For() {
         val s = Session(
             listOf(
-                SessionPoint(0.0, 40.0, -119.0, 50f, 3000f, 20f, 0.3f, 0.4f, 0.2f, null),
-                SessionPoint(5.0, 40.0, -118.99, 80f, 5000f, 60f, 0.5f, 0.6f, 0.4f, null),
+                SessionPoint(0.0, 40.0, -119.0, 50f, 3000f, 20f, 0.3f, 0.4f, 0.2f),
+                SessionPoint(5.0, 40.0, -118.99, 80f, 5000f, 60f, 0.5f, 0.6f, 0.4f),
             ),
-            emptyList(),
         )
         val d = CardData.ofSession(s, "Drive", "1 JAN", "Car", Units.MPH, hideEnds = false)
         org.junit.Assert.assertTrue(d.has(Block.TOP_SPEED))
         org.junit.Assert.assertTrue(d.has(Block.PATH))
-        org.junit.Assert.assertFalse(d.has(Block.BEST_LAP)) // no laps
-        org.junit.Assert.assertFalse(d.has(Block.ZERO_60))  // no run
+                org.junit.Assert.assertFalse(d.has(Block.ZERO_60))  // no run
         org.junit.Assert.assertFalse(d.has(Block.DRIVES))   // only on a profile
     }
 
@@ -358,10 +236,9 @@ class ShareConfigTest {
     fun theProfileAddsDrivesUp() {
         fun drive(km: Double, top: Float) = Session(
             listOf(
-                SessionPoint(0.0, 40.0, -119.0, 0f, 2000f, null, 0.2f, 0.3f, 0.1f, null),
-                SessionPoint(20.0, 40.0, -119.0 + km * 1000 / (111_320.0 * Math.cos(Math.toRadians(40.0))), top, 4000f, null, 0.5f, 0.2f, 0.3f, null),
+                SessionPoint(0.0, 40.0, -119.0, 0f, 2000f, null, 0.2f, 0.3f, 0.1f),
+                SessionPoint(20.0, 40.0, -119.0 + km * 1000 / (111_320.0 * Math.cos(Math.toRadians(40.0))), top, 4000f, null, 0.5f, 0.2f, 0.3f),
             ),
-            listOf(SessionLap("t", 1, 50_000, 100f)),
         )
         val p = CardData.ofProfile(listOf(drive(10.0, 100f), drive(5.0, 140f)), "Car", Units.KMH, "1 JAN")
         org.junit.Assert.assertEquals(2, p.drives)
@@ -369,7 +246,6 @@ class ShareConfigTest {
         org.junit.Assert.assertEquals(40.0, p.durationS!!, 0.0)
         org.junit.Assert.assertEquals(140f, p.topKmh!!, 0f)
         org.junit.Assert.assertEquals(0.5f, p.brakeG!!, 0f)
-        org.junit.Assert.assertEquals(1, p.laps.size)
         org.junit.Assert.assertTrue(p.has(Block.DRIVES))
         org.junit.Assert.assertFalse(p.has(Block.PATH)) // a profile is many drives, so there's no one path
     }

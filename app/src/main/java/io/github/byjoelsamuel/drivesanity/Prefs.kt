@@ -52,7 +52,7 @@ object Prefs {
         MAP("Map"),
         RETRO("Retro"),
         DIAG("OBD2"),
-        SPORT("Sport"),
+        LAUNCH("0–60"),
         MUSIC("Music");
 
         val next get() = entries[(ordinal + 1) % entries.size]
@@ -90,38 +90,21 @@ object Prefs {
         prefs(ctx).edit { putString("layout", to.name) }
     }
 
-    /** The Sport button: jump to the Sport screen, or back to the screen you came from. */
-    fun toggleSport(ctx: Context) {
-        val now = layout(ctx)
-        if (now == Layout.SPORT) {
-            val back = Layout.entries.firstOrNull { it.name == prefs(ctx).getString("sport_back", null) }
-            setLayout(ctx, if (back == null || back == Layout.SPORT) Layout.GAUGES else back)
-        } else {
-            prefs(ctx).edit { putString("sport_back", now.name) }
-            setLayout(ctx, Layout.SPORT)
-        }
-    }
-
     /** Flashing warnings and the shift light. */
     /** How the share pictures are put together (see ShareConfig); kept so the next one starts the same way. */
     fun shareConfig(ctx: Context): String? = prefs(ctx).getString("share_config", null)
 
     fun setShareConfig(ctx: Context, encoded: String) = prefs(ctx).edit { putString("share_config", encoded) }
 
-    /** On the Music screen: the player on the left (and the map on the right), or the other way round. */
-    fun musicLeft(ctx: Context): Boolean = prefs(ctx).getBoolean("music_left", true)
+    /** Whether the 0–60 screen gives a 3, 2, 1 before a run (it's off unless you turn it on). */
+    fun launchCountdown(ctx: Context): Boolean = prefs(ctx).getBoolean("launch_countdown", false)
 
-    fun setMusicLeft(ctx: Context, left: Boolean) = prefs(ctx).edit { putBoolean("music_left", left) }
+    fun setLaunchCountdown(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("launch_countdown", on) }
 
     /** True for the modern dark map (CARTO's Dark Matter); false for the classic OpenStreetMap look. */
     fun modernMap(ctx: Context): Boolean = prefs(ctx).getBoolean("modern_map", true)
 
     fun setModernMap(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("modern_map", on) }
-
-    /** Saved start/finish lines, as JSON (see Track). */
-    fun tracksJson(ctx: Context): String = prefs(ctx).getString("tracks", "[]") ?: "[]"
-
-    fun setTracksJson(ctx: Context, json: String) = prefs(ctx).edit { putString("tracks", json) }
 
     /** Manufacturer-specific reads (fuel level, tire pressure) are off until the person turns them on. They are still only reads. */
     fun advancedReads(ctx: Context): Boolean = prefs(ctx).getBoolean("advanced_reads", false)

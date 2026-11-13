@@ -7,14 +7,13 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
-import io.github.byjoelsamuel.drivesanity.track.lapText
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Pictures of a drive, your laps, a standing start or all your drives together, made to post: a tall one
+ * Pictures of a drive, a 0–60 run or all your drives together, made to post: a tall one
  * for Stories and a 4:5 one for the feed. They're drawn here, with no server, in the same look as the
  * dashboards, with an optional photo behind them.
  *
@@ -41,7 +40,7 @@ object ShareCard {
     private const val GENRE_H = 62f
 
     /** The panels, in the order they're stacked. */
-    private val ORDER = listOf(Genre.TRIP, Genre.ROUTE, Genre.SPEED, Genre.PERFORMANCE, Genre.ENGINE, Genre.LAPS, Genre.STANDING)
+    private val ORDER = listOf(Genre.TRIP, Genre.ROUTE, Genre.SPEED, Genre.PERFORMANCE, Genre.ENGINE, Genre.STANDING)
 
     private class Pens(ctx: Context, val onPhoto: Boolean) {
         val numbers = Fonts.dashNumbers(ctx)
@@ -199,55 +198,9 @@ object ShareCard {
                 frame(60f + 56f) { c, x, y, w -> stats(c, p, x, y, w, items, 60f) }
             }
             Genre.ENGINE -> frame(72f + 56f) { c, x, y, w -> stats(c, p, x, y, w, listOf("HIGHEST REVS" to "%,d".format(d.maxRpm!!.roundToInt())), 72f) }
-            Genre.LAPS -> {
-                val best = d.laps.minByOrNull { it.ms }
-                val showBest = Block.BEST_LAP in blocks
-                val showList = Block.LAP_LIST in blocks
-                val shown = if (showList) d.laps.take(if (story) 8 else 5) else emptyList()
-                val rowH = 84f
-                val bestH = if (showBest) 150f else 0f
-                frame(bestH + shown.size * rowH + if (d.laps.size > shown.size && showList) 50f else 0f) { c, x, y, w ->
-                    var yy = y
-                    if (showBest && best != null) {
-                        p.label(28f)
-                        c.drawText("BEST LAP", x, yy + 22f, p.text)
-                        p.number(110f, Colors.GOOD)
-                        c.drawText(lapText(best.ms), x, yy + 130f, p.text)
-                        p.number(54f, PALE, Paint.Align.RIGHT)
-                        c.drawText("${d.units.speed(best.topKmh / 3.6f).roundToInt()} ${d.units.label}", x + w, yy + 126f, p.text)
-                        yy += bestH
-                    }
-                    val bestMs = best?.ms ?: 0L
-                    val slowest = (shown.maxOfOrNull { it.ms } ?: 1L).toFloat()
-                    for ((i, l) in shown.withIndex()) {
-                        val ry = yy + i * rowH
-                        val isBest = l.ms == bestMs
-                        p.label(30f)
-                        c.drawText("LAP ${l.number}", x, ry + 44f, p.text)
-                        p.number(46f, if (isBest) Colors.GOOD else PALE, Paint.Align.RIGHT)
-                        c.drawText(lapText(l.ms), x + w, ry + 48f, p.text)
-                        val barL = x + 190f
-                        val barR = x + w - 290f
-                        val frac = if (slowest > bestMs) 0.35f + 0.65f * ((l.ms - bestMs) / (slowest - bestMs)) else 0.35f
-                        p.fill.color = Colors.GRID
-                        c.drawRect(barL, ry + 26f, barR, ry + 42f, p.fill)
-                        p.fill.color = if (isBest) Colors.GOOD else Colors.ACCENT
-                        c.drawRect(barL, ry + 26f, barL + (barR - barL) * frac, ry + 42f, p.fill)
-                    }
-                    if (d.laps.size > shown.size && showList) {
-                        p.label(28f)
-                        c.drawText("+ ${d.laps.size - shown.size} more", x, yy + shown.size * rowH + 34f, p.text)
-                    }
-                }
-            }
             Genre.STANDING -> {
-                val r = d.run!!
                 val rows = blocks.map {
-                    when (it) {
-                        Block.ZERO_60 -> "0–60 MPH" to sec(r.to60Ms)
-                        Block.ZERO_100 -> "0–100 KM/H" to sec(r.to100Ms)
-                        else -> "¼ MILE" to (sec(r.quarterMs) + (r.trapKmh?.let { t -> "  @ ${d.units.speed(t / 3.6f).roundToInt()} ${d.units.label}" } ?: ""))
-                    }
+                    if (it == Block.ZERO_60) "0–60 MPH" to sec(d.to60Ms) else "0–100 KM/H" to sec(d.to100Ms)
                 }
                 val rowH = 176f
                 frame(rows.size * rowH) { c, x, y, w ->
@@ -255,13 +208,13 @@ object ShareCard {
                         val ry = y + i * rowH
                         p.label(30f)
                         c.drawText(row.first, x, ry + 30f, p.text)
-                        p.number(if (row.second.length > 12) 72f else 100f)
+                        p.number(100f)
                         c.drawText(row.second, x, ry + 136f, p.text)
                     }
                 }
             }
             else -> null
-        }.also { if (genre == Genre.DETAILS) return null }
+        }
     }
 
     private fun sec(ms: Long?) = if (ms == null) "–" else "%.2f s".format(java.util.Locale.US, ms / 1000.0)

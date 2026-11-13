@@ -29,7 +29,7 @@ class ClusterPainter(context: Context) {
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val map = MapPainter(labels, numbers)
-    private val sport = SportPainter(context)
+    private val launch = LaunchPainter(context)
     private val music = MusicPainter(context)
     private val speedRoll = RollingNumber()
 
@@ -174,13 +174,10 @@ class ClusterPainter(context: Context) {
         barRow(c, b, "ECONOMY", units.economyText(s.fuelLper100, s.fuelLph), frac, 14, ::rampColor)
     }
 
-    // Music lives in MusicPainter.
-    fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units, map)
+    // The 0–60 and Music screens live in their own painters.
+    fun drawLaunch(c: Canvas, r: RectF, s: Snapshot, units: Units) = launch.draw(c, r, s, units)
 
-    fun musicHit(x: Float, y: Float): MusicPainter.Control? = music.hit(x, y)
-
-    // Sport lives in SportPainter.
-    fun drawSport(c: Canvas, r: RectF, s: Snapshot, units: Units) = sport.draw(c, r, s, units)
+    fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
 
     /** A caption and a big value on one line, and a row of bar segments under them. */
     private fun barRow(c: Canvas, b: RectF, name: String, value: String, frac: Float?, n: Int, colorOf: (Float) -> Int) {
