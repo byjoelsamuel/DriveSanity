@@ -1,5 +1,7 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -55,7 +57,7 @@ interface PhoneActions {
 }
 
 /**
- * The phone app: three tabs, Drive, Trips and Setup. Separate from the car screen, which keeps
+ * The phone app: four tabs, Drive, 0–60, Trips and Settings. Separate from the car screen, which keeps
  * its own dashboards. The live numbers refresh ten times a second. The power-on animation plays
  * over it once when the app opens.
  */
@@ -84,7 +86,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             containerColor = Ui.bg,
             bottomBar = {
                 NavigationBar(containerColor = Ui.card) {
-                    listOf("Drive" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Setup" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
+                    listOf("Drive" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
                         val on = tab == i
                         NavigationBarItem(
                             selected = on,
@@ -102,11 +104,13 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             },
         ) { pad ->
             Box(Modifier.fillMaxSize().padding(pad)) {
-                when (tab) {
-                    0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 })
-                    1 -> LaunchTab(s, units)
-                    2 -> TripsTab(units, recordings, tick, actions)
-                    else -> SetupTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
+                Crossfade(targetState = tab, animationSpec = tween(180), label = "tab") { t ->
+                    when (t) {
+                        0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 })
+                        1 -> LaunchTab(s, units)
+                        2 -> TripsTab(units, recordings, tick, actions)
+                        else -> SettingsTab(s, units, Prefs.layout(ctx), Prefs.obdDevice(ctx)?.name, tick, actions)
+                    }
                 }
             }
         }

@@ -376,7 +376,7 @@ private fun EngineCards(s: Snapshot, units: Units) {
             }
             if (s.tires.all { it == null }) {
                 Text(
-                    "Not readable from this car yet. Setup → OBD2 adapter has a test that can help.",
+                    "Not readable from this car yet. Settings → OBD2 adapter has a test that can help.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Ui.dim,
                     modifier = Modifier.padding(top = 8.dp),

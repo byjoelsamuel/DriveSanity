@@ -9,7 +9,7 @@ package io.github.byjoelsamuel.drivesanity.obd
  *  - Live data (01), freeze frame (02), stored, pending and permanent codes (03, 07, 0A) and the
  *    VIN and car information (09) are allowed.
  *  - Manufacturer-specific reads (22) and choosing a header are only allowed when the person has
- *    turned on advanced reads in Setup.
+ *    turned on advanced reads in Settings.
  *  - Everything else is refused, including clearing codes (04), output tests (08), writes (2E, 2F),
  *    diagnostic sessions (10), resets (11), security (27) and routines (31).
  */

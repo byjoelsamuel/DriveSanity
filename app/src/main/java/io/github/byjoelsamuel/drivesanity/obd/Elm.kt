@@ -197,7 +197,7 @@ class ObdSession(private val link: ObdTransport, private val advanced: () -> Boo
     /**
      * A one-off look at a few manufacturer-specific readings people have used on other Mazdas
      * (fuel level and tire pressures, asked of the instrument cluster). It only asks; it changes
-     * nothing in the car. The raw replies are shown in Setup so they can be matched to what the
+     * nothing in the car. The raw replies are shown in Settings so they can be matched to what the
      * car's own screen says.
      */
     fun probe(): List<String> {
