@@ -344,13 +344,14 @@ The app opens with a soft old-TV power-on: a glowing line swells until light fil
 screen and the name fades in. It plays on the phone, and in the car when Android Auto
 connects. Tap to skip, or turn it off in Settings → Startup.
 
-A short rising chime plays with it, then a Japanese voice says "ETC card inserted", like the
-reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Settings → Startup**.
+A sound plays with it: by default a recording of a Japanese Toyota ETC card reader switching
+on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My file** in
+**Settings → Startup**.
 
-- The chime is a sound I made for the app, not a recording of a real ETC reader (those are
-  copyrighted).
-- The voice is your phone's own Japanese text-to-speech. If none is installed you get just
-  the chime.
+- **Reader** is "JDM Toyota ETC card reader turning on" by qopsinonstudios, from Freesound.
+- The chime is a short rising sound I made for the app.
+- The voice is your phone's own Japanese text-to-speech saying "ETC card inserted" after the
+  chime. If none is installed you get just the chime.
 
 ## The map
 

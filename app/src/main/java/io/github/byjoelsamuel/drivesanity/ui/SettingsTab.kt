@@ -632,12 +632,13 @@ private fun StartupPage(draft: SettingsDraft, actions: PhoneActions) {
     val mode = v.sound
     SettingsGroup(
         "Sound",
-        footer = "The chime is a sound I made, not a recording of a real reader. To use a real one, record it or find one yourself and choose it under My file.",
+        footer = "Reader is a real recording (credited under About). Chime is a sound I made in the same spirit. Or choose any sound file of your own under My file.",
     ) {
         GroupBody {
             Text(
                 when (mode) {
                     StartupSoundMode.OFF -> "No sound."
+                    StartupSoundMode.READER -> "A recording of a Japanese Toyota ETC card reader switching on. In the car it plays through the speakers."
                     StartupSoundMode.CHIME -> "A short rising chime, in the spirit of a Japanese ETC card reader. In the car it plays through the speakers."
                     StartupSoundMode.VOICE -> "The chime, then \"ETC card inserted\" in Japanese, spoken by your phone's Japanese voice if it has one. Without one you just get the chime."
                     StartupSoundMode.CUSTOM -> if (Prefs.customSound(ctx) == null) "Choose a sound file below." else "Plays the sound file you chose."
@@ -857,7 +858,7 @@ private fun AboutPage() {
     SettingsGroup("Credits") {
         GroupBody {
             Text(
-                "Map data © OpenStreetMap contributors. Dark map styling by CARTO. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License).",
+                "Map data © OpenStreetMap contributors. Dark map styling by CARTO. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License). Startup sound: \"JDM Toyota ETC card reader turning on\" by qopsinonstudios, from Freesound.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,
             )

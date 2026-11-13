@@ -12,10 +12,10 @@ import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
 
 /**
- * The start-up sound: a short rising chime in the spirit of the beep a Japanese ETC card reader
- * makes, optionally followed by the phrase such a reader says, spoken by the phone's own Japanese
- * voice if it has one. The chime is synthesised (res/raw/etc_chime.wav), not a recording of any
- * real unit. Or any sound file the owner picks.
+ * The start-up sound. By default it's a recording of a Japanese Toyota ETC card reader switching
+ * on (res/raw/etc_reader.ogg, by qopsinonstudios on Freesound). Or a short synthesised rising chime
+ * in the same spirit (res/raw/etc_chime.wav), optionally followed by the phrase such a reader says,
+ * spoken by the phone's own Japanese voice if it has one. Or any sound file the owner picks.
  *
  * It's played as navigation-prompt audio, so it comes out of the car's speakers over Android
  * Auto, and briefly lowers whatever else is playing.
@@ -38,8 +38,9 @@ object StartupSound {
         lastMs = now
         try {
             when (mode) {
-                StartupSoundMode.CHIME -> chime(app, speakAfter = false)
-                StartupSoundMode.VOICE -> chime(app, speakAfter = true)
+                StartupSoundMode.READER -> chime(app, R.raw.etc_reader, speakAfter = false)
+                StartupSoundMode.CHIME -> chime(app, R.raw.etc_chime, speakAfter = false)
+                StartupSoundMode.VOICE -> chime(app, R.raw.etc_chime, speakAfter = true)
                 StartupSoundMode.CUSTOM -> custom(app)
                 StartupSoundMode.OFF -> {}
             }
@@ -58,8 +59,8 @@ object StartupSound {
         app.getSystemService(AudioManager::class.java).abandonAudioFocusRequest(request)
     }
 
-    private fun chime(app: Context, speakAfter: Boolean) {
-        val player = MediaPlayer.create(app, R.raw.etc_chime, attrs, AudioManager.AUDIO_SESSION_ID_GENERATE) ?: return
+    private fun chime(app: Context, sound: Int, speakAfter: Boolean) {
+        val player = MediaPlayer.create(app, sound, attrs, AudioManager.AUDIO_SESSION_ID_GENERATE) ?: return
         val request = focus(app)
         player.setOnCompletionListener {
             it.release()
