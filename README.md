@@ -61,7 +61,7 @@ After a phone restart, Shizuku has to be started again before you can install: t
 
 ### Phone settings that stop the app running
 
-Open **Setup → Phone check**. It lists what the app needs (precise location, notifications,
+Open **Settings → Phone check**. It lists what the app needs (precise location, notifications,
 Nearby devices for Bluetooth, and battery set to unrestricted), ticks what's fine, and has a
 button to fix each thing that isn't. It also says whether the app was installed with the Play
 mark that Android Auto wants. Phone makers add their own battery savers on top of Android's, so
@@ -98,22 +98,22 @@ one. The ones that matter most:
 ## First drive
 
 1. Mount the phone firmly, facing you or lying flat with its top pointing forward.
-2. Stop on level ground and tap **Calibrate** (Drive tab, or in Setup). The app uses this to
+2. Stop on level ground and tap **Calibrate** (Drive tab, or in Settings). The app uses this to
    find which way is forward. Do it again if you move the mount.
 3. Drive. To record, tap **Start recording** on the Drive tab. Recordings show up in **Trips**:
    tap one to see its path and graphs, or share it as a spreadsheet (CSV).
 
 Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
 
-**No car handy?** **Setup → Demo and raw recordings → Start demo** plays a made-up drive
+**No car handy?** **Settings → Demo and recordings → Start demo** plays a made-up drive
 through the whole app (all the screens, the car screen, the 0–60 timer), so you can try
 everything first.
 
 ## The screens
 
 The phone app has four tabs: **Drive**, **0–60**, **Trips**
-(your recordings) and **Setup**. The car shows one of six
-full-screen dashboards. Pick it in Setup → Car screen, or with the buttons at the top of the
+(your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. The car shows one of six
+full-screen dashboards. Pick it in Settings → Car screens, or with the buttons at the top of the
 car screen.
 
 **Gauges**: bar gauges for RPM, throttle, coolant and fuel (or economy) on the left, a huge
@@ -146,7 +146,7 @@ touch screen can actually press (buttons drawn on the picture can't be pressed o
 ![The Music screen, with a stand-in song](docs/music-screen.png)
 
 To read what's playing, Android needs you to allow DriveSanity under **notification access**
-(Setup → Music → Allow notification access). That's how any app is allowed to see another app's
+(Settings → Music → Allow notification access). That's how any app is allowed to see another app's
 playback. The app only looks at what's playing: it doesn't read, keep or send your notifications, and
 nothing leaves the phone.
 
@@ -235,7 +235,7 @@ sends a picture instead.)
 
 ## Demo mode and raw recordings
 
-**Setup → Demo and raw recordings → Start demo** plays a made-up drive in place of the real car,
+**Settings → Demo and recordings → Start demo** plays a made-up drive in place of the real car,
 GPS and motion sensor: a standing start, then three laps of a loop, with the Mazda3's gears, revs and
 g-forces. It runs every screen and the car screen too, and the standing start gets timed on the 0–60
 screen. (It's a
@@ -253,7 +253,7 @@ temperatures, battery voltage and fault codes.
 1. Plug the adapter into the OBD2 port under the dashboard and turn the ignition on.
 2. A classic Bluetooth adapter has to be paired in Android's Bluetooth settings first (PIN
    usually 1234 or 0000). Bluetooth LE adapters don't.
-3. In the app: **Setup** → **Choose adapter**. You only do this once.
+3. In the app: **Settings** → **OBD2 adapter** → **Choose adapter**. You only do this once.
 
 **If it keeps disconnecting**
 
@@ -262,17 +262,17 @@ temperatures, battery voltage and fault codes.
   link alive when you switch apps or the screen turns off.
 - Close other apps that talk to the adapter (its own app, Torque, Car Scanner). Most adapters
   allow one connection at a time.
-- **Setup → OBD2 adapter → Diagnostics** shows how often the link restarted and why.
+- **Settings → OBD2 adapter → Diagnostics** shows how often the link restarted and why.
   "Adapter stopped answering" points at the adapter or car; "Adapter disconnected" means
   Bluetooth dropped.
 
-The fault codes are on the OBD2 screen and in **Setup → Fault codes**.
+The fault codes are on the OBD2 screen and in **Settings → Fault codes**.
 
 **Read-only.** The app only asks the car questions. Anything that could change something (clearing
 fault codes, writing a setting, starting a test, diagnostic sessions, security requests) is blocked
 inside the app before it reaches the adapter, and there's a test for that. The extra
 manufacturer-specific reads used to look for fuel level and tire pressure are still only reads, and
-they're **off until you turn them on** in Setup.
+they're **off until you turn them on** in Settings.
 
 **Letting the car sleep.** A car that's being asked questions can't go to sleep, which drains the
 battery and can stop a dashcam from going into parking mode. So once the engine has been off for a
@@ -280,13 +280,13 @@ little while (20 seconds if the car stops answering, two minutes if it's on but 
 app stops asking and only reads the adapter's own voltage, which doesn't touch the car. It wakes
 when you open the app, the car connects to Android Auto, you drive off, or the voltage shows the
 engine running. If the car isn't answering when the app connects, it waits longer between tries,
-up to two minutes, instead of asking every few seconds. It's on by default; **Setup → Read-only,
+up to two minutes, instead of asking every few seconds. It's on by default; **Settings → Battery and read-only,
 and the car's battery** turns it off. If the car sits for days, unplug the adapter anyway: cheap
 adapters keep drawing a little current.
 
 ## Your car
 
-Pick your car in **Setup → My car**. It decides how the gear is worked out and where the red
+Pick your car in **Settings → My car**. It decides how the gear is worked out and where the red
 zone starts.
 
 | Car | Gears | Redline |
@@ -311,14 +311,14 @@ standard "throttle position" reading follows RPM, not your foot. The app asks th
 accelerator pedal reading instead (the standard readings for pedal position and relative
 throttle), and uses the first one the car has. If the car has none of them, it takes the
 throttle valve and rescales it so idle reads 0% and the widest it has opened reads 100%, and
-that is only an estimate. **Setup → OBD2 adapter → Diagnostics** says which one is in use
+that is only an estimate. **Settings → OBD2 adapter → Diagnostics** says which one is in use
 ("Pedal reading").
 
 ## Fuel, tires and economy
 
 Standard OBD2 data doesn't include fuel level on a 2023 Mazda3, and tire pressures aren't
 standard on any car. They need manufacturer-specific requests, and I couldn't find a verified
-set for the 2019+ Mazda3. So those two show a dash for now. **Setup → OBD2 adapter → Ask the
+set for the 2019+ Mazda3. So those two show a dash for now. **Settings → OBD2 adapter → Fuel and tires → Ask the
 car for fuel and tires** sends a few read-only requests used on other Mazdas and shows the raw
 replies under Diagnostics. Compare them with the car's own screen to work out the decoding.
 
@@ -332,20 +332,20 @@ or MPG, and as litres or gallons per hour when you're stopped. The trip total is
 ## Shift light and alerts
 
 - **Shift light:** a thin strip along the top of every screen except Retro turns sand at 92% of
-  the redline and flashes red at 98.5%. The redline is set per car in Setup.
+  the redline and flashes red at 98.5%. The redline is set per car in Settings.
 - **Alerts:** a banner for a hot engine (above 108 °C / 226 °F), low battery (under 11.8 V, or
   12.5 V with the engine running), a flat tire (under 27 psi), low fuel when the car reports
   it, and going 5 mph (8 km/h) over the posted limit.
-- Both are visual only, and both can be turned off in **Setup → Alerts and shift light**.
+- Both are visual only, and both can be turned off in **Settings → Alerts and shift light**.
 
 ## Startup animation and sound
 
 The app opens with a soft old-TV power-on: a glowing line swells until light fills the
 screen and the name fades in. It plays on the phone, and in the car when Android Auto
-connects. Tap to skip, or turn it off in Setup.
+connects. Tap to skip, or turn it off in Settings → Startup.
 
 A short rising chime plays with it, then a Japanese voice says "ETC card inserted", like the
-reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Setup → Startup sound**.
+reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Settings → Startup**.
 
 - The chime is a sound I made for the app, not a recording of a real ETC reader (those are
   copyrighted).
@@ -354,7 +354,7 @@ reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Setup → St
 
 ## The map
 
-**Look:** Setup → Map look. *Modern* (the default) is CARTO's dark map, already styled for a
+**Look:** Settings → Map look. *Modern* (the default) is CARTO's dark map, already styled for a
 dashboard and fetched at double resolution so it's sharp on the car screen. *Classic* is the
 standard OpenStreetMap map turned dark, as before. Both need mobile data, and both are credited
 on the map.

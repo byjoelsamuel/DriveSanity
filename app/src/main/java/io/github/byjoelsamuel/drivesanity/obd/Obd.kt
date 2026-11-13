@@ -62,7 +62,7 @@ object Obd {
 
     fun requestProbe() {
         if (!Prefs.advancedReads(app)) {
-            probeResult = "Turn on \"Manufacturer-specific reads\" in Setup first. They're still only reads, but they're off by default."
+            probeResult = "Turn on \"Manufacturer-specific reads\" in Settings first. They're still only reads, but they're off by default."
             return
         }
         probeRequested = true
@@ -432,7 +432,7 @@ object Obd {
     /** Tire pressures in PSI: front left, front right, rear left, rear right. */
     val tirePsi: List<Float?> get() = listOf("tire_fl", "tire_fr", "tire_rl", "tire_rr").map { value(it, 30_000) }
 
-    /** What the car has said, for the Setup screen. */
+    /** What the car has said, for the Settings screen. */
     fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.") +
         "Pedal reading: $pedalSource\n" +
         "Link dropped and restarted: $reconnects times since the app opened\n" +

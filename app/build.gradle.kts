@@ -87,4 +87,7 @@ dependencies {
     testImplementation("org.json:json:20240303")
     // Runs the app's own code, the Android parts included, in plain unit tests (see DemoFlowTest).
     testImplementation("org.robolectric:robolectric:4.16")
+    // Taps through the phone screens in tests (see SettingsTabTest).
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity(), PhoneActions {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        // "tab": open on Drive (0), Trips (1) or Setup (2).
+        // "tab": open on Drive (0), 0–60 (1), Trips (2) or Settings (3).
         setContent { DriveTheme { PhoneApp(this, intent.getIntExtra("tab", 0)) } }
         if (savedInstanceState == null) StartupSound.play(this)
         askLocation()

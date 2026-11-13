@@ -96,7 +96,7 @@ class MusicPainter(context: Context) {
             number(h * 0.1f, Colors.FG)
             c.drawText(fit(if (MediaWatcher.access) "Nothing playing" else "Allow notification access", tw), tx, top + art * 0.46f, text)
             label(h * 0.055f)
-            hint(c, if (MediaWatcher.access) "Start a song in YouTube Music, or any music app." else "On the phone: DriveSanity → Setup → Music.", tx, top + art * 0.62f, tw)
+            hint(c, if (MediaWatcher.access) "Start a song in YouTube Music, or any music app." else "On the phone: DriveSanity → Settings → Music.", tx, top + art * 0.62f, tw)
             return
         }
         number(h * 0.115f, Colors.FG)
