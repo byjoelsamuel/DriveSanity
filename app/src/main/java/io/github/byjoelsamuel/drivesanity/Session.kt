@@ -17,13 +17,10 @@ data class SessionPoint(
     val brakeG: Float,
     val accelG: Float,
     val latG: Float,
-    val lap: Int?,
 )
 
-data class SessionLap(val track: String, val number: Int, val ms: Long, val topKmh: Float)
-
-/** A recording read back from its CSV (and the laps file beside it), with the numbers worked out. */
-class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
+/** A recording read back from its CSV, with the numbers worked out. */
+class Session(val points: List<SessionPoint>) {
     val durationS: Double get() = points.lastOrNull()?.t ?: 0.0
 
     /** Distance along the recorded path, in metres. Gaps of more than half a minute (a pause) aren't counted. */
@@ -63,8 +60,6 @@ class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
         if (time > 0) (dist / time).toFloat() else 0f
     }
 
-    val bestLap: SessionLap? get() = laps.minByOrNull { it.ms }
-
     /**
      * The path without its first and last [trimM] metres, so a shared picture doesn't show where
      * the drive began and ended (home, usually). Empty if the drive is too short to hide the ends.
@@ -88,13 +83,7 @@ class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
     val path: List<SessionPoint> by lazy { points.filter { it.lat != null && it.lon != null } }
 
     companion object {
-        fun read(file: File): Session {
-            val lines = runCatching { file.readLines() }.getOrDefault(emptyList())
-            val points = parse(lines)
-            val lapsFile = File(file.path.removeSuffix(".csv") + ".laps")
-            val laps = if (lapsFile.exists()) parseLaps(runCatching { lapsFile.readLines() }.getOrDefault(emptyList())) else emptyList()
-            return Session(points, laps)
-        }
+        fun read(file: File): Session = Session(parse(runCatching { file.readLines() }.getOrDefault(emptyList())))
 
         /** Reads either the current format or the older one (a row every tenth of a second, with different column names). */
         fun parse(lines: List<String>): List<SessionPoint> {
@@ -110,7 +99,6 @@ class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
             val iAccel = col("peak_accel_g")
             val iLong = col("long_g")
             val iLatG = col("peak_lat_g", "lat_g")
-            val iLap = col("lap")
             if (iT < 0) return emptyList()
             val out = ArrayList<SessionPoint>(lines.size)
             for (line in lines.drop(1)) {
@@ -129,19 +117,11 @@ class Session(val points: List<SessionPoint>, val laps: List<SessionLap>) {
                         brakeG = num(iBrake) ?: 0f,
                         accelG = num(iAccel) ?: max(0f, long ?: 0f),
                         latG = num(iLatG)?.let { abs(it) } ?: 0f,
-                        lap = f.getOrNull(iLap)?.toIntOrNull(),
                     ),
                 )
             }
             return out
         }
 
-        fun parseLaps(lines: List<String>): List<SessionLap> = lines.mapNotNull { l ->
-            val p = l.split(',')
-            if (p.size < 4) return@mapNotNull null
-            val n = p[1].toIntOrNull() ?: return@mapNotNull null
-            val ms = p[2].toLongOrNull() ?: return@mapNotNull null
-            SessionLap(p[0], n, ms, p[3].toFloatOrNull() ?: 0f)
-        }
     }
 }

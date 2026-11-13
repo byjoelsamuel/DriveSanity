@@ -11,7 +11,7 @@ import java.io.File
 
 /**
  * Demo mode: plays a recorded session (the one built into the app, or one of your own) through
- * the whole app in place of the real GPS, motion sensor and OBD2 adapter. Every screen, the lap
+ * the whole app in place of the real GPS, motion sensor and OBD2 adapter. Every screen, the 0–60
  * timer and the car screen run off it, so the app can be tried, shown or tested with no car.
  */
 object Demo {
@@ -22,10 +22,6 @@ object Demo {
 
     /** A short name for what's playing, for the screens. */
     @Volatile var name = ""
-        private set
-
-    /** The start/finish line that goes with the recording, if it has one (a "# line,name,lat,lon,heading" comment). */
-    @Volatile var line: io.github.byjoelsamuel.drivesanity.track.FinishLine? = null
         private set
 
     private var player: RawPlayer? = null
@@ -51,11 +47,6 @@ object Demo {
         val events = RawEvent.parse(text)
         if (events.isEmpty()) return false
         stop()
-        line = text.lineSequence().firstOrNull { it.startsWith("# line,") }?.split(',')?.let { p ->
-            runCatching {
-                io.github.byjoelsamuel.drivesanity.track.FinishLine(p[1], p[2].toDouble(), p[3].toDouble(), p[4].toDouble())
-            }.getOrNull()
-        }
         player = RawPlayer(events)
         name = file?.name ?: "Built-in drive"
         active = true

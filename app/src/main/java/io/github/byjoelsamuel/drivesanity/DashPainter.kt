@@ -95,9 +95,6 @@ class DashPainter(context: Context) {
 
     private val smooth = Smoother()
 
-    /** The Music screen's button at this point (so a tap can press it), if that's what's showing. */
-    fun musicHit(x: Float, y: Float): MusicPainter.Control? = cluster.musicHit(x, y)
-
     fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
         smooth.frame()
         drawScreen(c, r, eased(s), units, layout)
@@ -158,7 +155,7 @@ class DashPainter(context: Context) {
         if (r.width() > r.height() * 1.2f) {
             when (layout) {
                 Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units)
-                Prefs.Layout.SPORT -> cluster.drawSport(c, r, s, units)
+                Prefs.Layout.LAUNCH -> cluster.drawLaunch(c, r, s, units)
                 Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units)
                 else -> cluster.drawGauges(c, r, s, units)
             }

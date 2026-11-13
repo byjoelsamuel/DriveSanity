@@ -3,7 +3,7 @@
 Live driving data on your phone and on your car's Android Auto screen: speed, braking,
 g-force, RPM, gear, fuel economy and engine temperatures.
 
-![The Sport screen, with sample data](docs/sport-screen.png)
+![The 0–60 screen, with sample data](docs/launch-screen.png)
 
 ## Install
 
@@ -101,17 +101,17 @@ one. The ones that matter most:
 2. Stop on level ground and tap **Calibrate** (Drive tab, or in Setup). The app uses this to
    find which way is forward. Do it again if you move the mount.
 3. Drive. To record, tap **Start recording** on the Drive tab. Recordings show up in **Trips**:
-   tap one to see its path, graphs and laps, or share it as a spreadsheet (CSV).
+   tap one to see its path and graphs, or share it as a spreadsheet (CSV).
 
 Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
 
 **No car handy?** **Setup → Demo and raw recordings → Start demo** plays a made-up drive
-through the whole app (all the screens, the car screen, the lap timer), so you can try
+through the whole app (all the screens, the car screen, the 0–60 timer), so you can try
 everything first.
 
 ## The screens
 
-The phone app has four tabs: **Drive**, **Track** (lap timer and standing starts), **Trips**
+The phone app has four tabs: **Drive**, **0–60**, **Trips**
 (your recordings) and **Setup**. The car shows one of six
 full-screen dashboards. Pick it in Setup → Car screen, or with the buttons at the top of the
 car screen.
@@ -127,28 +127,23 @@ brake are pressed, and coolant, battery and intake air.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
-**Sport**: laid out like a race car's display, for driving hard. A long rev ribbon across the top
-fills towards the redline, holds a thin marker at your highest recent revs and flashes at the
-shift point. In the middle are the gear and the speed, as big as they'll go. Throttle and brake
-are two tall pedal bars on the left, like the pedal traces on a racing display. On the right is a
-g-g plot: a dot for the car's g-force with a trail, and a mark where your hardest braking,
-acceleration and corners have been. Along the bottom is the lap timer with a delta bar against
-your best lap, or your last standing-start times, or air/fuel, load, coolant, top speed and peak
-g when neither is running. It's the top-row button **SPORT** in the car, and on that screen the
-first button becomes **Set line** / **End laps**.
+**0–60**: one big thing at a time, with room around it. It says **READY** when the car is stopped,
+then the clock runs on its own from the moment the car moves off, and when you're done it shows your
+time to 60 mph and to 100 km/h. A row of thin ticks fills towards 60 mph (or 100 km/h) as the speed
+climbs. The **countdown is optional** (the **0–60** tab on the phone turns it on): with it on, the
+first car button becomes **Start 3-2-1**, and the screen counts 3, 2, 1 and GO. Moving off before the
+GO is flagged **TOO EARLY**. The clock always starts when the car moves, never from the countdown.
+With the countdown off, that first button just clears the last run.
 
-![The Sport screen with the lap timer running, with sample data](docs/sport-screen.png)
+![The 0–60 screen, with sample data](docs/launch-screen.png)
 
-**Music**: only the map and what's playing, and nothing else. The player shows the cover in a
-rounded square, the song, artist and album, how far through the song you are, **previous**,
-**play/pause** and **next**, and the music app's icon in the corner. It reads whatever the phone is
-playing, so YouTube Music, Spotify or a podcast app all work. The player can be on either side with
-the map on the other: the swap button in the card's corner flips it (or **Swap sides** on the car's
-first button, or Setup → Music). The same previous, play/pause and next buttons are also in the map's
-button strip, where the car's knob or a tap can reach them. A tap on the drawn buttons works too, on
-screens that pass taps through.
+**Music**: only what's playing, and nothing else. The cover in a rounded square, then the music
+app's icon and name, the song, the artist, the album and how far through it is. It reads whatever the
+phone is playing, so YouTube Music, Spotify or a podcast app all work. **Previous, play/pause and
+next are the car's own buttons** down the right edge of the screen, which is what the car's knob and
+touch screen can actually press (buttons drawn on the picture can't be pressed on every car).
 
-![The Music screen, with a stand-in song and map](docs/music-screen.png)
+![The Music screen, with a stand-in song](docs/music-screen.png)
 
 To read what's playing, Android needs you to allow DriveSanity under **notification access**
 (Setup → Music → Allow notification access). That's how any app is allowed to see another app's
@@ -176,29 +171,14 @@ a reading is partway through fades in so they fill smoothly. Everything is set i
 Everything glides: bars and numbers ease to their new values between readings instead of
 jumping, and the car screen redraws about 30 times a second.
 
-## Lap timer and standing starts
+## 0–60
 
-On the **Track** tab (or the **Set line** button on the car's Sport screen):
-
-1. Drive to the spot you want as the start/finish line and tap **Set start/finish line here**
-   while moving. The line goes across the road where you are, in the direction you're heading.
-   Lines are saved by name.
-2. Cross it. The first crossing starts the clock; every crossing after that is a lap. Laps are
-   timed between GPS fixes, to a few hundredths of a second, and a quick bounce back over the
-   line is ignored.
-3. The Sport screen shows the current lap, the last and best laps, and a delta bar: left of the
-   middle is faster than your best lap so far, right is slower. The **Track** tab lists every lap.
-
-Lap timing records the drive at one row a second, so the laps are saved in **Trips** afterwards.
-
-**Standing start:** stop the car, then launch. 0–60 mph, 0–100 km/h and the quarter mile with its
-trap speed are timed on their own, from the car's speed when the adapter is connected (a lot
-better than GPS for this) and from GPS when it isn't. They show on the Track tab and the Sport
-screen. The start is worked out from the moment the speed first rises, so a slow first reading
-doesn't cost you time.
-
-Phone GPS gives one fix a second, which limits lap timing; it's fine for finding a rough lap
-time and a delta, not for settling a tenth of a second. An external GPS would be better.
+Stop the car, then launch. 0–60 mph and 0–100 km/h are timed on their own, from the moment the car
+moves off, using the car's own speed when the OBD2 adapter is connected (a lot better than GPS for
+this) and GPS, which is slower to react, when it isn't. The start is worked out from when the speed
+first rises, so a slow first reading doesn't cost you time. The last run shows on the car's **0–60**
+screen and the **0–60** tab, where you can also turn the optional **3-2-1 countdown** on, start it,
+clear the run, or make a picture to share. Do it somewhere safe and legal.
 
 ## Trips and recordings
 
@@ -206,12 +186,11 @@ Every recording is a spreadsheet (CSV) with a row **every five seconds**, plus a
 (never more than one a second) the moment something happens: speed changes by 10 km/h, you turn
 15 degrees, or you pull 0.35 g. Each row also carries the hardest braking, acceleration and
 cornering and the highest revs since the last row, so a hard stop between two rows isn't lost.
-That's about 100 KB an hour, instead of several MB at ten rows a second. While lap timing runs it
-writes a row every second, because laps need it.
+That's about 100 KB an hour, instead of several MB at ten rows a second.
 
 Tap a recording in **Trips** to see its distance, time, top and average speed, peaks, the path
 drawn on a plain map and coloured by speed, speed and revs against time with a scrubber you drag
-along the drive, and the laps. Older recordings still open.
+along the drive. Older recordings still open.
 
 ## Sharing to Instagram
 
@@ -233,14 +212,12 @@ is uploaded) in two shapes: **Story** (9:16) and **Post** (4:5, for the feed). Y
   | Speed | Top speed, average |
   | Performance | Braking, acceleration, cornering (peak g) |
   | Engine | Highest revs |
-  | Laps | Best lap, every lap |
-  | Standing start | 0–60 mph, 0–100 km/h, quarter mile with trap speed |
+  | 0–60 | 0–60 mph, 0–100 km/h |
 
-  A block only appears when there's data for it (no laps, no laps panel). What you chose is
+  A block only appears when there's data for it (no 0–60 run, no 0–60 panel). What you chose is
   remembered for next time.
 - **Source:** *This drive*, or *My profile*, which adds up every recording you have: drives, total
-  distance and time, top speed, hardest braking, acceleration and cornering, highest revs and your best
-  lap. A standing start is shared from the **Track** tab.
+  distance and time, top speed, hardest braking, acceleration and cornering, highest revs. A 0–60 run is shared from the **0–60** tab.
 
 ![A drive picture with a photo behind it](docs/share-card.png)
 
@@ -259,8 +236,9 @@ sends a picture instead.)
 ## Demo mode and raw recordings
 
 **Setup → Demo and raw recordings → Start demo** plays a made-up drive in place of the real car,
-GPS and motion sensor: a standing start and three laps of a loop, with the Mazda3's gears, revs,
-g-forces and a lap timer already armed. It runs every screen and the car screen too. (It's a
+GPS and motion sensor: a standing start, then three laps of a loop, with the Mazda3's gears, revs and
+g-forces. It runs every screen and the car screen too, and the standing start gets timed on the 0–60
+screen. (It's a
 simulation, built by `tools/make_demo.py`; nothing in it is a real person's drive.)
 
 **Record a raw session** writes what the GPS, the motion sensor and the adapter report into one
@@ -353,9 +331,8 @@ or MPG, and as litres or gallons per hour when you're stopped. The trip total is
 
 ## Shift light and alerts
 
-- **Shift light:** the gear turns sand at 92% of the redline, and at 98.5% it flashes red. All
-  screens except Retro also get a thin strip along the top that does the same. The redline is
-  set per car in Setup.
+- **Shift light:** a thin strip along the top of every screen except Retro turns sand at 92% of
+  the redline and flashes red at 98.5%. The redline is set per car in Setup.
 - **Alerts:** a banner for a hot engine (above 108 °C / 226 °F), low battery (under 11.8 V, or
   12.5 V with the engine running), a flat tire (under 27 psi), low fuel when the car reports
   it, and going 5 mph (8 km/h) over the posted limit.
@@ -444,8 +421,7 @@ with JDK 17 and the Android SDK. `./gradlew testDebugUnitTest` runs the tests.
 | `map/`, `nav/` | Map tiles, address search, directions and speed limits |
 
 The built-in demo drive comes from `tools/make_demo.py`; run it to rebuild `demo.dsr`. The tests
-include one that plays the whole demo through the app (`DemoFlowTest`) and checks the laps, the
-delta and the standing start come out.
+include one that plays the whole demo through the app (`DemoFlowTest`) and checks the car is shown as live, it moves, and the 0–100 time comes out.
 
 The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open Font
 License (see `licenses/Poppins-OFL.txt`).

@@ -130,7 +130,7 @@ fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
-enum class TabIcon { DRIVE, TRACK, TRIPS, SETUP }
+enum class TabIcon { DRIVE, LAUNCH, TRIPS, SETUP }
 
 /** Simple line icons for the bottom bar, drawn so there's no icon library to pull in. */
 @Composable
@@ -143,7 +143,7 @@ fun TabGlyph(icon: TabIcon, color: Color) {
                 drawArc(color, 150f, 240f, false, topLeft = Offset(w * 0.1f, w * 0.12f), size = Size(w * 0.8f, w * 0.8f), style = stroke)
                 drawLine(color, Offset(w * 0.5f, w * 0.52f), Offset(w * 0.72f, w * 0.32f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
             }
-            TabIcon.TRACK -> {
+            TabIcon.LAUNCH -> {
                 // A chequered flag on a pole.
                 drawLine(color, Offset(w * 0.2f, w * 0.12f), Offset(w * 0.2f, w * 0.9f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
                 val cell = w * 0.18f

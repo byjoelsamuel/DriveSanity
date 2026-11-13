@@ -53,7 +53,6 @@ import io.github.byjoelsamuel.drivesanity.ShareConfig
 import io.github.byjoelsamuel.drivesanity.ShareImage
 import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.Units
-import io.github.byjoelsamuel.drivesanity.track.RunView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,19 +101,19 @@ fun SessionShare(file: File, session: Session, units: Units) {
     }
 }
 
-/** A picture of a standing-start result. */
+/** A picture of a 0–60 result. */
 @Composable
-fun RunShare(run: RunView, units: Units) {
+fun RunShare(to60Ms: Long?, to100Ms: Long?, units: Units) {
     val ctx = LocalContext.current
-    var open by remember(run) { mutableStateOf(false) }
-    val data = remember(run, units) {
-        CardData.ofRun(run, SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date()).uppercase(), CarProfiles.byId(Prefs.carId(ctx)).name, units)
+    var open by remember(to60Ms, to100Ms) { mutableStateOf(false) }
+    val data = remember(to60Ms, to100Ms, units) {
+        CardData.ofRun(to60Ms, to100Ms, SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date()).uppercase(), CarProfiles.byId(Prefs.carId(ctx)).name, units)
     }
     if (!open) {
         OutlinedButton(onClick = { open = true }, modifier = Modifier.padding(top = 8.dp)) { Text("Make a picture") }
     } else {
         Spacer(Modifier.height(8.dp))
-        ShareEditor(data, "drivesanity-run-${System.currentTimeMillis() / 1000}") {}
+        ShareEditor(data, "drivesanity-0-60-${System.currentTimeMillis() / 1000}") {}
     }
 }
 

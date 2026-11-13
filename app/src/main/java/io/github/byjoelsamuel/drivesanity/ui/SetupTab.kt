@@ -213,7 +213,7 @@ fun SetupTab(
         InfoCard {
             val ctx = LocalContext.current
             Text(
-                "Demo mode plays a made-up drive through the whole app in place of the car, the GPS and the motion sensor: three timed laps and a standing start. Every screen, the lap timer and the car screen run off it, so you can try the app or show it to someone with no car.",
+                "Demo mode plays a made-up drive through the whole app in place of the car, the GPS and the motion sensor: a standing start, then three laps of a loop. Every screen, the 0–60 timer and the car screen run off it, so you can try the app or show it to someone with no car.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ui.dim,
             )
@@ -274,11 +274,12 @@ fun SetupTab(
                     ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
             }) { Text(if (granted) "Notification access settings" else "Allow notification access") }
-            Spacer(Modifier.height(14.dp))
-            Text("Which side", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
-            var left by remember { mutableStateOf(Prefs.musicLeft(ctx)) }
-            Segments(listOf("Player left, map right", "Map left, player right"), if (left) 0 else 1) { left = it == 0; Prefs.setMusicLeft(ctx, left) }
-            Text("The swap button on the player card does the same from the car screen.", style = MaterialTheme.typography.bodySmall, color = Ui.dim, modifier = Modifier.padding(top = 6.dp))
+            Text(
+                "On the car, previous, play or pause and next are the car's own buttons down the right edge of the Music screen, so the knob and the screen can press them.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+                modifier = Modifier.padding(top = 10.dp),
+            )
         }
 
         SectionTitle("Map look")
@@ -401,8 +402,8 @@ fun SetupTab(
                     Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
                     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
                     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
-                    Prefs.Layout.SPORT -> "A race-style display: a rev ribbon, a huge gear and speed, pedal bars, a g-g plot and a lap timer strip. The SPORT button at the top of the car screen jumps straight to it."
-                    Prefs.Layout.MUSIC -> "Just the map and what's playing, with the cover, previous, play or pause and next. Set which side the player is on under Music below."
+                    Prefs.Layout.LAUNCH -> "One big thing at a time: READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. Turn the countdown on or off on the 0–60 tab."
+                    Prefs.Layout.MUSIC -> "Only what's playing: the cover, song, artist and progress. Previous, play or pause and next are the car's own buttons down the right edge."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,

@@ -1,7 +1,5 @@
 package io.github.byjoelsamuel.drivesanity
 
-import io.github.byjoelsamuel.drivesanity.track.RunView
-
 /**
  * What can go on a share picture, sorted into genres (the panel the block lives in) and the blocks
  * within each genre. Blocks of one genre are drawn together in one panel, so a picture reads as a few
@@ -14,7 +12,6 @@ enum class Genre(val label: String) {
     SPEED("Speed"),
     PERFORMANCE("Performance"),
     ENGINE("Engine"),
-    LAPS("Laps"),
     STANDING("Standing start"),
 }
 
@@ -38,12 +35,8 @@ enum class Block(val genre: Genre, val label: String) {
 
     REVS(Genre.ENGINE, "Highest revs"),
 
-    BEST_LAP(Genre.LAPS, "Best lap"),
-    LAP_LIST(Genre.LAPS, "Every lap"),
-
     ZERO_60(Genre.STANDING, "0–60 mph"),
     ZERO_100(Genre.STANDING, "0–100 km/h"),
-    QUARTER(Genre.STANDING, "Quarter mile"),
     ;
 
     companion object {
@@ -102,8 +95,9 @@ class CardData(
     val latG: Float? = null,
     val path: List<SessionPoint> = emptyList(),
     val pathHidden: Boolean = false,
-    val laps: List<SessionLap> = emptyList(),
-    val run: RunView? = null,
+    /** A 0–60 run: the time to 60 mph and to 100 km/h, in milliseconds. */
+    val to60Ms: Long? = null,
+    val to100Ms: Long? = null,
 ) {
     /** Whether there's something for [b] to show. */
     fun has(b: Block): Boolean = when (b) {
@@ -118,11 +112,8 @@ class CardData(
         Block.ACCEL -> accelG != null
         Block.CORNERING -> latG != null
         Block.REVS -> maxRpm != null && maxRpm > 0f
-        Block.BEST_LAP -> laps.isNotEmpty()
-        Block.LAP_LIST -> laps.size > 1
-        Block.ZERO_60 -> run?.to60Ms != null
-        Block.ZERO_100 -> run?.to100Ms != null
-        Block.QUARTER -> run?.quarterMs != null
+        Block.ZERO_60 -> to60Ms != null
+        Block.ZERO_100 -> to100Ms != null
     }
 
     companion object {
@@ -134,7 +125,6 @@ class CardData(
                 topKmh = session.topKmh, avgKmh = session.avgMovingKmh, maxRpm = session.maxRpm,
                 brakeG = session.peakBrakeG, accelG = session.peakAccelG, latG = session.peakLatG,
                 path = path, pathHidden = hideEnds && path.size < 2 && session.path.size > 1,
-                laps = session.laps,
             )
         }
 
@@ -143,18 +133,16 @@ class CardData(
             val real = sessions.filter { it.points.isNotEmpty() }
             val totalS = real.sumOf { it.durationS }
             val dist = real.sumOf { it.distanceM }
-            val laps = real.flatMap { it.laps }
             return CardData(
                 title = "My drives", whenText = whenText, car = car, units = units,
                 distanceM = dist, durationS = totalS, drives = real.size,
                 topKmh = real.maxOfOrNull { it.topKmh }, avgKmh = if (totalS > 0) (dist / totalS * 3.6).toFloat() else null,
                 maxRpm = real.maxOfOrNull { it.maxRpm },
                 brakeG = real.maxOfOrNull { it.peakBrakeG }, accelG = real.maxOfOrNull { it.peakAccelG }, latG = real.maxOfOrNull { it.peakLatG },
-                laps = listOfNotNull(laps.minByOrNull { it.ms }),
             )
         }
 
-        fun ofRun(run: RunView, whenText: String, car: String, units: Units) =
-            CardData(title = "Standing start", whenText = whenText, car = car, units = units, run = run)
+        fun ofRun(to60Ms: Long?, to100Ms: Long?, whenText: String, car: String, units: Units) =
+            CardData(title = "0–60", whenText = whenText, car = car, units = units, to60Ms = to60Ms, to100Ms = to100Ms)
     }
 }

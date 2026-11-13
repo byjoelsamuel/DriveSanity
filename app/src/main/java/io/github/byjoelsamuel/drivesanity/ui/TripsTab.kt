@@ -97,7 +97,7 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
         if (recordings.isEmpty()) {
             InfoCard {
                 Text(
-                    "Nothing recorded yet. Tap Start recording on the Drive tab, or start lap timing on the Track tab, and the drive is saved here: tap it to see the path, graphs and laps, or share it as a spreadsheet (CSV).",
+                    "Nothing recorded yet. Tap Start recording on the Drive tab and the drive is saved here: tap it to see the path and graphs, or share it as a spreadsheet (CSV).",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Ui.dim,
                 )
@@ -133,7 +133,7 @@ fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneAct
     }
 }
 
-/** One recording in the list: when, how far and how fast, and how many laps; tap it to open it. */
+/** One recording in the list: when, how far and how fast; tap it to open it. */
 @Composable
 private fun RecordingCard(f: File, units: Units, onOpen: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     val session by produceState<Session?>(null, f) { value = withContext(Dispatchers.IO) { Session.read(f) } }
@@ -144,7 +144,6 @@ private fun RecordingCard(f: File, units: Units, onOpen: () -> Unit, onShare: ()
             if (s == null || s.points.isEmpty()) "%.1f KB".format(f.length() / 1000.0)
             else buildString {
                 append("${oneDecimal(units.distance(s.distanceM))} ${units.distanceLabel} · ${hms(s.durationS)} · top ${units.speed(s.topKmh / 3.6f).roundToInt()} ${units.label}")
-                if (s.laps.isNotEmpty()) append(" · ${s.laps.size} laps")
             },
             style = MaterialTheme.typography.bodySmall,
             color = Ui.dim,

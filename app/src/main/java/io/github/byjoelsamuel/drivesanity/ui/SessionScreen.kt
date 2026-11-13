@@ -35,7 +35,6 @@ import io.github.byjoelsamuel.drivesanity.SessionPoint
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.hms
 import io.github.byjoelsamuel.drivesanity.oneDecimal
-import io.github.byjoelsamuel.drivesanity.track.lapText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -47,7 +46,7 @@ import kotlin.math.roundToInt
 /**
  * One recording opened up: the numbers, the path on a plain map coloured by speed, speed and RPM
  * against time with a scrubber (drag to move along the drive, and the dot on the path moves with
- * it), and the laps if there were any.
+ * it).
  */
 @Composable
 fun SessionScreen(file: File, units: Units, onBack: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
@@ -112,20 +111,6 @@ fun SessionScreen(file: File, units: Units, onBack: () -> Unit, onShare: () -> U
                 Readout("Throttle", p.throttle?.let { "${it.roundToInt()}%" } ?: "–")
             }
             Text("Drag along the graph to move through the drive.", style = MaterialTheme.typography.bodySmall, color = Ui.dim, modifier = Modifier.padding(top = 6.dp))
-        }
-
-        if (s.laps.isNotEmpty()) {
-            SectionTitle("Laps")
-            InfoCard {
-                val best = s.bestLap
-                Text(s.laps.first().track, style = MaterialTheme.typography.labelLarge, color = Ui.dim)
-                for (l in s.laps) {
-                    Row(Modifier.padding(vertical = 3.dp)) {
-                        Text("Lap ${l.number}", style = MaterialTheme.typography.bodyMedium, color = Ui.dim, modifier = Modifier.weight(1f))
-                        Text(lapText(l.ms) + if (l === best) "  best" else "", style = MaterialTheme.typography.bodyMedium, color = if (l === best) Ui.good else Ui.fg)
-                    }
-                }
-            }
         }
 
         SectionTitle("Share")

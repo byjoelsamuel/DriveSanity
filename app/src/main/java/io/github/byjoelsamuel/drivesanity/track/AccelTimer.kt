@@ -35,6 +35,11 @@ class AccelTimer {
     private var quarter: Long? = null
     private var trap: Float? = null
 
+    /** Forgets the last finished run. */
+    fun clearResult() {
+        result = null
+    }
+
     /** Time since the run started, while one is going. */
     fun liveMs(nowMs: Long): Long? = if (state == State.RUNNING) nowMs - t0 else null
 

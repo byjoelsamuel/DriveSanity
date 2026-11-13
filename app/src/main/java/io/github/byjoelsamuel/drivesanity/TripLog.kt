@@ -10,17 +10,14 @@ import java.util.Locale
 
 /**
  * One recording: a CSV file that opens in a spreadsheet. It gets a row every five seconds, plus one
- * whenever something happens (see [LogPolicy]), and every second while lap timing. The hardest
- * braking, acceleration, cornering and the highest revs since the last row are written on each row,
- * so the file stays small without losing the moments that matter. Laps go in a small file beside it.
+ * whenever something happens (see [LogPolicy]). The hardest braking, acceleration and cornering and
+ * the highest revs since the last row are written on each row, so the file stays small without losing
+ * the moments that matter.
  */
 class TripLog private constructor(val file: File) {
     private val out = file.bufferedWriter()
     private val startMs = SystemClock.elapsedRealtime()
     val policy = LogPolicy()
-
-    /** Laps timed during this recording, one line each. */
-    val lapsFile = File(file.path.removeSuffix(".csv") + ".laps")
 
     private var peakBrake = 0f
     private var peakAccel = 0f
@@ -28,7 +25,7 @@ class TripLog private constructor(val file: File) {
     private var peakRpm = 0f
 
     init {
-        out.write("time_s,lat,lon,speed_kmh,gps_accuracy_m,heading_deg,peak_brake_g,peak_accel_g,peak_lat_g,rpm,rpm_max,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v,lap\n")
+        out.write("time_s,lat,lon,speed_kmh,gps_accuracy_m,heading_deg,peak_brake_g,peak_accel_g,peak_lat_g,rpm,rpm_max,throttle_pct,load_pct,coolant_c,intake_c,fuel_pct,battery_v\n")
     }
 
     /** Called with every motion sample: remembers the biggest values until the next row. */
@@ -39,7 +36,7 @@ class TripLog private constructor(val file: File) {
         Obd.rpm?.let { if (it > peakRpm) peakRpm = it }
     }
 
-    fun write(fix: Location?, speedMps: Float?, headingDeg: Float?, lap: Int?) {
+    fun write(fix: Location?, speedMps: Float?, headingDeg: Float?) {
         val t = (SystemClock.elapsedRealtime() - startMs) / 1000.0
         val row = listOf(
             "%.1f".format(Locale.US, t),
@@ -59,17 +56,10 @@ class TripLog private constructor(val file: File) {
             num(Obd.intakeC, "%.0f"),
             num(Obd.fuelPct, "%.0f"),
             num(Obd.volts, "%.1f"),
-            lap?.toString() ?: "",
         )
         out.write(row.joinToString(","))
         out.write("\n")
         peakBrake = 0f; peakAccel = 0f; peakLat = 0f; peakRpm = 0f
-    }
-
-    fun appendLap(trackName: String, lapNumber: Int, ms: Long, topKmh: Float) {
-        runCatching {
-            lapsFile.appendText("${trackName.replace(',', ' ')},$lapNumber,$ms,${"%.0f".format(Locale.US, topKmh)}\n")
-        }
     }
 
     private fun num(v: Float?, fmt: String) = v?.let { fmt.format(Locale.US, it) } ?: ""
