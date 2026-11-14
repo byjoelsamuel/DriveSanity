@@ -106,3 +106,32 @@ class MusicPainterTest {
         shot("music-nocover-1600x640", 1600, 640, playing(null))
     }
 }
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35])
+class MiniPlayerTest {
+    private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
+
+    private fun np(playing: Boolean) = NowPlaying(
+        title = "Neon Overdrive", artist = "The Night Shift", album = "", art = null,
+        accent = Color.rgb(255, 120, 30), appIcon = null, appName = "YouTube Music", playing = playing,
+        positionMs = 60_000, durationMs = 200_000, basedAtMs = SystemClock.elapsedRealtime(), speed = 1f,
+        canPrev = true, canNext = true, pkg = "test",
+    )
+
+    @Test
+    fun drawsThreeButtonsInOrderAndTheyAreFindable() {
+        val hits = ArrayList<Pair<RectF, io.github.byjoelsamuel.drivesanity.MapTouch>>()
+        val bmp = Bitmap.createBitmap(900, 120, Bitmap.Config.ARGB_8888)
+        io.github.byjoelsamuel.drivesanity.MiniPlayer(ctx).draw(Canvas(bmp), RectF(0f, 0f, 900f, 120f), np(true), hits)
+        assertEquals(
+            listOf(io.github.byjoelsamuel.drivesanity.MapTouch.PREVIOUS, io.github.byjoelsamuel.drivesanity.MapTouch.PLAY_PAUSE, io.github.byjoelsamuel.drivesanity.MapTouch.NEXT),
+            hits.sortedBy { it.first.centerX() }.map { it.second },
+        )
+        System.getenv("SHOTS_DIR")?.let { dir ->
+            File(dir).mkdirs()
+            File(dir, "mini-player.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+    }
+}

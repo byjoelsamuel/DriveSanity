@@ -577,7 +577,7 @@ private fun BatteryPage(draft: SettingsDraft) {
 @Composable
 private fun ScreensPage(draft: SettingsDraft) {
     val layout = draft.values.layout
-    SettingsGroup(footer = "What Android Auto shows. The phone always uses this app view. In the car, the \"Show\" button on the top row steps through them.") {
+    SettingsGroup(footer = "What Android Auto shows. The phone always uses this app view. In the car, the \"Screens\" button on the top row lists them.") {
         Prefs.Layout.entries.forEachIndexed { i, l ->
             if (i > 0) RowDivider()
             ChoiceRow(l.title, layoutNote(l), l == layout) { draft.edit { it.copy(layout = l) } }
@@ -604,12 +604,10 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
 @Composable
 private fun MapPage(draft: SettingsDraft) {
     val look = draft.values.mapLook
-    SettingsGroup(footer = "All of them need mobile data. The first two are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. Classic is the standard OpenStreetMap map turned dark.") {
+    SettingsGroup(footer = "Both are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. They need mobile data, and no account or key.") {
         ChoiceRow("Simplified", "Roads and blocks only, no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
         RowDivider()
         ChoiceRow("Modern", "The same dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
-        RowDivider()
-        ChoiceRow("Classic", "OpenStreetMap, turned dark", look == MapLook.CLASSIC) { draft.edit { it.copy(mapLook = MapLook.CLASSIC) } }
     }
     ResetGroup(draft, SettingsDraft.Group.MAP)
 }

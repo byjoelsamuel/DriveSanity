@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
+import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import kotlin.math.max
@@ -23,6 +24,7 @@ import kotlin.math.roundToInt
  * The speed counts up smoothly and rolls its digits, with a motion smear while it changes fast.
  */
 class ClusterPainter(context: Context) {
+    private val appContext = context.applicationContext
     private val numbers = Fonts.dashNumbers(context)
     private val labels = Fonts.dashLabels(context)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = numbers }
@@ -31,6 +33,8 @@ class ClusterPainter(context: Context) {
     private val map = MapPainter(labels, numbers)
     private val launch = LaunchPainter(context)
     private val music = MusicPainter(context)
+    private val mini = MiniPlayer(context)
+    private val mapHits = ArrayList<Pair<RectF, MapTouch>>()
     private val speedRoll = RollingNumber()
 
     private fun label(size: Float, color: Int = Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
@@ -179,6 +183,9 @@ class ClusterPainter(context: Context) {
 
     fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
 
+    /** Which map screen button (search, or the little player's) a touch landed on. */
+    fun mapHit(x: Float, y: Float): MapTouch? = mapHits.firstOrNull { it.first.contains(x, y) }?.second
+
     /** Which Music screen button a touch landed on. */
     fun musicHit(x: Float, y: Float): MusicControl? = music.hit(x, y)
 
@@ -303,8 +310,20 @@ class ClusterPainter(context: Context) {
         val rpmH = h * 0.2f
         val mapArea = RectF(left.left, left.top, left.right + gap * 0.4f, left.bottom - rpmH - h * 0.02f)
         map.draw(c, mapArea, s, units)
-        if (Nav.route != null || Nav.message != null) {
+        val directions = Nav.route != null || Nav.message != null
+        if (directions) {
             map.drawDirections(c, RectF(left.left, left.top, left.right, left.top + h * 0.32f), units, 238)
+        }
+        // A search button in the map's corner (below the directions when they're showing), and the music
+        // that's playing as a small card along the bottom, left of the speed limit sign.
+        mapHits.clear()
+        val sr = h * 0.055f
+        drawSearchButton(c, fill, stroke, mapArea.right - sr * 1.5f, mapArea.top + (if (directions) h * 0.32f + sr * 1.6f else sr * 1.5f), sr, mapHits)
+        MediaWatcher.poll(appContext)
+        MediaWatcher.now?.let { np ->
+            val ph = min(mapArea.height() * 0.2f, h * 0.15f)
+            val pw = mapArea.width() * 0.7f
+            mini.draw(c, RectF(mapArea.left + pad, mapArea.bottom - pad - ph, mapArea.left + pad + pw, mapArea.bottom - pad), np, mapHits)
         }
         rpmBar(c, RectF(left.left, left.bottom - rpmH, left.right, left.bottom), s)
 
