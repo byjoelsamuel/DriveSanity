@@ -52,7 +52,6 @@ import io.github.byjoelsamuel.drivesanity.CarProfiles
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.DashView
-import io.github.byjoelsamuel.drivesanity.MapLook
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
@@ -61,8 +60,10 @@ import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
 import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
+import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
+import io.github.byjoelsamuel.drivesanity.update.Updater
 import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.math.roundToInt
@@ -78,14 +79,14 @@ private enum class Page(val title: String) {
     BATTERY("Battery and read-only"),
     PHONE_CHECK("Phone check"),
     SCREENS("Car screens"),
-    MAP("Map look"),
+    NAVIGATION("Google Maps directions"),
     ALERTS("Alerts and shift light"),
     STARTUP("Startup"),
     MUSIC("Music"),
     STORAGE("Storage and data"),
     DEMO("Demo and recordings"),
     AUTO("Android Auto"),
-    ABOUT("About"),
+    ABOUT("About and updates"),
 }
 
 /**
@@ -151,7 +152,7 @@ fun SettingsTab(
                         Page.BATTERY -> BatteryPage(draft)
                         Page.PHONE_CHECK -> PhoneCheckCard(tick)
                         Page.SCREENS -> ScreensPage(draft)
-                        Page.MAP -> MapPage(draft)
+                        Page.NAVIGATION -> NavigationPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
                         Page.MUSIC -> MusicPage(tick)
@@ -300,7 +301,16 @@ private fun Home(
         SettingsGroup("On the car screen") {
             SettingsRow(SettingsIcon.SCREEN, "Car screens", v.layout.title, Ui.accent) { open(Page.SCREENS) }
             RowDivider()
-            SettingsRow(SettingsIcon.MAP, "Map look", v.mapLook.title, Ui.good) { open(Page.MAP) }
+            SettingsRow(
+                SettingsIcon.MAP, "Google Maps directions",
+                when {
+                    !v.googleDirections -> "Off"
+                    !access -> "Needs notification access"
+                    GoogleNav.current() != null -> "Showing Google Maps' next turn"
+                    else -> "On, waiting for Google Maps navigation"
+                },
+                Ui.good,
+            ) { open(Page.NAVIGATION) }
             RowDivider()
             SettingsRow(SettingsIcon.BELL, "Alerts and shift light", if (v.alerts) "On" else "Off", Ui.clay) { open(Page.ALERTS) }
             RowDivider()
@@ -324,7 +334,12 @@ private fun Home(
             RowDivider()
             SettingsRow(SettingsIcon.WHEEL, "Android Auto", "Installing for the car", Ui.accent) { open(Page.AUTO) }
             RowDivider()
-            SettingsRow(SettingsIcon.INFO, "About", "DriveSanity ${BuildConfig.VERSION_NAME}", Ui.dim) { open(Page.ABOUT) }
+            val update = Updater.status as? Updater.Status.Available
+            SettingsRow(
+                SettingsIcon.INFO, "About and updates",
+                if (update != null) "Update available: ${update.release.version}" else "DriveSanity ${BuildConfig.VERSION_NAME}",
+                if (update != null) Ui.accent else Ui.dim, if (update != null) Ui.accent else Ui.dim,
+            ) { open(Page.ABOUT) }
         }
 
         SettingsGroup(footer = "Puts the car, units, screens, map, alerts and startup settings back to how the app first came. Your adapter, calibration and recordings stay.") {
@@ -594,7 +609,7 @@ private fun ScreensPage(draft: SettingsDraft) {
 
 private fun layoutNote(l: Prefs.Layout) = when (l) {
     Prefs.Layout.GAUGES -> "Bar gauges for RPM, throttle, coolant and fuel, a huge gear number, speed, g-force and tire pressures."
-    Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
+    Prefs.Layout.MAP -> "A live map with directions on the left, and what's playing (cover, song, buttons) on the right. No gauges."
     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
     Prefs.Layout.LAUNCH -> "READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. The countdown is on the 0–60 tab."
@@ -602,14 +617,35 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
 }
 
 @Composable
-private fun MapPage(draft: SettingsDraft) {
-    val look = draft.values.mapLook
-    SettingsGroup(footer = "Both are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. They need mobile data, and no account or key.") {
-        ChoiceRow("Simplified", "Roads and blocks only, no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
-        RowDivider()
-        ChoiceRow("Modern", "The same dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
+private fun NavigationPage(draft: SettingsDraft) {
+    val ctx = LocalContext.current
+    val granted = MediaWatcher.hasAccess(ctx)
+    val now = GoogleNav.current()
+    SettingsGroup(
+        footer = "Needs notification access, the same switch as the Music screen. This only reads the words of Google Maps' own navigation notification, so there's no screen recording, no Google account and no key. The arrival time and minutes left are Google's own figures, so they include traffic. Roads aren't coloured for traffic on this map.",
+    ) {
+        SwitchRow("Show Google Maps' next turn", "On the map screen, in place of this app's own directions", draft.values.googleDirections) { on -> draft.edit { it.copy(googleDirections = on) } }
     }
-    ResetGroup(draft, SettingsDraft.Group.MAP)
+    SettingsGroup("Right now") {
+        GroupBody {
+            Text(
+                when {
+                    !granted -> "Notification access is off, so Google Maps can't be read."
+                    now == null -> "Nothing yet. Start navigation in Google Maps on the phone."
+                    else -> "${now.toTurn?.let { "$it  " } ?: ""}${now.instruction}" + if (now.trip.isNotEmpty()) "\n${now.trip}" else ""
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (now != null) Ui.good else Ui.sand,
+            )
+            if (!granted) {
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = {
+                    runCatching { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }) { Text("Allow notification access") }
+            }
+        }
+    }
+    ResetGroup(draft, SettingsDraft.Group.NAV)
 }
 
 @Composable
@@ -723,7 +759,7 @@ private fun StoragePage(actions: PhoneActions) {
     val tiles = remember(rev) { Tiles.cacheBytes(ctx) }
     val recording = DriveEngine.recordingFile
 
-    SettingsGroup(footer = "Everything stays on this phone. The only things fetched from the internet are map tiles, directions, search results and speed limits.") {
+    SettingsGroup(footer = "Everything stays on this phone. The only things fetched from the internet are map tiles, directions, search results, speed limits and the check for a new version.") {
         StorageRow("Trips", "${trips.size} recorded · ${bytesText(trips.sumOf { it.length() })}", "Delete all", trips.isNotEmpty()) { confirm = "trips" }
         RowDivider()
         StorageRow("Raw recordings", "${raws.size} saved · ${bytesText(raws.sumOf { it.length() })}", "Delete all", raws.isNotEmpty() && !RawRecorder.on) { confirm = "raw" }
@@ -846,6 +882,7 @@ private fun AboutPage() {
             )
         }
     }
+    UpdatesGroup()
     SettingsGroup("Help") {
         SettingsRow(SettingsIcon.LINK, "Report a problem", "Opens GitHub", Ui.clay) { open("$REPO/issues/new") }
         RowDivider()
@@ -856,7 +893,7 @@ private fun AboutPage() {
     SettingsGroup("Credits") {
         GroupBody {
             Text(
-                "Map data © OpenStreetMap contributors. Dark map styling by CARTO. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License). Startup sound: \"JDM Toyota ETC card reader turning on\" by qopsinonstudios, from Freesound.",
+                "Map data © OpenStreetMap contributors. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License). Startup sound: \"JDM Toyota ETC card reader turning on\" by qopsinonstudios, from Freesound.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,
             )
@@ -887,5 +924,47 @@ private fun obdSentence(): String {
         Obd.Link.LIVE -> "Connected: ${st.detail}"
         Obd.Link.RETRYING -> "Not connected: ${st.detail}. Retrying every few seconds."
         Obd.Link.SLEEPING -> "The car is off, so the app isn't asking it anything and the car can sleep. It wakes when you open the app or drive off."
+    }
+}
+
+/** Checking for a newer version by hand, and whether the app looks by itself when it opens. */
+@Composable
+private fun UpdatesGroup() {
+    val ctx = LocalContext.current
+    val status = Updater.status
+    var auto by remember { mutableStateOf(Prefs.autoUpdateCheck(ctx)) }
+    SettingsGroup(
+        "Updates",
+        footer = "Looking only asks GitHub for the latest release's details. Nothing about you or the car is sent.",
+    ) {
+        GroupBody {
+            Text(
+                when (status) {
+                    is Updater.Status.Checking -> "Checking…"
+                    is Updater.Status.UpToDate -> "You're on the latest version (${BuildConfig.VERSION_NAME})."
+                    is Updater.Status.Available -> "Version ${status.release.version} is available. You have ${BuildConfig.VERSION_NAME}."
+                    is Updater.Status.Downloading -> "Downloading ${status.release.version}…"
+                    is Updater.Status.Ready -> "Version ${status.release.version} is downloaded and ready to install."
+                    is Updater.Status.Failed -> status.message
+                    else -> "You have ${BuildConfig.VERSION_NAME}."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (status is Updater.Status.Available || status is Updater.Status.Ready) Ui.accent else Ui.fg,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row {
+                Button(
+                    onClick = {
+                        when (status) {
+                            is Updater.Status.Available, is Updater.Status.Ready -> Updater.dismissed = false
+                            else -> Updater.check(ctx, manual = true)
+                        }
+                    },
+                    enabled = status !is Updater.Status.Checking && status !is Updater.Status.Downloading,
+                ) { Text(if (status is Updater.Status.Available || status is Updater.Status.Ready) "Update…" else "Check for updates") }
+            }
+        }
+        RowDivider()
+        SwitchRow("Check when the app opens", "At most every few hours", auto) { on -> auto = on; Prefs.setAutoUpdateCheck(ctx, on) }
     }
 }

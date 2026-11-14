@@ -36,7 +36,7 @@ class ScreenPickerScreen(carContext: CarContext) : Screen(carContext) {
 
         private fun blurb(l: Prefs.Layout) = when (l) {
             Prefs.Layout.GAUGES -> "Bars for revs, throttle and temperatures"
-            Prefs.Layout.MAP -> "Map, speed and revs"
+            Prefs.Layout.MAP -> "Map and music"
             Prefs.Layout.RETRO -> "Saab-green digital dash"
             Prefs.Layout.DIAG -> "Fault codes and live engine readings"
             Prefs.Layout.LAUNCH -> "0–60 timer"

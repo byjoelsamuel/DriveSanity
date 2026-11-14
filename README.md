@@ -121,9 +121,9 @@ gear and the speed in the middle, g-force, battery, intake air and tires on the 
 
 ![The Gauges screen, with sample data](docs/car-screen.png)
 
-**Map**: the map takes more than half the screen, with the next turn in a big box over its top
-edge and the rev bar underneath. On the right: speed and gear, how hard the accelerator and the
-brake are pressed, and coolant, battery and intake air.
+**Map**: the map takes the left side of the screen, with the next turn in a box over its top edge and
+a search button in its corner. On the right is the music player: the cover, the song and artist, a
+waveform of how far through you are, and previous, play/pause and next. No gauges or driving numbers.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
@@ -140,7 +140,7 @@ With the countdown off, that first button just clears the last run.
 **Music**: only what's playing. The whole screen takes the colours of the album cover as a soft blur,
 with the cover in a rounded square on top, then the music app's icon and name, the song and artist,
 and the song's length as a waveform that fills in as it plays (the bars near the playhead move while it
-plays). Previous, play/pause and next are drawn right in the picture, so they're always there. It
+plays). A song or artist name too long to fit slides sideways so you can read all of it. Previous, play/pause and next are drawn right in the picture, so they're always there. It
 reads whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
 
 On a car with a touch screen, the drawn buttons can be pressed. Android Auto also puts its own copies
@@ -358,17 +358,36 @@ on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My
 - The voice is your phone's own Japanese text-to-speech saying "ETC card inserted" after the
   chime. If none is installed you get just the chime.
 
+## Updates
+
+The app looks for a newer release on GitHub when it opens (at most every few hours, and you can turn
+that off in **Settings → About and updates**). If there is one, a box offers **Update**, **Not now** or
+**Skip this version**, with what's new. Update downloads it with a progress bar, checks it matches what
+GitHub published, and then hands it to Android to install; an app can't install itself silently. A copy is
+also saved in your Downloads folder.
+
+**With Android Auto,** install it the way you did before, with UnknownAuto: pick UnknownAuto when Android
+asks what to open the file with, or use **Send to another app**. Installing through Android's own
+installer replaces the app fine, but Android Auto stops listing it until it's installed with UnknownAuto
+again. **Check for updates** in the same place looks by hand.
+
 ## The map
 
-**Look:** Settings → Map look. *Simplified* (the default) is CARTO's dark map without street
-names: just roads and blocks, so your route stands out. *Modern* is the same map with the names on.
-Both are free, need no account or key, need mobile data, and are credited on the map. The old
-*Classic* look (OpenStreetMap's own tile server, which blocks apps like this one) is gone; anyone who
-had it now gets Simplified.
+**Look:** OpenStreetMap's standard map, turned dark. It needs mobile data and is credited on the
+map. (CARTO's ready-made dark maps were tried and need an API key, so they're not used.)
 
-**On the car**, there's a round **search** button in the map's corner (it also works from the car's own
-button strip), and when something is playing a small **music card** sits along the bottom of the map:
-the cover, the song and artist, how far through it is, and previous, play/pause and next.
+**On the car,** the Map screen is the map on the left, with a round **search** button in its corner (it
+also works from the car's own button strip), and what's playing on the right: the cover, the song and
+artist, the waveform and previous, play/pause and next. There are no gauges or driving numbers on it.
+Touch presses the drawn buttons; the car's own button strip carries the same three for the knob.
+
+**Google Maps directions.** If you navigate with Google Maps on the phone, the box over the map shows its
+next turn, how far away it is, and the distance left, minutes left and arrival time. That's read from the
+words of Google Maps' own navigation notification (with the same notification access as the Music screen),
+so it isn't a screen recording and needs no Google account or key, and the arrival time and minutes left
+are Google's own figures, which include traffic. The roads on the map aren't coloured for traffic, and
+Google doesn't publish what that notification looks like, so if a Google Maps update changes it the box
+simply doesn't show. Turn it off in **Settings → Google Maps directions**.
 
 **On the phone**, tap **Where to?** on the Drive tab and type an address.
 

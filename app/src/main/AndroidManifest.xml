@@ -4,6 +4,8 @@
 
     <!-- Map tiles, routes, address search and speed limits, all from OpenStreetMap services. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- So an update downloaded by the app can be handed to Android's installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
