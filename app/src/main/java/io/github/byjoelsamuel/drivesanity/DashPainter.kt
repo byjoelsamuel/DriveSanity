@@ -90,6 +90,9 @@ class DashPainter(context: Context) {
     private val retro = RetroPainter(context)
     private val cluster = ClusterPainter(context)
 
+    /** Which map screen button a touch landed on (search, or the little music player's). */
+    fun mapHit(x: Float, y: Float): MapTouch? = cluster.mapHit(x, y)
+
     /** Which Music screen button a touch landed on, if that screen is showing. */
     fun musicHit(x: Float, y: Float): MusicControl? = cluster.musicHit(x, y)
     private val diag = DiagPainter(context)

@@ -31,7 +31,6 @@ enum class Units(val perMps: Float, val label: String) {
 enum class MapLook(val title: String, val key: String) {
     SIMPLIFIED("Simplified", "s"),
     MODERN("Modern", "m"),
-    CLASSIC("Classic", "c"),
 }
 
 /** Small things kept between launches: the units, and the calibration (the phone usually stays in its mount). */
@@ -111,11 +110,14 @@ object Prefs {
 
     fun setLaunchCountdown(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("launch_countdown", on) }
 
-    /** How the map looks. Simplified unless the person picked another; anyone who chose Modern or Classic before keeps that. */
+    /**
+     * How the map looks. Simplified unless the person picked Modern. The old Classic look (the plain
+     * OpenStreetMap server, which blocks apps like this one) is gone, so anyone who had it gets Simplified.
+     */
     fun mapLook(ctx: Context): MapLook {
         val p = prefs(ctx)
-        p.getString("map_look", null)?.let { saved -> MapLook.entries.firstOrNull { it.name == saved }?.let { return it } }
-        if (p.contains("modern_map")) return if (p.getBoolean("modern_map", true)) MapLook.MODERN else MapLook.CLASSIC
+        p.getString("map_look", null)?.let { saved -> return MapLook.entries.firstOrNull { it.name == saved } ?: MapLook.SIMPLIFIED }
+        if (p.contains("modern_map") && p.getBoolean("modern_map", true)) return MapLook.MODERN
         return MapLook.SIMPLIFIED
     }
 

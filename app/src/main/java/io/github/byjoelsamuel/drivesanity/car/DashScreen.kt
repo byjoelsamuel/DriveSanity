@@ -27,6 +27,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.RetroPainter
+import io.github.byjoelsamuel.drivesanity.MapTouch
 import io.github.byjoelsamuel.drivesanity.MusicControl
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
@@ -117,12 +118,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 invalidate()
             }
             .build()
+        // One short button for every screen, instead of stepping through them one at a time.
         val layout = Action.Builder()
-            .setTitle("Show ${now.next.title}")
-            .setOnClickListener {
-                Prefs.toggleLayout(carContext)
-                invalidate()
-            }
+            .setTitle("Screens")
+            .setOnClickListener { screenManager.push(ScreenPickerScreen(carContext)) }
             .build()
         // On the map, a search button over the map opens "Where to?" (keyboard and voice).
         val search = Action.Builder()
@@ -140,7 +139,14 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 .addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
                 .addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
                 .build()
-            now == Prefs.Layout.MAP -> ActionStrip.Builder().addAction(search).build()
+            // The map keeps search, and the music buttons while something is playing, for the knob.
+            now == Prefs.Layout.MAP -> ActionStrip.Builder().addAction(search).apply {
+                if (MediaWatcher.now != null) {
+                    addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
+                    addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
+                    addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
+                }
+            }.build()
             else -> null
         }
         val strip = ActionStrip.Builder().addAction(first).addAction(record).addAction(layout).build()
@@ -165,14 +171,23 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         draw()
     }
 
-    /** A touch on a screen that takes them: the Music screen's drawn buttons work like the car's own. */
+    /** A touch on a screen that takes them: the drawn buttons work like the car's own. */
     override fun onClick(x: Float, y: Float) {
-        if (Prefs.layout(carContext) != Prefs.Layout.MUSIC) return
-        when (painter.musicHit(x, y)) {
-            MusicControl.PREVIOUS -> MediaWatcher.previous()
-            MusicControl.PLAY_PAUSE -> MediaWatcher.playPause()
-            MusicControl.NEXT -> MediaWatcher.next()
-            null -> return
+        when (Prefs.layout(carContext)) {
+            Prefs.Layout.MUSIC -> when (painter.musicHit(x, y)) {
+                MusicControl.PREVIOUS -> MediaWatcher.previous()
+                MusicControl.PLAY_PAUSE -> MediaWatcher.playPause()
+                MusicControl.NEXT -> MediaWatcher.next()
+                null -> return
+            }
+            Prefs.Layout.MAP -> when (painter.mapHit(x, y)) {
+                MapTouch.SEARCH -> screenManager.push(SearchScreen(carContext))
+                MapTouch.PREVIOUS -> MediaWatcher.previous()
+                MapTouch.PLAY_PAUSE -> MediaWatcher.playPause()
+                MapTouch.NEXT -> MediaWatcher.next()
+                null -> return
+            }
+            else -> return
         }
         invalidate()
     }
@@ -195,7 +210,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private fun draw() {
         // The phone changed something the buttons show.
         if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout ||
-            (Prefs.layout(carContext) == Prefs.Layout.MUSIC && MediaWatcher.now?.playing != shownPlaying)
+            ((Prefs.layout(carContext) == Prefs.Layout.MUSIC || Prefs.layout(carContext) == Prefs.Layout.MAP) && MediaWatcher.now?.playing != shownPlaying)
         ) invalidate()
 
         // The OBD2 screen's extra readings are only asked for while it's showing.

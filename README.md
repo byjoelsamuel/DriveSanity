@@ -113,7 +113,7 @@ everything first.
 
 The phone app has four tabs: **Drive**, **0–60**, **Trips**
 (your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. What you tap on a page shows at once, but nothing takes effect until you press **Apply** on the bar at the bottom and confirm; **Discard** drops it, each page has **Reset to default**, and **Reset all settings** at the foot of the list puts everything back. **Storage and data** shows what trips, raw recordings and the map cache take up, and clears them. The car shows one of six
-full-screen dashboards. Pick it in Settings → Car screens, or with the buttons at the top of the
+full-screen dashboards. Pick it in Settings → Car screens, or with the **Screens** button at the top of the
 car screen.
 
 **Gauges**: bar gauges for RPM, throttle, coolant and fuel (or economy) on the left, a huge
@@ -361,9 +361,14 @@ on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My
 ## The map
 
 **Look:** Settings → Map look. *Simplified* (the default) is CARTO's dark map without street
-names: just roads and blocks, so your route stands out. *Modern* is the same map with the names on,
-and *Classic* is the standard OpenStreetMap map turned dark. All need mobile data, and all are
-credited on the map. Anyone who had already picked Modern or Classic keeps it.
+names: just roads and blocks, so your route stands out. *Modern* is the same map with the names on.
+Both are free, need no account or key, need mobile data, and are credited on the map. The old
+*Classic* look (OpenStreetMap's own tile server, which blocks apps like this one) is gone; anyone who
+had it now gets Simplified.
+
+**On the car**, there's a round **search** button in the map's corner (it also works from the car's own
+button strip), and when something is playing a small **music card** sits along the bottom of the map:
+the cover, the song and artist, how far through it is, and previous, play/pause and next.
 
 **On the phone**, tap **Where to?** on the Drive tab and type an address.
 
