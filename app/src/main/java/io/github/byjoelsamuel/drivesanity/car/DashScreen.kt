@@ -27,6 +27,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.RetroPainter
+import io.github.byjoelsamuel.drivesanity.MusicControl
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.obd.Obd
@@ -162,6 +163,18 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         }
         introPlayed = true
         draw()
+    }
+
+    /** A touch on a screen that takes them: the Music screen's drawn buttons work like the car's own. */
+    override fun onClick(x: Float, y: Float) {
+        if (Prefs.layout(carContext) != Prefs.Layout.MUSIC) return
+        when (painter.musicHit(x, y)) {
+            MusicControl.PREVIOUS -> MediaWatcher.previous()
+            MusicControl.PLAY_PAUSE -> MediaWatcher.playPause()
+            MusicControl.NEXT -> MediaWatcher.next()
+            null -> return
+        }
+        invalidate()
     }
 
     override fun onVisibleAreaChanged(visibleArea: Rect) {

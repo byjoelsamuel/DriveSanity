@@ -137,7 +137,7 @@ object Prefs {
 
     fun startupSound(ctx: Context): StartupSoundMode {
         val saved = prefs(ctx).getString("startup_sound", null)
-        return StartupSoundMode.entries.firstOrNull { it.name == saved } ?: StartupSoundMode.VOICE
+        return StartupSoundMode.entries.firstOrNull { it.name == saved } ?: StartupSoundMode.READER
     }
 
     fun setStartupSound(ctx: Context, mode: StartupSoundMode) = prefs(ctx).edit { putString("startup_sound", mode.name) }

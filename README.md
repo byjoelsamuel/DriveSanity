@@ -137,11 +137,16 @@ With the countdown off, that first button just clears the last run.
 
 ![The 0–60 screen, with sample data](docs/launch-screen.png)
 
-**Music**: only what's playing, and nothing else. The cover in a rounded square, then the music
-app's icon and name, the song, the artist, the album and how far through it is. It reads whatever the
-phone is playing, so YouTube Music, Spotify or a podcast app all work. **Previous, play/pause and
-next are the car's own buttons** down the right edge of the screen, which is what the car's knob and
-touch screen can actually press (buttons drawn on the picture can't be pressed on every car).
+**Music**: only what's playing. The whole screen takes the colours of the album cover as a soft blur,
+with the cover in a rounded square on top, then the music app's icon and name, the song and artist,
+and the song's length as a waveform that fills in as it plays (the bars near the playhead move while it
+plays). Previous, play/pause and next are drawn right in the picture, so they're always there. It
+reads whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
+
+On a car with a touch screen, the drawn buttons can be pressed. Android Auto also puts its own copies
+of the three buttons down the right edge when you turn the knob or touch the screen, and on a car that
+only has a knob (like the Mazda's) those are the ones the knob can press. Android doesn't let an app
+keep those on screen all the time.
 
 ![The Music screen, with a stand-in song](docs/music-screen.png)
 
@@ -344,13 +349,14 @@ The app opens with a soft old-TV power-on: a glowing line swells until light fil
 screen and the name fades in. It plays on the phone, and in the car when Android Auto
 connects. Tap to skip, or turn it off in Settings → Startup.
 
-A short rising chime plays with it, then a Japanese voice says "ETC card inserted", like the
-reader at a toll gate. Choose Off, Chime, Voice or **My file** in **Settings → Startup**.
+A sound plays with it: by default a recording of a Japanese Toyota ETC card reader switching
+on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My file** in
+**Settings → Startup**.
 
-- The chime is a sound I made for the app, not a recording of a real ETC reader (those are
-  copyrighted).
-- The voice is your phone's own Japanese text-to-speech. If none is installed you get just
-  the chime.
+- **Reader** is "JDM Toyota ETC card reader turning on" by qopsinonstudios, from Freesound.
+- The chime is a short rising sound I made for the app.
+- The voice is your phone's own Japanese text-to-speech saying "ETC card inserted" after the
+  chime. If none is installed you get just the chime.
 
 ## The map
 

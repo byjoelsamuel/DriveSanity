@@ -103,7 +103,7 @@ class SettingsDraft(context: Context) {
         mapLook = MapLook.SIMPLIFIED,
         alerts = true,
         startupAnim = true,
-        sound = StartupSoundMode.VOICE,
+        sound = StartupSoundMode.READER,
         letCarSleep = true,
         advancedReads = false,
     )

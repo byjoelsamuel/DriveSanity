@@ -179,6 +179,9 @@ class ClusterPainter(context: Context) {
 
     fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
 
+    /** Which Music screen button a touch landed on. */
+    fun musicHit(x: Float, y: Float): MusicControl? = music.hit(x, y)
+
     /** A caption and a big value on one line, and a row of bar segments under them. */
     private fun barRow(c: Canvas, b: RectF, name: String, value: String, frac: Float?, n: Int, colorOf: (Float) -> Int) {
         val h = b.height()
