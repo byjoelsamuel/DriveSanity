@@ -16,6 +16,7 @@ import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.nav.Arrow
+import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.Route
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
@@ -178,6 +179,27 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         val trip = "${distance(Nav.remainingM, units)} · ${(Nav.remainingS / 60).roundToInt()} min · ETA ${Nav.arrivalTime()}"
         val fitted = TextUtils.ellipsize(trip, text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
         c.drawText(fitted, 0, fitted.length, tx, b.top + h * 0.94f, text)
+    }
+
+    /** The same box as [drawDirections], filled from what Google Maps is saying on the phone. */
+    fun drawGoogleDirections(c: Canvas, b: RectF, g: GoogleNav.Info, alpha: Int = 255) {
+        val h = b.height()
+        fill.color = (Colors.BOX and 0x00FFFFFF) or (alpha shl 24)
+        c.drawRoundRect(b, h * 0.16f, h * 0.16f, fill)
+        val icon = h * 0.72f
+        drawArrow(c, g.arrow, b.left + h * 0.14f + icon / 2, b.centerY(), icon)
+        val tx = b.left + h * 0.28f + icon
+        value(h * 0.43f, Colors.FG, Paint.Align.LEFT)
+        val far = TextUtils.ellipsize(g.toTurn ?: "", text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
+        c.drawText(far, 0, far.length, tx, b.top + h * 0.43f, text)
+        label(h * 0.25f, Colors.FG, Paint.Align.LEFT)
+        val what = TextUtils.ellipsize(g.instruction, text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
+        c.drawText(what, 0, what.length, tx, b.top + h * 0.72f, text)
+        if (g.trip.isNotEmpty()) {
+            label(h * 0.18f, Colors.DIM, Paint.Align.LEFT)
+            val trip = TextUtils.ellipsize(g.trip + "  ·  Google Maps", text, b.right - tx - h * 0.2f, TextUtils.TruncateAt.END)
+            c.drawText(trip, 0, trip.length, tx, b.top + h * 0.94f, text)
+        }
     }
 
     private fun drawArrow(c: Canvas, a: Arrow, cx: Float, cy: Float, size: Float) {

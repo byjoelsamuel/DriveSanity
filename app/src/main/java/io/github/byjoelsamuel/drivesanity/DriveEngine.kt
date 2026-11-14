@@ -223,6 +223,7 @@ object DriveEngine : SensorEventListener, LocationListener {
             calibration = Prefs.loadRest(app)?.let { Calibration.fromRest(it) }
             loadCar()
             Tiles.init(app)
+            io.github.byjoelsamuel.drivesanity.nav.GoogleNav.enabled = Prefs.googleDirections(app)
             Obd.onSpeed = { t, mps -> Launch.onSpeed(t, mps) }
             status = if (calibration != null) "Calibrated" else "Not calibrated"
         }

@@ -381,6 +381,14 @@ also works from the car's own button strip), and what's playing on the right: th
 artist, the waveform and previous, play/pause and next. There are no gauges or driving numbers on it.
 Touch presses the drawn buttons; the car's own button strip carries the same three for the knob.
 
+**Google Maps directions.** If you navigate with Google Maps on the phone, the box over the map shows its
+next turn, how far away it is, and the distance left, minutes left and arrival time. That's read from the
+words of Google Maps' own navigation notification (with the same notification access as the Music screen),
+so it isn't a screen recording and needs no Google account or key, and the arrival time and minutes left
+are Google's own figures, which include traffic. The roads on the map aren't coloured for traffic, and
+Google doesn't publish what that notification looks like, so if a Google Maps update changes it the box
+simply doesn't show. Turn it off in **Settings → Google Maps directions**.
+
 **On the phone**, tap **Where to?** on the Drive tab and type an address.
 
 **On the car screen**, show the Map screen and tap the magnifying glass over the map. Android

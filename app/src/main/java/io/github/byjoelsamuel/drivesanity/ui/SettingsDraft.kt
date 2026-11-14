@@ -29,12 +29,13 @@ class SettingsDraft(context: Context) {
         val alerts: Boolean,
         val startupAnim: Boolean,
         val sound: StartupSoundMode,
+        val googleDirections: Boolean,
         val letCarSleep: Boolean,
         val advancedReads: Boolean,
     )
 
     /** What each part of the draft covers, for "Reset to default". */
-    enum class Group { CAR, UNITS, SCREEN, ALERTS, STARTUP, BATTERY, ALL }
+    enum class Group { CAR, UNITS, SCREEN, NAV, ALERTS, STARTUP, BATTERY, ALL }
 
     class Change(val label: String, val from: String, val to: String)
 
@@ -46,6 +47,7 @@ class SettingsDraft(context: Context) {
         alerts = Prefs.alerts(ctx),
         startupAnim = Prefs.startupAnim(ctx),
         sound = Prefs.startupSound(ctx),
+        googleDirections = Prefs.googleDirections(ctx),
         letCarSleep = Prefs.letCarSleep(ctx),
         advancedReads = Prefs.advancedReads(ctx),
     )
@@ -99,6 +101,7 @@ class SettingsDraft(context: Context) {
         alerts = true,
         startupAnim = true,
         sound = StartupSoundMode.READER,
+        googleDirections = true,
         letCarSleep = true,
         advancedReads = false,
     )
@@ -109,6 +112,7 @@ class SettingsDraft(context: Context) {
             Group.CAR -> v.copy(carId = d.carId, redline = d.redline)
             Group.UNITS -> v.copy(units = d.units)
             Group.SCREEN -> v.copy(layout = d.layout)
+            Group.NAV -> v.copy(googleDirections = d.googleDirections)
             Group.ALERTS -> v.copy(alerts = d.alerts)
             Group.STARTUP -> v.copy(startupAnim = d.startupAnim, sound = d.sound)
             Group.BATTERY -> v.copy(letCarSleep = d.letCarSleep, advancedReads = d.advancedReads)
@@ -129,6 +133,7 @@ class SettingsDraft(context: Context) {
         if (v.redline != null) add(Change("Redline", rpm(redlineOf(a)), rpm(redlineOf(v))))
         if (v.units != a.units) add(Change("Units", unitsName(a.units), unitsName(v.units)))
         if (v.layout != a.layout) add(Change("Car screen", a.layout.title, v.layout.title))
+        if (v.googleDirections != a.googleDirections) add(Change("Google Maps directions", onOff(a.googleDirections), onOff(v.googleDirections)))
         if (v.alerts != a.alerts) add(Change("Alerts and shift light", onOff(a.alerts), onOff(v.alerts)))
         if (v.startupAnim != a.startupAnim) add(Change("Startup animation", onOff(a.startupAnim), onOff(v.startupAnim)))
         if (v.sound != a.sound) add(Change("Startup sound", a.sound.title, v.sound.title))
@@ -148,6 +153,7 @@ class SettingsDraft(context: Context) {
         }
         if (v.units != a.units) actions.swapUnits()
         if (v.layout != a.layout) actions.setCarLayout(v.layout)
+        if (v.googleDirections != a.googleDirections) Prefs.setGoogleDirections(ctx, v.googleDirections)
         if (v.alerts != a.alerts) actions.setAlerts(v.alerts)
         if (v.startupAnim != a.startupAnim) actions.setStartupAnim(v.startupAnim)
         if (v.sound != a.sound) actions.setStartupSound(v.sound)

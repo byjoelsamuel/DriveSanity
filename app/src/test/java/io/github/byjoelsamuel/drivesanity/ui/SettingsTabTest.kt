@@ -113,7 +113,7 @@ class SettingsTabTest {
             "My car" to "Redline", "Calibration" to "Calibrate", "Units" to "km/h · °C · km",
             "OBD2 adapter" to "Setting up", "Fault codes" to "Read codes again",
             "Battery and read-only" to "Let the car sleep", "Car screens" to "Preview",
-            "Alerts and shift light" to "banner for a hot engine",
+            "Google Maps directions" to "no screen recording", "Alerts and shift light" to "banner for a hot engine",
             "Startup" to "Startup animation", "Music" to "How it works", "Storage and data" to "Map cache", "Demo and recordings" to "Start demo",
             "Android Auto" to "UnknownAuto", "About and updates" to "Check for updates",
         )

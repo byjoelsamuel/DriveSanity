@@ -134,6 +134,14 @@ object Prefs {
 
     fun setStartupAnim(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("startup_anim", on) }
 
+    /** Show Google Maps' next turn and arrival time on the map screen while it's navigating. On unless turned off. */
+    fun googleDirections(ctx: Context): Boolean = prefs(ctx).getBoolean("google_directions", true)
+
+    fun setGoogleDirections(ctx: Context, on: Boolean) {
+        prefs(ctx).edit { putBoolean("google_directions", on) }
+        io.github.byjoelsamuel.drivesanity.nav.GoogleNav.enabled = on
+    }
+
     /** Look for a newer release when the app opens. On unless the person turns it off. */
     fun autoUpdateCheck(ctx: Context): Boolean = prefs(ctx).getBoolean("auto_update_check", true)
 

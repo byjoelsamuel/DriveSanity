@@ -60,6 +60,7 @@ import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
 import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
+import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.update.Updater
@@ -78,6 +79,7 @@ private enum class Page(val title: String) {
     BATTERY("Battery and read-only"),
     PHONE_CHECK("Phone check"),
     SCREENS("Car screens"),
+    NAVIGATION("Google Maps directions"),
     ALERTS("Alerts and shift light"),
     STARTUP("Startup"),
     MUSIC("Music"),
@@ -150,6 +152,7 @@ fun SettingsTab(
                         Page.BATTERY -> BatteryPage(draft)
                         Page.PHONE_CHECK -> PhoneCheckCard(tick)
                         Page.SCREENS -> ScreensPage(draft)
+                        Page.NAVIGATION -> NavigationPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
                         Page.MUSIC -> MusicPage(tick)
@@ -297,6 +300,17 @@ private fun Home(
 
         SettingsGroup("On the car screen") {
             SettingsRow(SettingsIcon.SCREEN, "Car screens", v.layout.title, Ui.accent) { open(Page.SCREENS) }
+            RowDivider()
+            SettingsRow(
+                SettingsIcon.MAP, "Google Maps directions",
+                when {
+                    !v.googleDirections -> "Off"
+                    !access -> "Needs notification access"
+                    GoogleNav.current() != null -> "Showing Google Maps' next turn"
+                    else -> "On, waiting for Google Maps navigation"
+                },
+                Ui.good,
+            ) { open(Page.NAVIGATION) }
             RowDivider()
             SettingsRow(SettingsIcon.BELL, "Alerts and shift light", if (v.alerts) "On" else "Off", Ui.clay) { open(Page.ALERTS) }
             RowDivider()
@@ -600,6 +614,38 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
     Prefs.Layout.LAUNCH -> "READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. The countdown is on the 0–60 tab."
     Prefs.Layout.MUSIC -> "The cover's colours as a soft backdrop, the song, a waveform of how far through you are, and previous, play or pause and next on the screen."
+}
+
+@Composable
+private fun NavigationPage(draft: SettingsDraft) {
+    val ctx = LocalContext.current
+    val granted = MediaWatcher.hasAccess(ctx)
+    val now = GoogleNav.current()
+    SettingsGroup(
+        footer = "Needs notification access, the same switch as the Music screen. This only reads the words of Google Maps' own navigation notification, so there's no screen recording, no Google account and no key. The arrival time and minutes left are Google's own figures, so they include traffic. Roads aren't coloured for traffic on this map.",
+    ) {
+        SwitchRow("Show Google Maps' next turn", "On the map screen, in place of this app's own directions", draft.values.googleDirections) { on -> draft.edit { it.copy(googleDirections = on) } }
+    }
+    SettingsGroup("Right now") {
+        GroupBody {
+            Text(
+                when {
+                    !granted -> "Notification access is off, so Google Maps can't be read."
+                    now == null -> "Nothing yet. Start navigation in Google Maps on the phone."
+                    else -> "${now.toTurn?.let { "$it  " } ?: ""}${now.instruction}" + if (now.trip.isNotEmpty()) "\n${now.trip}" else ""
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (now != null) Ui.good else Ui.sand,
+            )
+            if (!granted) {
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = {
+                    runCatching { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }) { Text("Allow notification access") }
+            }
+        }
+    }
+    ResetGroup(draft, SettingsDraft.Group.NAV)
 }
 
 @Composable

@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
+import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import kotlin.math.max
@@ -310,8 +311,12 @@ class ClusterPainter(context: Context) {
         // Left: the map, with the next turn laid over its top edge and a search button in its corner.
         val mapArea = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
         map.draw(c, mapArea, s, units)
-        val directions = Nav.route != null || Nav.message != null
-        if (directions) {
+        // Google Maps' own directions, when it's navigating on the phone; otherwise this app's.
+        val google = GoogleNav.current()
+        val directions = google != null || Nav.route != null || Nav.message != null
+        if (google != null) {
+            map.drawGoogleDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), google, 238)
+        } else if (directions) {
             map.drawDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), units, 238)
         }
         mapHits.clear()
