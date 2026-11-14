@@ -6,11 +6,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.byjoelsamuel.drivesanity.CarProfiles
 import io.github.byjoelsamuel.drivesanity.DriveEngine
-import io.github.byjoelsamuel.drivesanity.MapLook
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.Units
-import io.github.byjoelsamuel.drivesanity.map.Tiles
 import kotlin.math.roundToInt
 
 /**
@@ -28,7 +26,6 @@ class SettingsDraft(context: Context) {
         val redline: Float?,
         val units: Units,
         val layout: Prefs.Layout,
-        val mapLook: MapLook,
         val alerts: Boolean,
         val startupAnim: Boolean,
         val sound: StartupSoundMode,
@@ -37,7 +34,7 @@ class SettingsDraft(context: Context) {
     )
 
     /** What each part of the draft covers, for "Reset to default". */
-    enum class Group { CAR, UNITS, SCREEN, MAP, ALERTS, STARTUP, BATTERY, ALL }
+    enum class Group { CAR, UNITS, SCREEN, ALERTS, STARTUP, BATTERY, ALL }
 
     class Change(val label: String, val from: String, val to: String)
 
@@ -46,7 +43,6 @@ class SettingsDraft(context: Context) {
         redline = null,
         units = Prefs.units(ctx),
         layout = Prefs.layout(ctx),
-        mapLook = Prefs.mapLook(ctx),
         alerts = Prefs.alerts(ctx),
         startupAnim = Prefs.startupAnim(ctx),
         sound = Prefs.startupSound(ctx),
@@ -100,7 +96,6 @@ class SettingsDraft(context: Context) {
         redline = CarProfiles.byId(CarProfiles.DEFAULT_ID).redline,
         units = Units.MPH,
         layout = Prefs.Layout.GAUGES,
-        mapLook = MapLook.SIMPLIFIED,
         alerts = true,
         startupAnim = true,
         sound = StartupSoundMode.READER,
@@ -114,7 +109,6 @@ class SettingsDraft(context: Context) {
             Group.CAR -> v.copy(carId = d.carId, redline = d.redline)
             Group.UNITS -> v.copy(units = d.units)
             Group.SCREEN -> v.copy(layout = d.layout)
-            Group.MAP -> v.copy(mapLook = d.mapLook)
             Group.ALERTS -> v.copy(alerts = d.alerts)
             Group.STARTUP -> v.copy(startupAnim = d.startupAnim, sound = d.sound)
             Group.BATTERY -> v.copy(letCarSleep = d.letCarSleep, advancedReads = d.advancedReads)
@@ -135,7 +129,6 @@ class SettingsDraft(context: Context) {
         if (v.redline != null) add(Change("Redline", rpm(redlineOf(a)), rpm(redlineOf(v))))
         if (v.units != a.units) add(Change("Units", unitsName(a.units), unitsName(v.units)))
         if (v.layout != a.layout) add(Change("Car screen", a.layout.title, v.layout.title))
-        if (v.mapLook != a.mapLook) add(Change("Map look", a.mapLook.title, v.mapLook.title))
         if (v.alerts != a.alerts) add(Change("Alerts and shift light", onOff(a.alerts), onOff(v.alerts)))
         if (v.startupAnim != a.startupAnim) add(Change("Startup animation", onOff(a.startupAnim), onOff(v.startupAnim)))
         if (v.sound != a.sound) add(Change("Startup sound", a.sound.title, v.sound.title))
@@ -155,10 +148,6 @@ class SettingsDraft(context: Context) {
         }
         if (v.units != a.units) actions.swapUnits()
         if (v.layout != a.layout) actions.setCarLayout(v.layout)
-        if (v.mapLook != a.mapLook) {
-            Prefs.setMapLook(ctx, v.mapLook)
-            Tiles.setLook(v.mapLook)
-        }
         if (v.alerts != a.alerts) actions.setAlerts(v.alerts)
         if (v.startupAnim != a.startupAnim) actions.setStartupAnim(v.startupAnim)
         if (v.sound != a.sound) actions.setStartupSound(v.sound)

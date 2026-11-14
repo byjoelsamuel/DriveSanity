@@ -152,9 +152,9 @@ class MusicPainter(context: Context) {
             return
         }
         number(h * 0.105f, Colors.FG)
-        c.drawText(fit(np.title, tw), tx, top + art * 0.32f, text)
+        marquee(c, np.title, tx, top + art * 0.32f, tw, clockMs)
         label(h * 0.066f, soft)
-        c.drawText(fit(if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tw), tx, top + art * 0.46f, text)
+        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, top + art * 0.46f, tw, clockMs)
 
         waves(c, np, tx, tw, top + art * 0.595f, art * 0.085f, h, accent, clockMs)
 
@@ -243,6 +243,137 @@ class MusicPainter(context: Context) {
         hits += RectF(cx - size * 1.45f, cy - size * 1.45f, cx + size * 1.45f, cy + size * 1.45f) to which
     }
 
+    /** The player as a tall card, for the right-hand side of the map screen: cover, song, artist, waveform and buttons. */
+    fun drawPanel(c: Canvas, r: RectF) {
+        MediaWatcher.poll(app)
+        renderPanel(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis())
+    }
+
+    internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
+        hits.clear()
+        val w = r.width()
+        val h = r.height()
+        val radius = min(w, h) * 0.07f
+        c.save()
+        clip.reset()
+        clip.addRoundRect(r, radius, radius, Path.Direction.CW)
+        c.clipPath(clip)
+        fill.shader = null
+        fill.color = Color.rgb(16, 18, 20)
+        c.drawRect(r, fill)
+        val cover = np?.art?.let { lookOf(it, w / h) }
+        if (cover != null) {
+            c.drawBitmap(cover.backdrop, null, r, backdropPaint)
+            fill.shader = LinearGradient(
+                r.left, r.top, r.left, r.bottom,
+                intArrayOf(Color.argb(110, 8, 10, 12), Color.argb(150, 8, 10, 12), Color.argb(210, 8, 10, 12)),
+                floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
+            )
+            c.drawRect(r, fill)
+            fill.shader = null
+        }
+        val accent = cover?.palette?.get(0) ?: np?.accent ?: Colors.ACCENT
+        val soft = Color.argb(215, 236, 236, 236)
+        val p = w * 0.07f
+        val inner = w - 2 * p
+
+        if (np == null) {
+            val g = min(inner, h * 0.3f)
+            glyph(c, noteGlyph, RectF(r.centerX() - g * 0.25f, r.top + h * 0.25f, r.centerX() + g * 0.25f, r.top + h * 0.25f + g * 0.5f), Colors.DIM)
+            number(min(w * 0.075f, h * 0.05f), Colors.FG, Paint.Align.CENTER)
+            c.drawText(fit(if (access) "Nothing playing" else "Allow notification access", inner), r.centerX(), r.top + h * 0.56f, text)
+            label(min(w * 0.05f, h * 0.034f), soft, Paint.Align.CENTER)
+            hint(c, if (access) "Start a song in any music app." else "On the phone: Settings → Music.", r.left + p, r.top + h * 0.62f, inner, centred = true)
+            c.restore()
+            return
+        }
+
+        // The cover, centred at the top.
+        val art = min(inner, h * 0.4f)
+        val artRect = RectF(r.centerX() - art / 2, r.top + p, r.centerX() + art / 2, r.top + p + art)
+        fill.setShadowLayer(art * 0.08f, 0f, art * 0.03f, Color.argb(150, 0, 0, 0))
+        fill.color = Colors.BOX
+        val cr = art * 0.12f
+        c.drawRoundRect(artRect, cr, cr, fill)
+        fill.clearShadowLayer()
+        if (np.art != null) {
+            c.save()
+            clip.reset()
+            clip.addRoundRect(artRect, cr, cr, Path.Direction.CW)
+            c.clipPath(clip)
+            c.drawBitmap(np.art, null, artRect, bmpPaint)
+            c.restore()
+        } else {
+            glyph(c, noteGlyph, RectF(artRect).apply { inset(art * 0.3f, art * 0.3f) }, Colors.DIM)
+        }
+
+        // Song and artist, left-aligned to the card; long ones scroll.
+        val tx = r.left + p
+        number(min(w * 0.082f, h * 0.05f), Colors.FG)
+        marquee(c, np.title, tx, artRect.bottom + h * 0.085f, inner, clockMs)
+        label(min(w * 0.058f, h * 0.036f), soft)
+        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, artRect.bottom + h * 0.085f + h * 0.058f, inner, clockMs)
+
+        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * 0.085f
+        waves(c, np, tx, inner, wavesY, h * 0.032f, h, accent, clockMs)
+
+        // Buttons along the bottom.
+        val big = min(w * 0.11f, h * 0.065f)
+        val cy = r.bottom - p - big
+        val gap = min(w * 0.27f, big * 3.4f)
+        control(c, MusicControl.PREVIOUS, r.centerX() - gap, cy, big * 0.72f)
+        fill.color = Colors.mix(accent, Color.WHITE, 0.35f)
+        c.drawCircle(r.centerX(), cy, big, fill)
+        fill.color = Color.rgb(14, 16, 18)
+        if (np.playing) {
+            val bw = big * 0.2f
+            val bh = big * 0.62f
+            c.drawRoundRect(RectF(r.centerX() - big * 0.3f - bw / 2, cy - bh / 2, r.centerX() - big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
+            c.drawRoundRect(RectF(r.centerX() + big * 0.3f - bw / 2, cy - bh / 2, r.centerX() + big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
+        } else {
+            glyphPath.reset()
+            glyphPath.moveTo(r.centerX() - big * 0.26f, cy - big * 0.4f)
+            glyphPath.lineTo(r.centerX() + big * 0.46f, cy)
+            glyphPath.lineTo(r.centerX() - big * 0.26f, cy + big * 0.4f)
+            glyphPath.close()
+            c.drawPath(glyphPath, fill)
+        }
+        hits += RectF(r.centerX() - big * 1.2f, cy - big * 1.2f, r.centerX() + big * 1.2f, cy + big * 1.2f) to MusicControl.PLAY_PAUSE
+        control(c, MusicControl.NEXT, r.centerX() + gap, cy, big * 0.72f)
+        c.restore()
+    }
+
+    // When each long line was first drawn, so its scrolling starts from the beginning for a new song.
+    private val marqueeSeen = HashMap<String, Long>()
+
+    /**
+     * Draws [s] on one line. If it's too long for [width] it slowly slides sideways to show all of it,
+     * waits at the end, then starts again, so the whole name can be read.
+     */
+    private fun marquee(c: Canvas, s: String, x: Float, y: Float, width: Float, clockMs: Long) {
+        val tw = text.measureText(s)
+        if (tw <= width) {
+            c.drawText(s, x, y, text)
+            return
+        }
+        if (marqueeSeen.size > 24) marqueeSeen.clear()
+        val start = marqueeSeen.getOrPut(s) { clockMs }
+        val travel = tw - width + text.textSize * 0.6f
+        val speed = text.textSize * 3.2f // pixels a second
+        val hold = 1800L
+        val scrollMs = (travel / speed * 1000).toLong()
+        val t = (clockMs - start) % (hold + scrollMs + hold)
+        val offset = when {
+            t < hold -> 0f
+            t < hold + scrollMs -> travel * (t - hold) / scrollMs
+            else -> travel
+        }
+        c.save()
+        c.clipRect(x, y - text.textSize * 1.1f, x + width, y + text.textSize * 0.4f)
+        c.drawText(s, x - offset, y, text)
+        c.restore()
+    }
+
     private fun lookOf(art: Bitmap, aspect: Float): CoverLook.Look? {
         if (art !== lookFor || abs(aspect - lookAspect) > 0.05f) {
             lookFor = art
@@ -263,18 +394,18 @@ class MusicPainter(context: Context) {
 
     private fun fit(s: String, width: Float): String = TextUtils.ellipsize(s, TextPaint(text), width, TextUtils.TruncateAt.END).toString()
 
-    private fun hint(c: Canvas, s: String, x: Float, y: Float, width: Float) {
+    private fun hint(c: Canvas, s: String, x: Float, y: Float, width: Float, centred: Boolean = false) {
         var line = ""
         var yy = y
         for (word in s.split(' ')) {
             val t = if (line.isEmpty()) word else "$line $word"
             if (text.measureText(t) > width && line.isNotEmpty()) {
-                c.drawText(line, x, yy, text)
+                c.drawText(line, if (centred) x + width / 2 else x, yy, text)
                 yy += text.textSize * 1.4f
                 line = word
             } else line = t
         }
-        if (line.isNotEmpty()) c.drawText(line, x, yy, text)
+        if (line.isNotEmpty()) c.drawText(line, if (centred) x + width / 2 else x, yy, text)
     }
 
     private fun clock(ms: Long): String {

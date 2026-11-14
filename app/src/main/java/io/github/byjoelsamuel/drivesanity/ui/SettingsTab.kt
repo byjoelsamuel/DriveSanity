@@ -52,7 +52,6 @@ import io.github.byjoelsamuel.drivesanity.CarProfiles
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.DashView
-import io.github.byjoelsamuel.drivesanity.MapLook
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
@@ -79,7 +78,6 @@ private enum class Page(val title: String) {
     BATTERY("Battery and read-only"),
     PHONE_CHECK("Phone check"),
     SCREENS("Car screens"),
-    MAP("Map look"),
     ALERTS("Alerts and shift light"),
     STARTUP("Startup"),
     MUSIC("Music"),
@@ -152,7 +150,6 @@ fun SettingsTab(
                         Page.BATTERY -> BatteryPage(draft)
                         Page.PHONE_CHECK -> PhoneCheckCard(tick)
                         Page.SCREENS -> ScreensPage(draft)
-                        Page.MAP -> MapPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
                         Page.MUSIC -> MusicPage(tick)
@@ -300,8 +297,6 @@ private fun Home(
 
         SettingsGroup("On the car screen") {
             SettingsRow(SettingsIcon.SCREEN, "Car screens", v.layout.title, Ui.accent) { open(Page.SCREENS) }
-            RowDivider()
-            SettingsRow(SettingsIcon.MAP, "Map look", v.mapLook.title, Ui.good) { open(Page.MAP) }
             RowDivider()
             SettingsRow(SettingsIcon.BELL, "Alerts and shift light", if (v.alerts) "On" else "Off", Ui.clay) { open(Page.ALERTS) }
             RowDivider()
@@ -600,22 +595,11 @@ private fun ScreensPage(draft: SettingsDraft) {
 
 private fun layoutNote(l: Prefs.Layout) = when (l) {
     Prefs.Layout.GAUGES -> "Bar gauges for RPM, throttle, coolant and fuel, a huge gear number, speed, g-force and tire pressures."
-    Prefs.Layout.MAP -> "Directions and a live map on the left half, speed, gear, RPM and the rest on the right."
+    Prefs.Layout.MAP -> "A live map with directions on the left, and what's playing (cover, song, buttons) on the right. No gauges."
     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
     Prefs.Layout.LAUNCH -> "READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. The countdown is on the 0–60 tab."
     Prefs.Layout.MUSIC -> "The cover's colours as a soft backdrop, the song, a waveform of how far through you are, and previous, play or pause and next on the screen."
-}
-
-@Composable
-private fun MapPage(draft: SettingsDraft) {
-    val look = draft.values.mapLook
-    SettingsGroup(footer = "Both are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. They need mobile data, and no account or key.") {
-        ChoiceRow("Simplified", "Roads and blocks only, no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
-        RowDivider()
-        ChoiceRow("Modern", "The same dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
-    }
-    ResetGroup(draft, SettingsDraft.Group.MAP)
 }
 
 @Composable
@@ -863,7 +847,7 @@ private fun AboutPage() {
     SettingsGroup("Credits") {
         GroupBody {
             Text(
-                "Map data © OpenStreetMap contributors. Dark map styling by CARTO. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License). Startup sound: \"JDM Toyota ETC card reader turning on\" by qopsinonstudios, from Freesound.",
+                "Map data © OpenStreetMap contributors. Directions by OSRM (FOSSGIS), search by Nominatim, speed limits via Overpass. Font: Poppins (SIL Open Font License). Startup sound: \"JDM Toyota ETC card reader turning on\" by qopsinonstudios, from Freesound.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Ui.dim,
             )

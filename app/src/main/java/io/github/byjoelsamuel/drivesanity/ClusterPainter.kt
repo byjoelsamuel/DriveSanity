@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
-import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import kotlin.math.max
@@ -24,7 +23,6 @@ import kotlin.math.roundToInt
  * The speed counts up smoothly and rolls its digits, with a motion smear while it changes fast.
  */
 class ClusterPainter(context: Context) {
-    private val appContext = context.applicationContext
     private val numbers = Fonts.dashNumbers(context)
     private val labels = Fonts.dashLabels(context)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = numbers }
@@ -33,7 +31,6 @@ class ClusterPainter(context: Context) {
     private val map = MapPainter(labels, numbers)
     private val launch = LaunchPainter(context)
     private val music = MusicPainter(context)
-    private val mini = MiniPlayer(context)
     private val mapHits = ArrayList<Pair<RectF, MapTouch>>()
     private val speedRoll = RollingNumber()
 
@@ -185,6 +182,12 @@ class ClusterPainter(context: Context) {
 
     /** Which map screen button (search, or the little player's) a touch landed on. */
     fun mapHit(x: Float, y: Float): MapTouch? = mapHits.firstOrNull { it.first.contains(x, y) }?.second
+        ?: when (music.hit(x, y)) {
+            MusicControl.PREVIOUS -> MapTouch.PREVIOUS
+            MusicControl.PLAY_PAUSE -> MapTouch.PLAY_PAUSE
+            MusicControl.NEXT -> MapTouch.NEXT
+            null -> null
+        }
 
     /** Which Music screen button a touch landed on. */
     fun musicHit(x: Float, y: Float): MusicControl? = music.hit(x, y)
@@ -302,44 +305,21 @@ class ClusterPainter(context: Context) {
         val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
         val h = inner.height()
         val w = inner.width()
-        val gap = w * 0.03f
+        val gap = w * 0.025f
 
-        // Left: the map takes more than half the screen, with the revs under it and the next turn
-        // laid over its top edge.
-        val left = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
-        val rpmH = h * 0.2f
-        val mapArea = RectF(left.left, left.top, left.right + gap * 0.4f, left.bottom - rpmH - h * 0.02f)
+        // Left: the map, with the next turn laid over its top edge and a search button in its corner.
+        val mapArea = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
         map.draw(c, mapArea, s, units)
         val directions = Nav.route != null || Nav.message != null
         if (directions) {
-            map.drawDirections(c, RectF(left.left, left.top, left.right, left.top + h * 0.32f), units, 238)
+            map.drawDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), units, 238)
         }
-        // A search button in the map's corner (below the directions when they're showing), and the music
-        // that's playing as a small card along the bottom, left of the speed limit sign.
         mapHits.clear()
         val sr = h * 0.055f
         drawSearchButton(c, fill, stroke, mapArea.right - sr * 1.5f, mapArea.top + (if (directions) h * 0.32f + sr * 1.6f else sr * 1.5f), sr, mapHits)
-        MediaWatcher.poll(appContext)
-        MediaWatcher.now?.let { np ->
-            val ph = min(mapArea.height() * 0.2f, h * 0.15f)
-            val pw = mapArea.width() * 0.7f
-            mini.draw(c, RectF(mapArea.left + pad, mapArea.bottom - pad - ph, mapArea.left + pad + pw, mapArea.bottom - pad), np, mapHits)
-        }
-        rpmBar(c, RectF(left.left, left.bottom - rpmH, left.right, left.bottom), s)
 
-        // Right: speed and gear, how hard the pedal and the brake are pressed, then the temperatures.
-        val b = RectF(left.right + gap, inner.top, inner.right, inner.bottom)
-        var y = b.top
-        fun row(f: Float) = RectF(b.left, y, b.right, y + h * f).also { y += h * f }
-        status(c, row(0.07f), s)
-        speedAndGear(c, row(0.34f), s, units)
-        row(0.01f)
-        val pedal = s.throttlePct
-        levelBar(c, row(0.14f), "PEDAL", pedal?.let { "${it.roundToInt()}%" } ?: "–", pedal?.div(100f), rampColor((pedal ?: 0f) / 100f))
-        row(0.01f)
-        brakeBar(c, row(0.14f), s)
-        row(0.03f)
-        temperatures(c, row(0.26f), s, units)
+        // Right: what's playing, and nothing else (no gauges or driving numbers).
+        music.drawPanel(c, RectF(mapArea.right + gap, inner.top, inner.right, inner.bottom))
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {

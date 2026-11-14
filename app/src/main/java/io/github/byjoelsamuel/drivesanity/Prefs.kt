@@ -27,12 +27,6 @@ enum class Units(val perMps: Float, val label: String) {
     }
 }
 
-/** The looks the map can have. [key] keeps their saved tiles apart. */
-enum class MapLook(val title: String, val key: String) {
-    SIMPLIFIED("Simplified", "s"),
-    MODERN("Modern", "m"),
-}
-
 /** Small things kept between launches: the units, and the calibration (the phone usually stays in its mount). */
 object Prefs {
     private const val FILE = "drive"
@@ -109,19 +103,6 @@ object Prefs {
     fun launchCountdown(ctx: Context): Boolean = prefs(ctx).getBoolean("launch_countdown", false)
 
     fun setLaunchCountdown(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("launch_countdown", on) }
-
-    /**
-     * How the map looks. Simplified unless the person picked Modern. The old Classic look (the plain
-     * OpenStreetMap server, which blocks apps like this one) is gone, so anyone who had it gets Simplified.
-     */
-    fun mapLook(ctx: Context): MapLook {
-        val p = prefs(ctx)
-        p.getString("map_look", null)?.let { saved -> return MapLook.entries.firstOrNull { it.name == saved } ?: MapLook.SIMPLIFIED }
-        if (p.contains("modern_map") && p.getBoolean("modern_map", true)) return MapLook.MODERN
-        return MapLook.SIMPLIFIED
-    }
-
-    fun setMapLook(ctx: Context, look: MapLook) = prefs(ctx).edit { putString("map_look", look.name) }
 
     /** Manufacturer-specific reads (fuel level, tire pressure) are off until the person turns them on. They are still only reads. */
     fun advancedReads(ctx: Context): Boolean = prefs(ctx).getBoolean("advanced_reads", false)

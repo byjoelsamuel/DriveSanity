@@ -105,33 +105,48 @@ class MusicPainterTest {
         assertNull("no buttons when nothing is playing", empty.hit(400f, 340f))
         shot("music-nocover-1600x640", 1600, 640, playing(null))
     }
-}
-
-@RunWith(RobolectricTestRunner::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
-class MiniPlayerTest {
-    private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
-
-    private fun np(playing: Boolean) = NowPlaying(
-        title = "Neon Overdrive", artist = "The Night Shift", album = "", art = null,
-        accent = Color.rgb(255, 120, 30), appIcon = null, appName = "YouTube Music", playing = playing,
-        positionMs = 60_000, durationMs = 200_000, basedAtMs = SystemClock.elapsedRealtime(), speed = 1f,
-        canPrev = true, canNext = true, pkg = "test",
-    )
 
     @Test
-    fun drawsThreeButtonsInOrderAndTheyAreFindable() {
-        val hits = ArrayList<Pair<RectF, io.github.byjoelsamuel.drivesanity.MapTouch>>()
-        val bmp = Bitmap.createBitmap(900, 120, Bitmap.Config.ARGB_8888)
-        io.github.byjoelsamuel.drivesanity.MiniPlayer(ctx).draw(Canvas(bmp), RectF(0f, 0f, 900f, 120f), np(true), hits)
-        assertEquals(
-            listOf(io.github.byjoelsamuel.drivesanity.MapTouch.PREVIOUS, io.github.byjoelsamuel.drivesanity.MapTouch.PLAY_PAUSE, io.github.byjoelsamuel.drivesanity.MapTouch.NEXT),
-            hits.sortedBy { it.first.centerX() }.map { it.second },
-        )
+    fun thePanelForTheMapScreenDrawsAndHasThreeButtons() {
+        val painter = MusicPainter(ctx)
+        val bmp = Bitmap.createBitmap(640, 700, Bitmap.Config.ARGB_8888)
+        painter.renderPanel(Canvas(bmp), RectF(0f, 0f, 640f, 700f), playing(cover()), true, 1_000L)
         System.getenv("SHOTS_DIR")?.let { dir ->
             File(dir).mkdirs()
-            File(dir, "mini-player.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            File(dir, "music-panel.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
+        val found = (0 until 640 step 6).mapNotNull { x -> painter.hit(x.toFloat(), 700f * 0.9f) }.distinct()
+        assertEquals(listOf(MusicControl.PREVIOUS, MusicControl.PLAY_PAUSE, MusicControl.NEXT), found)
+        val empty = MusicPainter(ctx)
+        empty.renderPanel(Canvas(Bitmap.createBitmap(640, 700, Bitmap.Config.ARGB_8888)), RectF(0f, 0f, 640f, 700f), null, true, 0L)
+        assertNull(empty.hit(320f, 630f))
+    }
+
+    @Test
+    fun aTitleTooLongToFitSlidesAlongToShowAllOfIt() {
+        val long = playing(cover()).copy(title = "An Extremely Long Song Title That Could Never Fit On One Line Of The Car Screen At All")
+        val painter = MusicPainter(ctx)
+        fun titleStrip(clock: Long): IntArray {
+            val bmp = Bitmap.createBitmap(1600, 640, Bitmap.Config.ARGB_8888)
+            painter.render(Canvas(bmp), RectF(0f, 0f, 1600f, 640f), long, true, clock)
+            val px = IntArray(800 * 70)
+            bmp.getPixels(px, 0, 800, 600, 170, 800, 70) // the title's row
+            return px
+        }
+        val atStart = titleStrip(0L)
+        val stillWaiting = titleStrip(500L)
+        val later = titleStrip(5_000L)
+        assertTrue("it holds still at first", atStart.contentEquals(stillWaiting))
+        assertTrue("then it slides", !atStart.contentEquals(later))
+        // A short title never moves.
+        val short = playing(cover())
+        fun shortStrip(clock: Long): IntArray {
+            val bmp = Bitmap.createBitmap(1600, 640, Bitmap.Config.ARGB_8888)
+            painter.render(Canvas(bmp), RectF(0f, 0f, 1600f, 640f), short, true, clock)
+            val px = IntArray(800 * 70)
+            bmp.getPixels(px, 0, 800, 600, 170, 800, 70)
+            return px
+        }
+        assertTrue(shortStrip(0L).contentEquals(shortStrip(9_000L)))
     }
 }
