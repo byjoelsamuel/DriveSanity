@@ -26,6 +26,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.TripLog
+import io.github.byjoelsamuel.drivesanity.update.Updater
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -69,6 +70,8 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
     // Kept here, not inside Settings, so a change you haven't applied survives a visit to another tab.
     val settings = remember { SettingsDraft(ctx) }
     var tick by remember { mutableLongStateOf(0L) }
+    // Look for a newer release once, in the background, when the app opens.
+    LaunchedEffect(Unit) { Updater.checkOnOpen(ctx) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(100)
@@ -117,5 +120,6 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             }
         }
         if (!introDone) StartupOverlay { introDone = true }
+        if (introDone) UpdateDialog()
     }
 }

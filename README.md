@@ -358,6 +358,19 @@ on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My
 - The voice is your phone's own Japanese text-to-speech saying "ETC card inserted" after the
   chime. If none is installed you get just the chime.
 
+## Updates
+
+The app looks for a newer release on GitHub when it opens (at most every few hours, and you can turn
+that off in **Settings → About and updates**). If there is one, a box offers **Update**, **Not now** or
+**Skip this version**, with what's new. Update downloads it with a progress bar, checks it matches what
+GitHub published, and then hands it to Android to install; an app can't install itself silently. A copy is
+also saved in your Downloads folder.
+
+**With Android Auto,** install it the way you did before, with UnknownAuto: pick UnknownAuto when Android
+asks what to open the file with, or use **Send to another app**. Installing through Android's own
+installer replaces the app fine, but Android Auto stops listing it until it's installed with UnknownAuto
+again. **Check for updates** in the same place looks by hand.
+
 ## The map
 
 **Look:** Settings → Map look. *Simplified* (the default) is CARTO's dark map without street

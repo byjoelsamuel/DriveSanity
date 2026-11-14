@@ -80,8 +80,15 @@ jobs:
               echo "$tag is already released. Bump appVersion in gradle.properties to publish a new one."
             fi
           else
+            # The notes are what the merged change said it did (its commit message), so the app can show them
+            # in its "update available" box, followed by the install line.
+            {
+              git log -1 --format=%B "$GITHUB_SHA" | grep -v -i -e '^Co-Authored-By:' -e '^Claude-Session:'
+              echo
+              echo "Install DriveSanity.apk on your phone. Installing over an older version keeps your settings and recordings."
+            } > "$RUNNER_TEMP/notes.md"
             gh release create "$tag" out/DriveSanity.apk \
               --title "DriveSanity $version" \
-              --notes "Install DriveSanity.apk on your phone. Installing over an older version keeps your settings and recordings." \
+              --notes-file "$RUNNER_TEMP/notes.md" \
               --target "$GITHUB_SHA"
           fi

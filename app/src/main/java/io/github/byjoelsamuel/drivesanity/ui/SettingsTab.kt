@@ -63,6 +63,7 @@ import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
+import io.github.byjoelsamuel.drivesanity.update.Updater
 import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.math.roundToInt
@@ -85,7 +86,7 @@ private enum class Page(val title: String) {
     STORAGE("Storage and data"),
     DEMO("Demo and recordings"),
     AUTO("Android Auto"),
-    ABOUT("About"),
+    ABOUT("About and updates"),
 }
 
 /**
@@ -324,7 +325,12 @@ private fun Home(
             RowDivider()
             SettingsRow(SettingsIcon.WHEEL, "Android Auto", "Installing for the car", Ui.accent) { open(Page.AUTO) }
             RowDivider()
-            SettingsRow(SettingsIcon.INFO, "About", "DriveSanity ${BuildConfig.VERSION_NAME}", Ui.dim) { open(Page.ABOUT) }
+            val update = Updater.status as? Updater.Status.Available
+            SettingsRow(
+                SettingsIcon.INFO, "About and updates",
+                if (update != null) "Update available: ${update.release.version}" else "DriveSanity ${BuildConfig.VERSION_NAME}",
+                if (update != null) Ui.accent else Ui.dim, if (update != null) Ui.accent else Ui.dim,
+            ) { open(Page.ABOUT) }
         }
 
         SettingsGroup(footer = "Puts the car, units, screens, map, alerts and startup settings back to how the app first came. Your adapter, calibration and recordings stay.") {
@@ -723,7 +729,7 @@ private fun StoragePage(actions: PhoneActions) {
     val tiles = remember(rev) { Tiles.cacheBytes(ctx) }
     val recording = DriveEngine.recordingFile
 
-    SettingsGroup(footer = "Everything stays on this phone. The only things fetched from the internet are map tiles, directions, search results and speed limits.") {
+    SettingsGroup(footer = "Everything stays on this phone. The only things fetched from the internet are map tiles, directions, search results, speed limits and the check for a new version.") {
         StorageRow("Trips", "${trips.size} recorded · ${bytesText(trips.sumOf { it.length() })}", "Delete all", trips.isNotEmpty()) { confirm = "trips" }
         RowDivider()
         StorageRow("Raw recordings", "${raws.size} saved · ${bytesText(raws.sumOf { it.length() })}", "Delete all", raws.isNotEmpty() && !RawRecorder.on) { confirm = "raw" }
@@ -846,6 +852,7 @@ private fun AboutPage() {
             )
         }
     }
+    UpdatesGroup()
     SettingsGroup("Help") {
         SettingsRow(SettingsIcon.LINK, "Report a problem", "Opens GitHub", Ui.clay) { open("$REPO/issues/new") }
         RowDivider()
@@ -887,5 +894,47 @@ private fun obdSentence(): String {
         Obd.Link.LIVE -> "Connected: ${st.detail}"
         Obd.Link.RETRYING -> "Not connected: ${st.detail}. Retrying every few seconds."
         Obd.Link.SLEEPING -> "The car is off, so the app isn't asking it anything and the car can sleep. It wakes when you open the app or drive off."
+    }
+}
+
+/** Checking for a newer version by hand, and whether the app looks by itself when it opens. */
+@Composable
+private fun UpdatesGroup() {
+    val ctx = LocalContext.current
+    val status = Updater.status
+    var auto by remember { mutableStateOf(Prefs.autoUpdateCheck(ctx)) }
+    SettingsGroup(
+        "Updates",
+        footer = "Looking only asks GitHub for the latest release's details. Nothing about you or the car is sent.",
+    ) {
+        GroupBody {
+            Text(
+                when (status) {
+                    is Updater.Status.Checking -> "Checking…"
+                    is Updater.Status.UpToDate -> "You're on the latest version (${BuildConfig.VERSION_NAME})."
+                    is Updater.Status.Available -> "Version ${status.release.version} is available. You have ${BuildConfig.VERSION_NAME}."
+                    is Updater.Status.Downloading -> "Downloading ${status.release.version}…"
+                    is Updater.Status.Ready -> "Version ${status.release.version} is downloaded and ready to install."
+                    is Updater.Status.Failed -> status.message
+                    else -> "You have ${BuildConfig.VERSION_NAME}."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (status is Updater.Status.Available || status is Updater.Status.Ready) Ui.accent else Ui.fg,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row {
+                Button(
+                    onClick = {
+                        when (status) {
+                            is Updater.Status.Available, is Updater.Status.Ready -> Updater.dismissed = false
+                            else -> Updater.check(ctx, manual = true)
+                        }
+                    },
+                    enabled = status !is Updater.Status.Checking && status !is Updater.Status.Downloading,
+                ) { Text(if (status is Updater.Status.Available || status is Updater.Status.Ready) "Update…" else "Check for updates") }
+            }
+        }
+        RowDivider()
+        SwitchRow("Check when the app opens", "At most every few hours", auto) { on -> auto = on; Prefs.setAutoUpdateCheck(ctx, on) }
     }
 }

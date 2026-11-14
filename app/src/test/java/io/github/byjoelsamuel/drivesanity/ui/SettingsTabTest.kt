@@ -115,7 +115,7 @@ class SettingsTabTest {
             "Battery and read-only" to "Let the car sleep", "Car screens" to "Preview",
             "Map look" to "Simplified", "Alerts and shift light" to "banner for a hot engine",
             "Startup" to "Startup animation", "Music" to "How it works", "Storage and data" to "Map cache", "Demo and recordings" to "Start demo",
-            "Android Auto" to "UnknownAuto", "About" to "Report a problem",
+            "Android Auto" to "UnknownAuto", "About and updates" to "Check for updates",
         )
         for ((row, marker) in pages) {
             rule.onNodeWithText(row).performScrollTo().performClick()

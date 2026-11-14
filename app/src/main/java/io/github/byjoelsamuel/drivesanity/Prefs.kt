@@ -153,6 +153,20 @@ object Prefs {
 
     fun setStartupAnim(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("startup_anim", on) }
 
+    /** Look for a newer release when the app opens. On unless the person turns it off. */
+    fun autoUpdateCheck(ctx: Context): Boolean = prefs(ctx).getBoolean("auto_update_check", true)
+
+    fun setAutoUpdateCheck(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("auto_update_check", on) }
+
+    /** A version the person said no to; the pop-up doesn't offer it again. */
+    fun skippedUpdate(ctx: Context): String? = prefs(ctx).getString("skipped_update", null)
+
+    fun setSkippedUpdate(ctx: Context, version: String?) = prefs(ctx).edit { if (version == null) remove("skipped_update") else putString("skipped_update", version) }
+
+    fun lastUpdateCheck(ctx: Context): Long = prefs(ctx).getLong("last_update_check", 0L)
+
+    fun setLastUpdateCheck(ctx: Context, atMs: Long) = prefs(ctx).edit { putLong("last_update_check", atMs) }
+
     data class ObdDevice(val address: String, val name: String, val ble: Boolean)
 
     fun obdDevice(ctx: Context): ObdDevice? {
