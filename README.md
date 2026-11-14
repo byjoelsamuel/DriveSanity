@@ -137,11 +137,16 @@ With the countdown off, that first button just clears the last run.
 
 ![The 0–60 screen, with sample data](docs/launch-screen.png)
 
-**Music**: only what's playing, and nothing else. The cover in a rounded square, then the music
-app's icon and name, the song, the artist, the album and how far through it is. It reads whatever the
-phone is playing, so YouTube Music, Spotify or a podcast app all work. **Previous, play/pause and
-next are the car's own buttons** down the right edge of the screen, which is what the car's knob and
-touch screen can actually press (buttons drawn on the picture can't be pressed on every car).
+**Music**: only what's playing. The whole screen takes the colours of the album cover as a soft blur,
+with the cover in a rounded square on top, then the music app's icon and name, the song and artist,
+and the song's length as a waveform that fills in as it plays (the bars near the playhead move while it
+plays). Previous, play/pause and next are drawn right in the picture, so they're always there. It
+reads whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
+
+On a car with a touch screen, the drawn buttons can be pressed. Android Auto also puts its own copies
+of the three buttons down the right edge when you turn the knob or touch the screen, and on a car that
+only has a knob (like the Mazda's) those are the ones the knob can press. Android doesn't let an app
+keep those on screen all the time.
 
 ![The Music screen, with a stand-in song](docs/music-screen.png)
 
