@@ -16,20 +16,20 @@ class MapLookPrefsTest {
     private val file get() = ctx.getSharedPreferences("drive", Context.MODE_PRIVATE)
 
     @Test
-    fun startsSimplified() = assertEquals(MapLook.SIMPLIFIED, Prefs.mapLook(ctx))
+    fun startsClassic() = assertEquals(MapLook.CLASSIC, Prefs.mapLook(ctx))
 
     @Test
-    fun aSavedModernLookIsKept() {
+    fun aSavedLookIsKept() {
         Prefs.setMapLook(ctx, MapLook.MODERN)
         assertEquals(MapLook.MODERN, Prefs.mapLook(ctx))
+        Prefs.setMapLook(ctx, MapLook.SIMPLIFIED)
+        assertEquals(MapLook.SIMPLIFIED, Prefs.mapLook(ctx))
     }
 
     @Test
-    fun theRemovedClassicLookBecomesSimplified() {
-        file.edit(commit = true) { putString("map_look", "CLASSIC") }
-        assertEquals(MapLook.SIMPLIFIED, Prefs.mapLook(ctx))
-        file.edit(commit = true) { remove("map_look"); putBoolean("modern_map", false) }
-        assertEquals(MapLook.SIMPLIFIED, Prefs.mapLook(ctx))
+    fun theOldTrueFalseSettingStillReads() {
+        file.edit(commit = true) { putBoolean("modern_map", false) }
+        assertEquals(MapLook.CLASSIC, Prefs.mapLook(ctx))
         file.edit(commit = true) { putBoolean("modern_map", true) }
         assertEquals(MapLook.MODERN, Prefs.mapLook(ctx))
     }

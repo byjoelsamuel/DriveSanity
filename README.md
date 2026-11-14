@@ -360,11 +360,9 @@ on, like the reader at a toll gate. Choose Off, **Reader**, Chime, Voice or **My
 
 ## The map
 
-**Look:** Settings → Map look. *Simplified* (the default) is CARTO's dark map without street
-names: just roads and blocks, so your route stands out. *Modern* is the same map with the names on.
-Both are free, need no account or key, need mobile data, and are credited on the map. The old
-*Classic* look (OpenStreetMap's own tile server, which blocks apps like this one) is gone; anyone who
-had it now gets Simplified.
+**Look:** Settings → Map look. *Classic* (the default) is the standard OpenStreetMap map turned dark.
+*Simplified* and *Modern* are CARTO's dark maps, without and with street names. All need mobile data
+and all are credited on the map. If one doesn't load where you are, pick another.
 
 **On the car**, there's a round **search** button in the map's corner (it also works from the car's own
 button strip), and when something is playing a small **music card** sits along the bottom of the map:

@@ -100,7 +100,7 @@ class SettingsDraft(context: Context) {
         redline = CarProfiles.byId(CarProfiles.DEFAULT_ID).redline,
         units = Units.MPH,
         layout = Prefs.Layout.GAUGES,
-        mapLook = MapLook.SIMPLIFIED,
+        mapLook = MapLook.DEFAULT,
         alerts = true,
         startupAnim = true,
         sound = StartupSoundMode.READER,

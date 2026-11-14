@@ -3,6 +3,10 @@ package io.github.byjoelsamuel.drivesanity.map
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.os.SystemClock
 import android.util.LruCache
 import io.github.byjoelsamuel.drivesanity.MapLook
@@ -14,16 +18,18 @@ import java.util.concurrent.Executors
 
 /**
  * Map tiles, fetched as needed, kept on disk for a week and in memory. Only tiles on screen are
- * asked for. Two looks, both CARTO's "Dark Matter" (free, no key needed), fetched at double resolution
- * so they stay sharp on the car's screen:
+ * asked for. Three looks:
  *
- *  - Simplified (the default): without the street names, so it's only the roads and the blocks, with
- *    your route and car on top.
+ *  - Classic (the default): OpenStreetMap's standard tiles, turned into a dark grey version here.
+ *  - Simplified: CARTO's "Dark Matter" without the street names, so it's only the
+ *    roads and the blocks, with your route and car on top.
  *  - Modern: the same dark map with the names on.
  *
- * Map data © OpenStreetMap contributors, style © CARTO.
+ * The dark ones are fetched at double resolution so they stay sharp on the car's screen.
+ * Map data © OpenStreetMap contributors, and for the CARTO looks the style © CARTO.
  */
 object Tiles {
+    private const val CLASSIC_URL = "https://tile.openstreetmap.org/%d/%d/%d.png"
     private const val MODERN_URL = "https://%s.basemaps.cartocdn.com/dark_all/%d/%d/%d@2x.png"
     private const val SIMPLE_URL = "https://%s.basemaps.cartocdn.com/dark_nolabels/%d/%d/%d@2x.png"
     private const val WEEK_MS = 7L * 24 * 3600 * 1000
@@ -31,10 +37,10 @@ object Tiles {
     private var dir: File? = null
 
     /** Which look is on. Changing it starts the map afresh, since the two don't share tiles. */
-    @Volatile var look = MapLook.SIMPLIFIED
+    @Volatile var look = MapLook.DEFAULT
         private set
 
-    val attribution: String get() = "© OpenStreetMap © CARTO"
+    val attribution: String get() = if (look == MapLook.CLASSIC) "© OpenStreetMap" else "© OpenStreetMap © CARTO"
 
     fun setLook(to: MapLook) {
         if (to == look) return
@@ -61,6 +67,17 @@ object Tiles {
     private val loading = ConcurrentHashMap.newKeySet<String>()
     private val failedAt = ConcurrentHashMap<String, Long>()
     private val pool = Executors.newFixedThreadPool(2) { Thread(it, "tiles").apply { isDaemon = true } }
+
+    /**
+     * Inverts brightness and squeezes it into a dark range: land goes near-black, roads stay
+     * dark with lighter edges, labels come out light grey. A touch of blue keeps it from
+     * looking flat.
+     */
+    private val darken = ColorMatrixColorFilter(ColorMatrix().apply {
+        val k = 0.5f
+        fun row(base: Float) = floatArrayOf(-k * 0.299f, -k * 0.587f, -k * 0.114f, 0f, base + 255f * k)
+        set(row(16f) + row(18f) + row(24f) + floatArrayOf(0f, 0f, 0f, 1f, 0f))
+    })
 
     fun init(context: Context) {
         if (dir == null) dir = File(context.cacheDir, "tiles")
@@ -92,6 +109,7 @@ object Tiles {
                     when (wanted) {
                         MapLook.SIMPLIFIED -> SIMPLE_URL.format("abcd"[(x + y) and 3].toString(), z, x, y)
                         MapLook.MODERN -> MODERN_URL.format("abcd"[(x + y) and 3].toString(), z, x, y)
+                        MapLook.CLASSIC -> CLASSIC_URL.format(z, x, y)
                     },
                 ).also { b ->
                     file.parentFile?.mkdirs()
@@ -99,7 +117,14 @@ object Tiles {
                 }
             }
             val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("bad tile")
-            val out = src // already dark
+            val out = if (wanted != MapLook.CLASSIC) {
+                src // already dark
+            } else {
+                Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also {
+                    Canvas(it).drawBitmap(src, 0f, 0f, Paint().apply { colorFilter = darken })
+                    src.recycle()
+                }
+            }
             if (wanted != look) return // the look was changed while this was loading
             memory.put(key, out)
             failedAt.remove(key)

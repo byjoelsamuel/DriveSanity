@@ -604,10 +604,12 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
 @Composable
 private fun MapPage(draft: SettingsDraft) {
     val look = draft.values.mapLook
-    SettingsGroup(footer = "Both are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. They need mobile data, and no account or key.") {
-        ChoiceRow("Simplified", "Roads and blocks only, no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
+    SettingsGroup(footer = "All of them need mobile data. Classic is the standard OpenStreetMap map turned dark. Simplified and Modern are dark maps by CARTO, from OpenStreetMap data, fetched sharp for the car screen. If one doesn't load where you are, try another.") {
+        ChoiceRow("Classic", "OpenStreetMap, turned dark", look == MapLook.CLASSIC) { draft.edit { it.copy(mapLook = MapLook.CLASSIC) } }
         RowDivider()
-        ChoiceRow("Modern", "The same dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
+        ChoiceRow("Simplified", "CARTO's dark map with no street names, so your route stands out", look == MapLook.SIMPLIFIED) { draft.edit { it.copy(mapLook = MapLook.SIMPLIFIED) } }
+        RowDivider()
+        ChoiceRow("Modern", "CARTO's dark map with street names", look == MapLook.MODERN) { draft.edit { it.copy(mapLook = MapLook.MODERN) } }
     }
     ResetGroup(draft, SettingsDraft.Group.MAP)
 }
