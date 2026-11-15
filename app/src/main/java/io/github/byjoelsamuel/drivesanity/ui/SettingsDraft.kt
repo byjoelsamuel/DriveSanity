@@ -30,13 +30,12 @@ class SettingsDraft(context: Context) {
         val startupAnim: Boolean,
         val sound: StartupSoundMode,
         val googleDirections: Boolean,
-        val musicButtonsAlways: Boolean,
         val letCarSleep: Boolean,
         val advancedReads: Boolean,
     )
 
     /** What each part of the draft covers, for "Reset to default". */
-    enum class Group { CAR, UNITS, SCREEN, NAV, MUSIC, ALERTS, STARTUP, BATTERY, ALL }
+    enum class Group { CAR, UNITS, SCREEN, NAV, ALERTS, STARTUP, BATTERY, ALL }
 
     class Change(val label: String, val from: String, val to: String)
 
@@ -49,7 +48,6 @@ class SettingsDraft(context: Context) {
         startupAnim = Prefs.startupAnim(ctx),
         sound = Prefs.startupSound(ctx),
         googleDirections = Prefs.googleDirections(ctx),
-        musicButtonsAlways = Prefs.musicButtonsAlways(ctx),
         letCarSleep = Prefs.letCarSleep(ctx),
         advancedReads = Prefs.advancedReads(ctx),
     )
@@ -104,7 +102,6 @@ class SettingsDraft(context: Context) {
         startupAnim = true,
         sound = StartupSoundMode.READER,
         googleDirections = true,
-        musicButtonsAlways = true,
         letCarSleep = true,
         advancedReads = false,
     )
@@ -116,7 +113,6 @@ class SettingsDraft(context: Context) {
             Group.UNITS -> v.copy(units = d.units)
             Group.SCREEN -> v.copy(layout = d.layout)
             Group.NAV -> v.copy(googleDirections = d.googleDirections)
-            Group.MUSIC -> v.copy(musicButtonsAlways = d.musicButtonsAlways)
             Group.ALERTS -> v.copy(alerts = d.alerts)
             Group.STARTUP -> v.copy(startupAnim = d.startupAnim, sound = d.sound)
             Group.BATTERY -> v.copy(letCarSleep = d.letCarSleep, advancedReads = d.advancedReads)
@@ -138,7 +134,6 @@ class SettingsDraft(context: Context) {
         if (v.units != a.units) add(Change("Units", unitsName(a.units), unitsName(v.units)))
         if (v.layout != a.layout) add(Change("Car screen", a.layout.title, v.layout.title))
         if (v.googleDirections != a.googleDirections) add(Change("Google Maps directions", onOff(a.googleDirections), onOff(v.googleDirections)))
-        if (v.musicButtonsAlways != a.musicButtonsAlways) add(Change("Music buttons in the car", buttonsName(a.musicButtonsAlways), buttonsName(v.musicButtonsAlways)))
         if (v.alerts != a.alerts) add(Change("Alerts and shift light", onOff(a.alerts), onOff(v.alerts)))
         if (v.startupAnim != a.startupAnim) add(Change("Startup animation", onOff(a.startupAnim), onOff(v.startupAnim)))
         if (v.sound != a.sound) add(Change("Startup sound", a.sound.title, v.sound.title))
@@ -159,7 +154,6 @@ class SettingsDraft(context: Context) {
         if (v.units != a.units) actions.swapUnits()
         if (v.layout != a.layout) actions.setCarLayout(v.layout)
         if (v.googleDirections != a.googleDirections) Prefs.setGoogleDirections(ctx, v.googleDirections)
-        if (v.musicButtonsAlways != a.musicButtonsAlways) Prefs.setMusicButtonsAlways(ctx, v.musicButtonsAlways)
         if (v.alerts != a.alerts) actions.setAlerts(v.alerts)
         if (v.startupAnim != a.startupAnim) actions.setStartupAnim(v.startupAnim)
         if (v.sound != a.sound) actions.setStartupSound(v.sound)
@@ -180,7 +174,6 @@ class SettingsDraft(context: Context) {
     }
 
     private fun rpm(r: Float) = "%,d rpm".format(r.roundToInt())
-    private fun buttonsName(always: Boolean) = if (always) "Always on screen" else "In the picture"
     private fun onOff(b: Boolean) = if (b) "On" else "Off"
     private fun unitsName(u: Units) = if (u == Units.MPH) "MPH · °F · mi" else "km/h · °C · km"
 }

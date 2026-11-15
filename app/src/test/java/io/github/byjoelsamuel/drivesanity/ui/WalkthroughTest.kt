@@ -192,14 +192,10 @@ class WalkthroughTest {
         drive(50)
         val dir = System.getenv("SHOTS_DIR")
         for ((label, w, h) in listOf(Triple("wide", 1280, 480), Triple("tall", 1920, 900))) {
-            for (buttons in listOf(true, false)) {
+            run {
                 for (layout in Prefs.Layout.entries) {
-                    val isMusicish = layout == Prefs.Layout.MUSIC || layout == Prefs.Layout.MAP
-                    if (!buttons && !isMusicish) continue
-                    // With Android Auto's buttons beside it, the picture gets roughly the right-hand 60%.
-                    val pw = if (!buttons) (w * 0.6f).toInt() else w
+                    val pw = w
                     val painter = DashPainter(ctx)
-                    painter.musicButtonsDrawn = buttons
                     val bmp = Bitmap.createBitmap(pw, h, Bitmap.Config.ARGB_8888)
                     val c = Canvas(bmp)
                     c.drawColor(Color.rgb(18, 20, 22))
@@ -207,7 +203,7 @@ class WalkthroughTest {
                     repeat(40) { painter.draw(c, RectF(0f, 0f, pw.toFloat(), h.toFloat()), DriveEngine.snapshot(), Prefs.units(ctx), layout) }
                     if (dir != null) {
                         File(dir).mkdirs()
-                        val name = "car-$label-${layout.name.lowercase()}${if (!buttons) "-with-aa-buttons" else ""}.png"
+                        val name = "car-$label-${layout.name.lowercase()}.png"
                         File(dir, name).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     }
                 }

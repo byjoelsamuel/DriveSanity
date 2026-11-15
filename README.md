@@ -143,16 +143,11 @@ and the song's length as a waveform that fills in as it plays (the bars near the
 plays). A song or artist name too long to fit slides sideways so you can read all of it. It reads
 whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
 
-**The buttons.** Android Auto only passes a knob's turns and presses to its own buttons, never to
-buttons an app draws in its picture. So previous, play/pause and next come two ways, chosen in
-**Settings → Music → Buttons on the car screen**:
-
-- **Always on screen** (the default): Android Auto's own three buttons, kept on screen beside the
-  picture. They work with the knob and by touch, and look like the rest of Android Auto. This needs a
-  recent Android Auto; an older one falls back to the second way.
-- **In the picture**: the buttons are drawn as part of the player. A touch screen can press them. On a
-  car with only a knob (like the Mazda's) they can't be pressed, and turning the knob brings up Android
-  Auto's own buttons instead.
+**The buttons.** Previous, play/pause and next are Android Auto's own buttons, not part of the picture.
+They appear at the corner of the screen when you turn the knob or touch the screen, and go away again,
+which is how Android Auto shows an app's buttons on every car. The picture itself has no buttons on it,
+so the cover, the song and the waveform get the whole screen. (Buttons drawn in the picture, or kept on
+screen beside it, were tried: a knob can't press the first, and the second took half the screen.)
 
 ![The Music screen, with a stand-in song](docs/music-screen.png)
 
@@ -384,8 +379,8 @@ map. (CARTO's ready-made dark maps were tried and need an API key, so they're no
 
 **On the car,** the Map screen is the map on the left and what's playing on the right: the cover, the
 song and artist, and the waveform. There are no gauges or driving numbers on it. **Search** is the first
-button on the top row. The music buttons follow the same choice as the Music screen: Android Auto's own,
-kept on screen, or drawn in the picture.
+button on the top row. When something is playing, the corner buttons that appear when you turn the knob
+are search, previous, play/pause and next.
 
 **Google Maps directions.** If you navigate with Google Maps on the phone, the box over the map shows its
 next turn, how far away it is, and the distance left, minutes left and arrival time. That's read from the

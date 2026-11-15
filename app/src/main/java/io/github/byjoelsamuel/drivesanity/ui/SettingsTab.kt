@@ -155,7 +155,7 @@ fun SettingsTab(
                         Page.NAVIGATION -> NavigationPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
-                        Page.MUSIC -> MusicPage(tick, draft)
+                        Page.MUSIC -> MusicPage(tick)
                         Page.STORAGE -> StoragePage(actions)
                         Page.DEMO -> DemoPage(s, tick, actions)
                         Page.AUTO -> AutoPage()
@@ -612,11 +612,11 @@ private fun ScreensPage(draft: SettingsDraft) {
 
 private fun layoutNote(l: Prefs.Layout) = when (l) {
     Prefs.Layout.GAUGES -> "Bar gauges for RPM, throttle, coolant and fuel, a huge gear number, speed, g-force and tire pressures."
-    Prefs.Layout.MAP -> "A live map with directions on the left, and what's playing (cover, song, buttons) on the right. No gauges."
+    Prefs.Layout.MAP -> "A live map with directions on the left, and what's playing on the right. No gauges."
     Prefs.Layout.RETRO -> "Everything in Saab green, with an early-2000s digital dash."
     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
     Prefs.Layout.LAUNCH -> "READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. The countdown is on the 0–60 tab."
-    Prefs.Layout.MUSIC -> "The cover's colours as a soft backdrop, the song, a waveform of how far through you are, and previous, play or pause and next on the screen."
+    Prefs.Layout.MUSIC -> "The cover's colours as a soft backdrop, the song, and a waveform of how far through you are."
 }
 
 @Composable
@@ -706,7 +706,7 @@ private fun StartupPage(draft: SettingsDraft, actions: PhoneActions) {
 }
 
 @Composable
-private fun MusicPage(tick: Long, draft: SettingsDraft) {
+private fun MusicPage(tick: Long) {
     Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     MediaWatcher.poll(ctx)
@@ -729,15 +729,6 @@ private fun MusicPage(tick: Long, draft: SettingsDraft) {
             }) { Text(if (granted) "Notification access settings" else "Allow notification access") }
         }
     }
-    val always = draft.values.musicButtonsAlways
-    SettingsGroup(
-        "Buttons on the car screen",
-        footer = "Android Auto only passes a knob's turns and presses to its own buttons, never to buttons an app draws. So with a knob, pick the first: the buttons then stay on screen and the knob can press them. They're Android Auto's, so they look like the rest of Android Auto. It needs a recent Android Auto; on an older one you get the second.",
-    ) {
-        ChoiceRow("Always on screen", "Android Auto's own previous, play/pause and next, beside the picture. Work with the knob and by touch.", always) { draft.edit { it.copy(musicButtonsAlways = true) } }
-        RowDivider()
-        ChoiceRow("In the picture", "Drawn as part of the player. Only a touch screen can press them; turning the knob brings up Android Auto's.", !always) { draft.edit { it.copy(musicButtonsAlways = false) } }
-    }
     SettingsGroup("How it works") {
         GroupBody {
             Text(
@@ -745,9 +736,14 @@ private fun MusicPage(tick: Long, draft: SettingsDraft) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ui.dim,
             )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "In the car, previous, play/pause and next are Android Auto's own buttons. They appear at the corner of the screen when you turn the knob or touch the screen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Ui.dim,
+            )
         }
     }
-    ResetGroup(draft, SettingsDraft.Group.MUSIC)
 }
 
 // --- More -------------------------------------------------------------------------------------

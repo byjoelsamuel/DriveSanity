@@ -134,15 +134,6 @@ object Prefs {
 
     fun setStartupAnim(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("startup_anim", on) }
 
-    /**
-     * Where the music buttons are in the car: true for Android Auto's own buttons kept on screen beside the
-     * picture (they work with a knob), false for buttons drawn in the picture (touch only; a knob gets Android
-     * Auto's buttons when it's turned).
-     */
-    fun musicButtonsAlways(ctx: Context): Boolean = prefs(ctx).getBoolean("music_buttons_always", true)
-
-    fun setMusicButtonsAlways(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("music_buttons_always", on) }
-
     /** Show Google Maps' next turn and arrival time on the map screen while it's navigating. On unless turned off. */
     fun googleDirections(ctx: Context): Boolean = prefs(ctx).getBoolean("google_directions", true)
 

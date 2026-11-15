@@ -32,7 +32,6 @@ class ClusterPainter(context: Context) {
     private val map = MapPainter(labels, numbers)
     private val launch = LaunchPainter(context)
     private val music = MusicPainter(context)
-    private val mapHits = ArrayList<Pair<RectF, MapTouch>>()
     private val speedRoll = RollingNumber()
 
     private fun label(size: Float, color: Int = Colors.DIM, align: Paint.Align = Paint.Align.LEFT) {
@@ -181,21 +180,6 @@ class ClusterPainter(context: Context) {
 
     fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
 
-    var musicButtonsDrawn: Boolean
-        get() = music.buttonsDrawn
-        set(value) { music.buttonsDrawn = value }
-
-    /** Which map screen button (search, or the little player's) a touch landed on. */
-    fun mapHit(x: Float, y: Float): MapTouch? = mapHits.firstOrNull { it.first.contains(x, y) }?.second
-        ?: when (music.hit(x, y)) {
-            MusicControl.PREVIOUS -> MapTouch.PREVIOUS
-            MusicControl.PLAY_PAUSE -> MapTouch.PLAY_PAUSE
-            MusicControl.NEXT -> MapTouch.NEXT
-            null -> null
-        }
-
-    /** Which Music screen button a touch landed on. */
-    fun musicHit(x: Float, y: Float): MusicControl? = music.hit(x, y)
 
     /** A caption and a big value on one line, and a row of bar segments under them. */
     private fun barRow(c: Canvas, b: RectF, name: String, value: String, frac: Float?, n: Int, colorOf: (Float) -> Int) {
@@ -312,7 +296,7 @@ class ClusterPainter(context: Context) {
         val w = inner.width()
         val gap = w * 0.025f
 
-        // Left: the map, with the next turn laid over its top edge and a search button in its corner.
+        // Left: the map, with the next turn laid over its top edge.
         val mapArea = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
         map.draw(c, mapArea, s, units)
         // Google Maps' own directions, when it's navigating on the phone; otherwise this app's.
@@ -323,13 +307,9 @@ class ClusterPainter(context: Context) {
         } else if (directions) {
             map.drawDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), units, 238)
         }
-        mapHits.clear()
-        val sr = h * 0.055f
-        // Left out when Android Auto's own buttons are in use: its top row then has Search, and a drawn one a knob can't press would only be for show.
-        if (music.buttonsDrawn) drawSearchButton(c, fill, stroke, mapArea.right - sr * 1.5f, mapArea.top + (if (directions) h * 0.32f + sr * 1.6f else sr * 1.5f), sr, mapHits)
-
         // Right: what's playing, and nothing else (no gauges or driving numbers).
-        music.drawPanel(c, RectF(mapArea.right + gap, inner.top, inner.right, inner.bottom))
+        // Android Auto lays its top row of buttons over the top of the picture when they show, so the player starts below that.
+        music.drawPanel(c, RectF(mapArea.right + gap, inner.top + h * 0.16f, inner.right, inner.bottom))
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {
