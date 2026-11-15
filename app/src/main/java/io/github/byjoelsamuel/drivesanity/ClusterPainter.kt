@@ -181,6 +181,10 @@ class ClusterPainter(context: Context) {
 
     fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
 
+    var musicButtonsDrawn: Boolean
+        get() = music.buttonsDrawn
+        set(value) { music.buttonsDrawn = value }
+
     /** Which map screen button (search, or the little player's) a touch landed on. */
     fun mapHit(x: Float, y: Float): MapTouch? = mapHits.firstOrNull { it.first.contains(x, y) }?.second
         ?: when (music.hit(x, y)) {
@@ -321,7 +325,8 @@ class ClusterPainter(context: Context) {
         }
         mapHits.clear()
         val sr = h * 0.055f
-        drawSearchButton(c, fill, stroke, mapArea.right - sr * 1.5f, mapArea.top + (if (directions) h * 0.32f + sr * 1.6f else sr * 1.5f), sr, mapHits)
+        // Left out when Android Auto's own buttons are in use: its top row then has Search, and a drawn one a knob can't press would only be for show.
+        if (music.buttonsDrawn) drawSearchButton(c, fill, stroke, mapArea.right - sr * 1.5f, mapArea.top + (if (directions) h * 0.32f + sr * 1.6f else sr * 1.5f), sr, mapHits)
 
         // Right: what's playing, and nothing else (no gauges or driving numbers).
         music.drawPanel(c, RectF(mapArea.right + gap, inner.top, inner.right, inner.bottom))
@@ -459,8 +464,9 @@ class ClusterPainter(context: Context) {
 
     private fun status(c: Canvas, b: RectF, s: Snapshot) {
         val size = b.height() * 0.78f
-        label(size, if (s.accuracyM != null) Colors.DIM else Colors.REC)
+        label(size, if (s.accuracyM != null || s.demo) Colors.DIM else Colors.REC)
         val gps = when {
+            s.demo -> "DEMO DRIVE" // the demo stands in for the GPS, so "no GPS" would be wrong
             !s.gpsOn -> "NO GPS ACCESS"
             s.accuracyM == null -> "WAITING FOR GPS"
             else -> "GPS ±${s.accuracyM.roundToInt()} m"

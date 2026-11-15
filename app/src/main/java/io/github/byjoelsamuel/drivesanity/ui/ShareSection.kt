@@ -88,7 +88,7 @@ fun SessionShare(file: File, session: Session, units: Units) {
             Segments(listOf("This drive", "My profile (all drives)"), source) { source = it }
             if (source == 0) {
                 Spacer(Modifier.height(8.dp))
-                Segments(listOf("Hide where it starts and ends", "Show the whole path"), if (hideEnds) 0 else 1) { hideEnds = it == 0 }
+                Segments(listOf("Hide start and end", "Show whole path"), if (hideEnds) 0 else 1) { hideEnds = it == 0 }
                 Text(
                     if (hideEnds) "The first and last 250 m of the path are left out, so the picture doesn't show where you live. There are no map tiles, street names or coordinates on it either."
                     else "The whole path is drawn, start and end included. Think before posting it, since drives usually start at home.",
@@ -147,6 +147,24 @@ private fun ShareEditor(data: CardData?, name: String, extras: @Composable Colum
         Segments(ShareCard.Format.entries.map { "${it.label} ${if (it == ShareCard.Format.STORY) "9:16" else "4:5"}" }, format.ordinal) { format = ShareCard.Format.entries[it] }
         Spacer(Modifier.height(8.dp))
         extras()
+        // The picture comes first, so every choice below shows on it straight away.
+        Spacer(Modifier.height(10.dp))
+        val bmp by produceState<Bitmap?>(null, data, config, format, photoVersion) {
+            value = data?.let { d -> withContext(Dispatchers.Default) { ShareCard.render(ctx, d, config, format, ShareBackground.load(ctx)) } }
+        }
+        val b = bmp
+        if (b == null) {
+            Text("Making the picture…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+        } else {
+            Image(
+                bitmap = b.asImageBitmap(),
+                contentDescription = "The picture that will be shared",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth(0.66f).aspectRatio(b.width.toFloat() / b.height).clip(RoundedCornerShape(14.dp)).align(Alignment.CenterHorizontally),
+            )
+            Spacer(Modifier.height(12.dp))
+            ShareButtons(b, "$name-${format.name.lowercase()}")
+        }
 
         Text("Background", style = MaterialTheme.typography.labelLarge, color = Ui.dim, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -176,7 +194,7 @@ private fun ShareEditor(data: CardData?, name: String, extras: @Composable Colum
                 val allOn = here.all { it in config.blocks }
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(genre.label, style = MaterialTheme.typography.titleSmall, color = Ui.fg, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { update(config.withGenre(genre, !allOn)) }) { Text(if (allOn) "None" else "All") }
+                    TextButton(onClick = { update(config.withGenre(genre, !allOn)) }) { Text(if (allOn) "Clear" else "Select all") }
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (b in here) FilterChip(selected = b in config.blocks, onClick = { update(config.with(b, b !in config.blocks)) }, label = { Text(b.label) })
@@ -184,24 +202,6 @@ private fun ShareEditor(data: CardData?, name: String, extras: @Composable Colum
             }
         }
 
-        Spacer(Modifier.height(14.dp))
-        val bmp by produceState<Bitmap?>(null, data, config, format, photoVersion) {
-            value = null
-            value = data?.let { d -> withContext(Dispatchers.Default) { ShareCard.render(ctx, d, config, format, ShareBackground.load(ctx)) } }
-        }
-        val b = bmp
-        if (b == null) {
-            Text("Making the picture…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
-        } else {
-            Image(
-                bitmap = b.asImageBitmap(),
-                contentDescription = "The picture that will be shared",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth(0.66f).aspectRatio(b.width.toFloat() / b.height).clip(RoundedCornerShape(14.dp)).align(Alignment.CenterHorizontally),
-            )
-            Spacer(Modifier.height(12.dp))
-            ShareButtons(b, "$name-${format.name.lowercase()}")
-        }
     }
 }
 

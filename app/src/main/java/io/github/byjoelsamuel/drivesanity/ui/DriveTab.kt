@@ -97,6 +97,8 @@ fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openS
 private fun StatusRow(s: Snapshot, actions: PhoneActions, openSetup: () -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
+            // The demo stands in for the GPS, so don't tell someone trying it that location is off.
+            s.demo -> StatusPill("Demo drive", Ui.accent)
             !s.gpsOn -> StatusPill("No location access", Ui.red) { actions.askLocation() }
             s.accuracyM == null -> StatusPill("Finding GPS…", Ui.sand)
             else -> StatusPill("GPS ±${s.accuracyM.roundToInt()} m", Ui.good)
@@ -180,6 +182,7 @@ private fun SmallStat(label: String, value: String, color: Color = Ui.fg) {
 @Composable
 @Suppress("UNUSED_PARAMETER") // tick: refreshes with the live route
 private fun NavCard(units: Units, tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val route = Nav.route
     val msg = Nav.message
     if (!Nav.active && msg == null) {
@@ -406,6 +409,7 @@ private fun RpmBar(rpm: Float?) {
 @Composable
 @Suppress("UNUSED_PARAMETER") // tick: keeps the timer running
 private fun RecordButton(modifier: Modifier, tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val since = DriveEngine.recordingSinceMs
     val rec = since != null
     Button(

@@ -54,6 +54,9 @@ object MediaWatcher {
     /** False until the person has allowed notification access (or in a test that sets it). */
     @Volatile var access = false
 
+    /** Lets a test set [now] and [access] by hand and have them stay. */
+    @Volatile internal var holdForTest = false
+
     private var controller: MediaController? = null
     private var lastPollMs = 0L
     private var artKey = ""
@@ -68,6 +71,7 @@ object MediaWatcher {
 
     /** Looks again at what's playing; at most twice a second, so it's fine to call every frame. */
     fun poll(ctx: Context) {
+        if (holdForTest) return
         val t = SystemClock.elapsedRealtime()
         if (t - lastPollMs < 500) return
         lastPollMs = t

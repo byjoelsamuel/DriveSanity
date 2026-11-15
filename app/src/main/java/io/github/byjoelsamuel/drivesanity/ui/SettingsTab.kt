@@ -155,7 +155,7 @@ fun SettingsTab(
                         Page.NAVIGATION -> NavigationPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
-                        Page.MUSIC -> MusicPage(tick)
+                        Page.MUSIC -> MusicPage(tick, draft)
                         Page.STORAGE -> StoragePage(actions)
                         Page.DEMO -> DemoPage(s, tick, actions)
                         Page.AUTO -> AutoPage()
@@ -224,6 +224,7 @@ private fun Home(
     actions: PhoneActions,
     open: (Page) -> Unit,
 ) {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     val v = draft.values
     val car = CarProfiles.byId(v.carId)
@@ -460,6 +461,7 @@ private fun UnitsPage(draft: SettingsDraft) {
 
 @Composable
 private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     var confirmForget by remember { mutableStateOf(false) }
     SettingsGroup {
@@ -522,13 +524,14 @@ private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
 
 @Composable
 private fun FaultsPage(tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val report = Obd.dtcReport
     val live = Obd.status.link == Obd.Link.LIVE
     SettingsGroup {
         GroupBody {
             when {
                 !live -> Text("Connect the adapter to read the car's fault codes.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
-                report == null -> Text("Reading…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                report == null -> Text(if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "The demo has no fault codes to read." else "Reading…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
                 else -> {
                     val lamp = when (report.milOn) { true -> "on"; false -> "off"; null -> "unknown" }
                     Text(
@@ -618,6 +621,7 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
 
 @Composable
 private fun NavigationPage(draft: SettingsDraft) {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     val granted = MediaWatcher.hasAccess(ctx)
     val now = GoogleNav.current()
@@ -702,7 +706,8 @@ private fun StartupPage(draft: SettingsDraft, actions: PhoneActions) {
 }
 
 @Composable
-private fun MusicPage(tick: Long) {
+private fun MusicPage(tick: Long, draft: SettingsDraft) {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     MediaWatcher.poll(ctx)
     val granted = MediaWatcher.hasAccess(ctx)
@@ -724,6 +729,15 @@ private fun MusicPage(tick: Long) {
             }) { Text(if (granted) "Notification access settings" else "Allow notification access") }
         }
     }
+    val always = draft.values.musicButtonsAlways
+    SettingsGroup(
+        "Buttons on the car screen",
+        footer = "Android Auto only passes a knob's turns and presses to its own buttons, never to buttons an app draws. So with a knob, pick the first: the buttons then stay on screen and the knob can press them. They're Android Auto's, so they look like the rest of Android Auto. It needs a recent Android Auto; on an older one you get the second.",
+    ) {
+        ChoiceRow("Always on screen", "Android Auto's own previous, play/pause and next, beside the picture. Work with the knob and by touch.", always) { draft.edit { it.copy(musicButtonsAlways = true) } }
+        RowDivider()
+        ChoiceRow("In the picture", "Drawn as part of the player. Only a touch screen can press them; turning the knob brings up Android Auto's.", !always) { draft.edit { it.copy(musicButtonsAlways = false) } }
+    }
     SettingsGroup("How it works") {
         GroupBody {
             Text(
@@ -731,14 +745,9 @@ private fun MusicPage(tick: Long) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ui.dim,
             )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "On the car, the buttons are drawn on the Music screen, and a touch screen can press them. Android Auto also shows its own copies down the right edge when you turn the knob or touch the screen; on a car that only has a knob, those are the ones the knob can press.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Ui.dim,
-            )
         }
     }
+    ResetGroup(draft, SettingsDraft.Group.MUSIC)
 }
 
 // --- More -------------------------------------------------------------------------------------
@@ -751,6 +760,7 @@ private fun bytesText(b: Long): String = when {
 
 @Composable
 private fun StoragePage(actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     var rev by remember { mutableStateOf(0) }
     var confirm by remember { mutableStateOf<String?>(null) }
@@ -809,6 +819,7 @@ private fun StorageRow(title: String, value: String, button: String, enabled: Bo
 
 @Composable
 private fun DemoPage(s: Snapshot, tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     SettingsGroup {
         GroupBody {
             Text(
@@ -930,6 +941,7 @@ private fun obdSentence(): String {
 /** Checking for a newer version by hand, and whether the app looks by itself when it opens. */
 @Composable
 private fun UpdatesGroup() {
+    Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     val status = Updater.status
     var auto by remember { mutableStateOf(Prefs.autoUpdateCheck(ctx)) }

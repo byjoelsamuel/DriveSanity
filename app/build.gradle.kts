@@ -89,5 +89,7 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.16")
     // Taps through the phone screens in tests (see SettingsTabTest).
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    // A stand-in Android Auto, to build the car screens and press their buttons in tests.
+    testImplementation("androidx.car.app:app-testing:1.7.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

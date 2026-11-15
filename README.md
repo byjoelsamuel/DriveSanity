@@ -114,7 +114,7 @@ everything first.
 The phone app has four tabs: **Drive**, **0–60**, **Trips**
 (your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. What you tap on a page shows at once, but nothing takes effect until you press **Apply** on the bar at the bottom and confirm; **Discard** drops it, each page has **Reset to default**, and **Reset all settings** at the foot of the list puts everything back. **Storage and data** shows what trips, raw recordings and the map cache take up, and clears them. The car shows one of six
 full-screen dashboards. Pick it in Settings → Car screens, or with the **Screens** button at the top of the
-car screen.
+car screen, which lists all six.
 
 **Gauges**: bar gauges for RPM, throttle, coolant and fuel (or economy) on the left, a huge
 gear and the speed in the middle, g-force, battery, intake air and tires on the right.
@@ -140,13 +140,19 @@ With the countdown off, that first button just clears the last run.
 **Music**: only what's playing. The whole screen takes the colours of the album cover as a soft blur,
 with the cover in a rounded square on top, then the music app's icon and name, the song and artist,
 and the song's length as a waveform that fills in as it plays (the bars near the playhead move while it
-plays). A song or artist name too long to fit slides sideways so you can read all of it. Previous, play/pause and next are drawn right in the picture, so they're always there. It
-reads whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
+plays). A song or artist name too long to fit slides sideways so you can read all of it. It reads
+whatever the phone is playing, so YouTube Music, Spotify or a podcast app all work.
 
-On a car with a touch screen, the drawn buttons can be pressed. Android Auto also puts its own copies
-of the three buttons down the right edge when you turn the knob or touch the screen, and on a car that
-only has a knob (like the Mazda's) those are the ones the knob can press. Android doesn't let an app
-keep those on screen all the time.
+**The buttons.** Android Auto only passes a knob's turns and presses to its own buttons, never to
+buttons an app draws in its picture. So previous, play/pause and next come two ways, chosen in
+**Settings → Music → Buttons on the car screen**:
+
+- **Always on screen** (the default): Android Auto's own three buttons, kept on screen beside the
+  picture. They work with the knob and by touch, and look like the rest of Android Auto. This needs a
+  recent Android Auto; an older one falls back to the second way.
+- **In the picture**: the buttons are drawn as part of the player. A touch screen can press them. On a
+  car with only a knob (like the Mazda's) they can't be pressed, and turning the knob brings up Android
+  Auto's own buttons instead.
 
 ![The Music screen, with a stand-in song](docs/music-screen.png)
 
@@ -233,7 +239,7 @@ button; Instagram's own chooser does the job.
 
 **Your home stays off it.** Drives usually start and end at home, so the first and last 250 m of the
 path are left out by default (a drive under 750 m shows no path at all), and the picture has no map
-tiles, street names or coordinates, only the shape. **Show the whole path** is there if you want it.
+tiles, street names or coordinates, only the shape. **Show whole path** is there if you want it.
 
 (Apps like MEZGR share a link to a page of the drive. That needs a server to host the pages, so this
 sends a picture instead.)
@@ -376,10 +382,10 @@ again. **Check for updates** in the same place looks by hand.
 **Look:** OpenStreetMap's standard map, turned dark. It needs mobile data and is credited on the
 map. (CARTO's ready-made dark maps were tried and need an API key, so they're not used.)
 
-**On the car,** the Map screen is the map on the left, with a round **search** button in its corner (it
-also works from the car's own button strip), and what's playing on the right: the cover, the song and
-artist, the waveform and previous, play/pause and next. There are no gauges or driving numbers on it.
-Touch presses the drawn buttons; the car's own button strip carries the same three for the knob.
+**On the car,** the Map screen is the map on the left and what's playing on the right: the cover, the
+song and artist, and the waveform. There are no gauges or driving numbers on it. **Search** is the first
+button on the top row. The music buttons follow the same choice as the Music screen: Android Auto's own,
+kept on screen, or drawn in the picture.
 
 **Google Maps directions.** If you navigate with Google Maps on the phone, the box over the map shows its
 next turn, how far away it is, and the distance left, minutes left and arrival time. That's read from the

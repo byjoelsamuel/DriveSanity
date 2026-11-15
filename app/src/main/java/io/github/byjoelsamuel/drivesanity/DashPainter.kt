@@ -90,6 +90,11 @@ class DashPainter(context: Context) {
     private val retro = RetroPainter(context)
     private val cluster = ClusterPainter(context)
 
+    /** False while Android Auto is showing its own music buttons beside the picture, so they aren't drawn twice. */
+    var musicButtonsDrawn: Boolean
+        get() = cluster.musicButtonsDrawn
+        set(value) { cluster.musicButtonsDrawn = value }
+
     /** Which map screen button a touch landed on (search, or the little music player's). */
     fun mapHit(x: Float, y: Float): MapTouch? = cluster.mapHit(x, y)
 
@@ -242,8 +247,9 @@ class DashPainter(context: Context) {
         asLabel()
         text.textSize = min(b.height() * 0.8f, b.width() * widthFrac)
         text.textAlign = Paint.Align.LEFT
-        text.color = if (s.accuracyM != null) Colors.DIM else Colors.REC
+        text.color = if (s.accuracyM != null || s.demo) Colors.DIM else Colors.REC
         val gps = when {
+            s.demo -> "DEMO DRIVE"
             !s.gpsOn -> "NO GPS ACCESS"
             s.accuracyM == null -> "WAITING FOR GPS"
             else -> "GPS ±${s.accuracyM.roundToInt()} m"

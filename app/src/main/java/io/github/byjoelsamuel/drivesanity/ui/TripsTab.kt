@@ -37,6 +37,7 @@ import java.util.Locale
 @Composable
 @Suppress("UNUSED_PARAMETER") // tick: the trip numbers are live
 fun TripsTab(units: Units, recordings: List<File>, tick: Long, actions: PhoneActions) {
+    Live.beat() // redraw with the engine's live values
     val st = DriveEngine.stats
     var confirmReset by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<File?>(null) }
@@ -149,6 +150,8 @@ private fun RecordingCard(f: File, units: Units, onOpen: () -> Unit, onShare: ()
             color = Ui.dim,
         )
         Row(Modifier.align(Alignment.End)) {
+            // The whole card opens the trip, but nothing on it said so; this does.
+            TextButton(onClick = onOpen) { Text("Open") }
             TextButton(onClick = onShare) { Text("Share") }
             TextButton(onClick = onDelete) { Text("Delete", color = Ui.clay) }
         }

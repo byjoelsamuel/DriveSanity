@@ -69,13 +69,13 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
     var introDone by rememberSaveable { mutableStateOf(!Prefs.startupAnim(ctx)) }
     // Kept here, not inside Settings, so a change you haven't applied survives a visit to another tab.
     val settings = remember { SettingsDraft(ctx) }
-    var tick by remember { mutableLongStateOf(0L) }
+    val tick = Live.tick
     // Look for a newer release once, in the background, when the app opens.
     LaunchedEffect(Unit) { Updater.checkOnOpen(ctx) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(100)
-            tick++
+            Live.tick++
         }
     }
     // A fresh snapshot every tick; screens also get the tick so cards that read live values
