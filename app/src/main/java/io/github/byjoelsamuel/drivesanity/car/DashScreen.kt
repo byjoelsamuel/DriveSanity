@@ -82,10 +82,16 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         val onDiag = now == Prefs.Layout.DIAG
         val onLaunch = now == Prefs.Layout.LAUNCH
         val onMusic = now == Prefs.Layout.MUSIC
+        val onMap = now == Prefs.Layout.MAP
         val countdown = Prefs.launchCountdown(carContext)
+        // Android Auto's own music buttons, kept on screen, where the person wants that and the car's Android
+        // Auto is new enough. The picture then leaves its own buttons out, so nothing is there just for show.
+        val hostButtons = (onMusic || onMap) && Prefs.musicButtonsAlways(carContext) && MusicPanel.supported(carContext.carAppApiLevel)
+        painter.musicButtonsDrawn = !hostButtons
         val first = Action.Builder()
             .setTitle(
                 when {
+                    onMap -> "Search"
                     onDiag -> "Read codes"
                     onLaunch -> if (countdown) "Start 3-2-1" else "Clear run"
                     DriveEngine.snapshot().calibrating -> "Calibrating…"
@@ -93,7 +99,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 },
             )
             .setOnClickListener {
-                if (onDiag) {
+                if (onMap) {
+                    // The map has no gauges to calibrate; its first button is "Where to?" (keyboard and voice).
+                    screenManager.push(SearchScreen(carContext))
+                } else if (onDiag) {
                     Obd.requestReadCodes()
                     CarToast.makeText(carContext, "Reading fault codes…", CarToast.LENGTH_SHORT).show()
                 } else if (onLaunch) {
@@ -150,6 +159,19 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             else -> null
         }
         val strip = ActionStrip.Builder().addAction(first).addAction(record).addAction(layout).build()
+        if (hostButtons) {
+            try {
+                return MusicPanel.template(
+                    carContext, strip, MediaWatcher.now?.playing == true,
+                    onPrevious = { MediaWatcher.previous(); invalidate() },
+                    onPlayPause = { MediaWatcher.playPause(); invalidate() },
+                    onNext = { MediaWatcher.next(); invalidate() },
+                )
+            } catch (_: RuntimeException) {
+                // A car that won't take it falls back to the buttons that appear on a knob turn.
+                painter.musicButtonsDrawn = true
+            }
+        }
         // A car whose screen won't take the side buttons still gets the three at the top.
         if (mapStrip != null) {
             try {

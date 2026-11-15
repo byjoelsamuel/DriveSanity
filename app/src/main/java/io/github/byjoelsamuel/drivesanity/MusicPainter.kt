@@ -57,6 +57,9 @@ class MusicPainter(context: Context) {
     private var lookAspect = 0f
     private var look: CoverLook.Look? = null
 
+    /** False when Android Auto is showing its own buttons beside the picture: the drawn ones are left out and the rest spreads into the room. */
+    var buttonsDrawn = true
+
     private val hits = ArrayList<Pair<RectF, MusicControl>>()
 
     /** Which button a touch at ([x], [y]) landed on, in the surface's own pixels, or null. */
@@ -151,12 +154,16 @@ class MusicPainter(context: Context) {
             hint(c, if (access) "Start a song in YouTube Music, or any music app." else "On the phone: DriveSanity → Settings → Music.", tx, top + art * 0.62f, tw)
             return
         }
-        number(h * 0.105f, Colors.FG)
-        marquee(c, np.title, tx, top + art * 0.32f, tw, clockMs)
-        label(h * 0.066f, soft)
-        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, top + art * 0.46f, tw, clockMs)
+        // Sized from the cover as well as the screen, so in a narrow space the lines don't run into each other.
+        number(min(h * 0.105f, art * 0.15f), Colors.FG)
+        // Without the buttons underneath, the words and the waveform sit lower and get more room.
+        val low = if (buttonsDrawn) 0f else art * 0.07f
+        marquee(c, np.title, tx, top + art * 0.32f + low, tw, clockMs)
+        label(min(h * 0.066f, art * 0.095f), soft)
+        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, top + art * 0.46f + low, tw, clockMs)
 
-        waves(c, np, tx, tw, top + art * 0.595f, art * 0.085f, h, accent, clockMs)
+        waves(c, np, tx, tw, top + art * 0.595f + low * 2.6f, art * (if (buttonsDrawn) 0.085f else 0.11f), h, accent, clockMs)
+        if (!buttonsDrawn) return
 
         // The three buttons, centred under the words.
         val cy = top + art * 0.905f
@@ -314,8 +321,12 @@ class MusicPainter(context: Context) {
         label(min(w * 0.058f, h * 0.036f), soft)
         marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, artRect.bottom + h * 0.085f + h * 0.058f, inner, clockMs)
 
-        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * 0.085f
-        waves(c, np, tx, inner, wavesY, h * 0.032f, h, accent, clockMs)
+        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * (if (buttonsDrawn) 0.085f else 0.13f)
+        waves(c, np, tx, inner, wavesY, h * (if (buttonsDrawn) 0.032f else 0.045f), h, accent, clockMs)
+        if (!buttonsDrawn) {
+            c.restore()
+            return
+        }
 
         // Buttons along the bottom.
         val big = min(w * 0.11f, h * 0.065f)

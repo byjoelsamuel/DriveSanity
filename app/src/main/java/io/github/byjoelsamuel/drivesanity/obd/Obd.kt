@@ -433,9 +433,9 @@ object Obd {
     val tirePsi: List<Float?> get() = listOf("tire_fl", "tire_fr", "tire_rl", "tire_rr").map { value(it, 30_000) }
 
     /** What the car has said, for the Settings screen. */
-    fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.") +
+    fun report(): String = (live?.report() ?: "Not connected, so nothing to report yet.\n") +
         "Pedal reading: $pedalSource\n" +
-        "Link dropped and restarted: $reconnects times since the app opened\n" +
+        "Link dropped and restarted: ${if (reconnects == 1) "1 time" else "$reconnects times"} since the app opened\n" +
         (lastProblem?.let { "Last problem: $it\n" } ?: "") +
         (probeResult?.let { "\nMazda-specific probe:\n$it\n" } ?: "")
 

@@ -91,7 +91,8 @@ class DiagPainter(context: Context) {
             return
         }
         if (report == null) {
-            note(c, b, top, "Reading…")
+            // The demo drive has no car to ask, so "Reading…" would sit there for ever.
+            note(c, b, top, if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "The demo has no fault codes." else "Reading…")
             return
         }
         // The check-engine lamp.
