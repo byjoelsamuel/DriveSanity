@@ -104,11 +104,8 @@ private fun StatusRow(s: Snapshot, actions: PhoneActions, openSetup: () -> Unit)
             else -> StatusPill("GPS ±${s.accuracyM.roundToInt()} m", Ui.good)
         }
         if (s.obdLive) StatusPill("OBD2 connected", Ui.good) else StatusPill("OBD2 not connected", Ui.dim) { actions.pickObd() }
-        when {
-            s.calibrating -> StatusPill("Calibrating…", Ui.sand)
-            s.calibrated -> StatusPill("Calibrated", Ui.good, openSetup)
-            else -> StatusPill("Not calibrated", Ui.sand, openSetup)
-        }
+        // Until it's done, the setup card below has the Calibrate button, so this doesn't ask twice.
+        if (s.calibrated && !s.calibrating) StatusPill("Calibrated", Ui.good, openSetup)
     }
 }
 
@@ -140,8 +137,12 @@ private fun SpeedCard(s: Snapshot, units: Units, actions: PhoneActions) {
                         if (s.gpsOn) "Waiting for GPS…" else "Location is off",
                         style = MaterialTheme.typography.headlineSmall,
                         color = Ui.dim,
-                        modifier = Modifier.padding(vertical = 18.dp),
+                        modifier = Modifier.padding(top = 14.dp, bottom = if (s.gpsOn) 14.dp else 4.dp),
                     )
+                    if (!s.gpsOn) {
+                        Text("Speed comes from the phone's location.", style = MaterialTheme.typography.bodySmall, color = Ui.dim)
+                        TextButton(onClick = actions::askLocation) { Text("Allow location") }
+                    }
                 } else Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         speed.toString(),
@@ -153,12 +154,14 @@ private fun SpeedCard(s: Snapshot, units: Units, actions: PhoneActions) {
                     Spacer(Modifier.width(8.dp))
                     Text(units.label, style = MaterialTheme.typography.titleMedium, color = Ui.dim, modifier = Modifier.padding(bottom = 14.dp))
                 }
-                val other = units.other
-                Text(
-                    "${s.speedMps?.let { other.speed(it).roundToInt() } ?: "–"} ${other.label}  ·  tap to swap",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Ui.dim,
-                )
+                if (speed != null) {
+                    val other = units.other
+                    Text(
+                        "${s.speedMps?.let { other.speed(it).roundToInt() } ?: "–"} ${other.label}  ·  tap to swap",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ui.dim,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SmallStat("Gear", s.gearText)

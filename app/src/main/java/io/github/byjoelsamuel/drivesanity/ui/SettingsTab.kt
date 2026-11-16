@@ -55,6 +55,7 @@ import io.github.byjoelsamuel.drivesanity.DashView
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
+import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
@@ -279,7 +280,7 @@ private fun Home(
                 SettingsIcon.CODES, "Fault codes",
                 when {
                     link != Obd.Link.LIVE -> "Connect the adapter to read"
-                    report == null -> "Reading…"
+                    report == null -> if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "None in the demo" else "Reading…"
                     report.all.isEmpty() -> "None"
                     else -> "${report.all.size} found"
                 },
@@ -601,9 +602,11 @@ private fun ScreensPage(draft: SettingsDraft) {
             ChoiceRow(l.title, layoutNote(l), l == layout) { draft.edit { it.copy(layout = l) } }
         }
     }
-    SettingsGroup("Preview now") {
+    SettingsGroup("Preview") {
+        // Shows the screen you've just tapped, even before it's applied.
         AndroidView(
             factory = { DashView(it) },
+            update = { it.layoutOverride = layout },
             modifier = Modifier.fillMaxWidth().aspectRatio(2f).clip(RoundedCornerShape(20.dp)),
         )
     }
@@ -688,18 +691,12 @@ private fun StartupPage(draft: SettingsDraft, actions: PhoneActions) {
             Segments(StartupSoundMode.entries.map { it.title }, mode.ordinal) { i -> draft.edit { it.copy(sound = StartupSoundMode.entries[i]) } }
             Spacer(Modifier.height(12.dp))
             Row {
-                OutlinedButton(onClick = actions::playStartupSound) { Text("Play it") }
+                OutlinedButton(onClick = { StartupSound.preview(ctx, mode) }) { Text("Play it") }
                 if (mode == StartupSoundMode.CUSTOM) {
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = actions::chooseSoundFile) { Text("Choose file") }
                 }
             }
-            Text(
-                "\"Play it\" plays the sound that's applied now, not one you've only picked here.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Ui.dim,
-                modifier = Modifier.padding(top = 8.dp),
-            )
         }
     }
     ResetGroup(draft, SettingsDraft.Group.STARTUP)

@@ -394,13 +394,23 @@ object DriveEngine : SensorEventListener, LocationListener {
         status = "Hold still… calibrating"
     }
 
+    /** Whether the recording that was just stopped was long enough to keep. */
+    var lastRecordingKept = true
+        private set
+
+    private const val MIN_RECORDING_MS = 15_000L
+
     fun toggleRecording(context: Context) {
         val current = log
         if (current != null) {
+            val ranMs = SystemClock.elapsedRealtime() - (recordingSinceMs ?: 0L)
             current.close()
             log = null
             recordingSinceMs = null
-            status = "Saved ${current.file.name}"
+            // A few seconds is a mis-tap, not a drive, and would only clutter the list.
+            lastRecordingKept = ranMs >= MIN_RECORDING_MS
+            if (!lastRecordingKept) current.file.delete()
+            status = if (lastRecordingKept) "Saved ${current.file.name}" else "Too short to keep"
             release(REC)
         } else {
             hold(context, REC)

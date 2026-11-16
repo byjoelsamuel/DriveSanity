@@ -138,4 +138,23 @@ class MusicPainterTest {
         }
         assertTrue(shortStrip(0L).contentEquals(shortStrip(9_000L)))
     }
+
+    @Test
+    fun theBackdropRunsToTheEdgesOfTheWholeSurfaceNotJustTheSafeArea() {
+        val w = 1600
+        val h = 640
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        val safe = RectF(60f, 0f, w - 180f, h - 40f) // what Android Auto says is clear: not the right-hand strip or the bottom
+        val bg = Color.rgb(18, 20, 22)
+        fun corners(backdrop: RectF): List<Int> {
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            bmp.eraseColor(bg)
+            MusicPainter(ctx).render(Canvas(bmp), safe, playing(cover()), true, 1_000L, backdrop)
+            return listOf(bmp.getPixel(w - 3, 3), bmp.getPixel(w - 3, h - 3), bmp.getPixel(w - 3, h / 2), bmp.getPixel(safe.centerX().toInt(), h - 3))
+        }
+        // Painted over just the safe area, the strip and the bottom stay plain: that's the box.
+        assertTrue("old way left the edges plain", corners(safe).all { it == bg })
+        // Painted over the whole surface, they're the cover's colours.
+        assertTrue("every edge now has the backdrop: ${corners(full)}", corners(full).none { it == bg })
+    }
 }

@@ -54,28 +54,30 @@ class MusicPainter(context: Context) {
     private var lookAspect = 0f
     private var look: CoverLook.Look? = null
 
-    fun draw(c: Canvas, r: RectF, @Suppress("UNUSED_PARAMETER") s: Snapshot, @Suppress("UNUSED_PARAMETER") units: Units) {
+    /** [r] is where the words and the cover may go; [full] is the whole surface, which the backdrop fills right to its edges. */
+    fun draw(c: Canvas, r: RectF, @Suppress("UNUSED_PARAMETER") s: Snapshot, @Suppress("UNUSED_PARAMETER") units: Units, full: RectF = r) {
         MediaWatcher.poll(app)
-        render(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis())
+        render(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis(), full)
     }
 
-    internal fun render(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
+    internal fun render(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long, backdrop: RectF = r) {
         val h = r.height()
         val w = r.width()
 
-        // The backdrop: the cover's colours, blurred, darkened enough to keep the words readable.
-        val cover = np?.art?.let { lookOf(it, w / h) }
+        // The backdrop: the cover's colours, blurred, darkened enough to keep the words readable. It runs to the
+        // edges of the whole surface, so there's no box where the safe area ends.
+        val cover = np?.art?.let { lookOf(it, backdrop.width() / backdrop.height()) }
         fill.shader = null
         fill.color = Colors.BG
-        c.drawRect(r, fill)
+        c.drawRect(backdrop, fill)
         if (cover != null) {
-            c.drawBitmap(cover.backdrop, null, r, backdropPaint)
+            c.drawBitmap(cover.backdrop, null, backdrop, backdropPaint)
             fill.shader = LinearGradient(
-                r.left, r.top, r.left, r.bottom,
+                backdrop.left, backdrop.top, backdrop.left, backdrop.bottom,
                 intArrayOf(Color.argb(120, 8, 10, 12), Color.argb(150, 8, 10, 12), Color.argb(205, 8, 10, 12)),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(backdrop, fill)
             fill.shader = null
         }
         val accent = cover?.palette?.get(0) ?: np?.accent ?: Colors.ACCENT
@@ -92,7 +94,7 @@ class MusicPainter(context: Context) {
                 artRect.centerX(), artRect.centerY(), h * 0.95f,
                 intArrayOf((accent and 0x00FFFFFF) or (0x34 shl 24), 0x00000000), floatArrayOf(0f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(backdrop, fill)
             fill.shader = null
         }
 

@@ -48,7 +48,7 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
     private val fadePaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
 
     /** The map, with its edges fading into whatever is behind it. The speed limit sign stays crisp on top. */
-    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units) {
+    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, fadeLeft: Boolean = true, fadeTop: Boolean = true, fadeRight: Boolean = true, fadeBottom: Boolean = true) {
         val layer = c.saveLayer(r, null)
         val pos = s.position
         if (pos == null) {
@@ -57,7 +57,7 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
         } else {
             drawWorld(c, r, s, pos)
         }
-        fadeEdges(c, r)
+        fadeEdges(c, r, fadeLeft, fadeTop, fadeRight, fadeBottom)
         c.restoreToCount(layer)
         if (pos != null) drawLimit(c, r, units)
         val inset = min(r.width(), r.height()) * 0.05f
@@ -98,17 +98,17 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
     }
 
     /** Rubs out the outer fifth of each edge, fading in, so the map has no border. */
-    private fun fadeEdges(c: Canvas, r: RectF) {
+    private fun fadeEdges(c: Canvas, r: RectF, left: Boolean = true, top: Boolean = true, right: Boolean = true, bottom: Boolean = true) {
         val f = min(r.width(), r.height()) * 0.2f
         fun edge(x0: Float, y0: Float, x1: Float, y1: Float, area: RectF) {
             fadePaint.shader = LinearGradient(x0, y0, x1, y1, Color.BLACK, Color.TRANSPARENT, Shader.TileMode.CLAMP)
             c.drawRect(area, fadePaint)
         }
         // The rubbed-out strips reach 2 px past the edges, so no hairline of tile is left on them.
-        edge(r.left, 0f, r.left + f, 0f, RectF(r.left - 2, r.top - 2, r.left + f, r.bottom + 2))
-        edge(r.right, 0f, r.right - f, 0f, RectF(r.right - f, r.top - 2, r.right + 2, r.bottom + 2))
-        edge(0f, r.top, 0f, r.top + f, RectF(r.left - 2, r.top - 2, r.right + 2, r.top + f))
-        edge(0f, r.bottom, 0f, r.bottom - f, RectF(r.left - 2, r.bottom - f, r.right + 2, r.bottom + 2))
+        if (left) edge(r.left, 0f, r.left + f, 0f, RectF(r.left - 2, r.top - 2, r.left + f, r.bottom + 2))
+        if (right) edge(r.right, 0f, r.right - f, 0f, RectF(r.right - f, r.top - 2, r.right + 2, r.bottom + 2))
+        if (top) edge(0f, r.top, 0f, r.top + f, RectF(r.left - 2, r.top - 2, r.right + 2, r.top + f))
+        if (bottom) edge(0f, r.bottom, 0f, r.bottom - f, RectF(r.left - 2, r.bottom - f, r.right + 2, r.bottom + 2))
     }
 
     private fun drawRoute(c: Canvas, route: Route, zoom: Int, wx: Double, wy: Double, cx: Float, cy: Float, k: Float) {

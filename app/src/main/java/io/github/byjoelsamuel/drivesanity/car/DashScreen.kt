@@ -209,10 +209,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             // Android Auto's "visible area" leaves room at the top for the button strip even while it's
             // hidden, which left a blank band. Draw up to the top edge; the buttons float over it when shown.
             val area = if (visible.isEmpty) full else Rect(visible.left, full.top, visible.right, visible.bottom)
-            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
+            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext), RectF(full))
             introStartMs?.let { start ->
                 val t = (SystemClock.elapsedRealtime() - start) / 1000f
-                if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(area), t)
+                if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(full), t)
             }
         } finally {
             s.unlockCanvasAndPost(canvas)

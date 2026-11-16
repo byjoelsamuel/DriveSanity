@@ -36,6 +36,17 @@ object StartupSound {
         val now = SystemClock.elapsedRealtime()
         if (now - lastMs < 3_000) return // the phone and the car both start up together
         lastMs = now
+        start(app, mode)
+    }
+
+    /** Plays [mode] now, whatever is applied, so a sound can be tried before it's chosen. */
+    fun preview(context: Context, mode: StartupSoundMode) {
+        if (mode == StartupSoundMode.OFF) return
+        lastMs = SystemClock.elapsedRealtime()
+        start(context.applicationContext, mode)
+    }
+
+    private fun start(app: Context, mode: StartupSoundMode) {
         try {
             when (mode) {
                 StartupSoundMode.READER -> chime(app, R.raw.etc_reader, speakAfter = false)

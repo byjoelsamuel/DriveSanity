@@ -98,9 +98,10 @@ class DashPainter(context: Context) {
 
     private val smooth = Smoother()
 
-    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
+    /** [r] is the area Android Auto says is clear; [full] is the whole surface, for backdrops that should reach its edges. */
+    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES, full: RectF = r) {
         smooth.frame()
-        drawScreen(c, r, eased(s), units, layout)
+        drawScreen(c, r, eased(s), units, layout, full)
         // Warnings go by the real readings, not the eased ones.
         if (Prefs.alerts(appContext)) drawAlerts(c, r, s, units, layout)
     }
@@ -152,14 +153,14 @@ class DashPainter(context: Context) {
         c.drawText(alert.text, r.centerX(), top + size * 1.3f, text)
     }
 
-    private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout) {
+    private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout, full: RectF) {
         if (layout == Prefs.Layout.RETRO) return retro.draw(c, r, s, units)
         if (layout == Prefs.Layout.DIAG) return diag.draw(c, r, s, units)
         if (r.width() > r.height() * 1.2f) {
             when (layout) {
-                Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units)
+                Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units, full)
                 Prefs.Layout.LAUNCH -> cluster.drawLaunch(c, r, s, units)
-                Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units)
+                Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units, full)
                 else -> cluster.drawGauges(c, r, s, units)
             }
             return

@@ -178,7 +178,7 @@ class ClusterPainter(context: Context) {
     // The 0–60 and Music screens live in their own painters.
     fun drawLaunch(c: Canvas, r: RectF, s: Snapshot, units: Units) = launch.draw(c, r, s, units)
 
-    fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units) = music.draw(c, r, s, units)
+    fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units, full: RectF = r) = music.draw(c, r, s, units, full)
 
 
     /** A caption and a big value on one line, and a row of bar segments under them. */
@@ -288,28 +288,34 @@ class ClusterPainter(context: Context) {
     // Map
     // ---------------------------------------------------------------------------------------
 
-    fun drawMap(c: Canvas, r: RectF, s: Snapshot, units: Units) {
-        background(c, r)
+    /**
+     * The map runs to the left, top and bottom edges of the whole surface ([full]) so the screen has no box
+     * around it; the next-turn box and the player stay inside [r], the area Android Auto says is clear.
+     */
+    fun drawMap(c: Canvas, r: RectF, s: Snapshot, units: Units, full: RectF = r) {
+        background(c, full)
         val pad = r.height() * 0.03f
         val inner = RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad)
         val h = inner.height()
         val w = inner.width()
         val gap = w * 0.025f
 
-        // Left: the map, with the next turn laid over its top edge.
-        val mapArea = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.bottom)
-        map.draw(c, mapArea, s, units)
+        // Left: the map. Only the side that meets the player fades out; the others are the edge of the screen.
+        val playerLeft = inner.left + w * 0.63f + gap
+        val mapArea = RectF(full.left, full.top, playerLeft - gap * 0.6f, full.bottom)
+        map.draw(c, mapArea, s, units, fadeLeft = false, fadeTop = false, fadeBottom = false)
         // Google Maps' own directions, when it's navigating on the phone; otherwise this app's.
         val google = GoogleNav.current()
-        val directions = google != null || Nav.route != null || Nav.message != null
+        val banner = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.top + h * 0.32f)
         if (google != null) {
-            map.drawGoogleDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), google, 238)
-        } else if (directions) {
-            map.drawDirections(c, RectF(mapArea.left, mapArea.top, mapArea.right, mapArea.top + h * 0.32f), units, 238)
+            map.drawGoogleDirections(c, banner, google, 238)
+        } else if (Nav.route != null || Nav.message != null) {
+            map.drawDirections(c, banner, units, 238)
         }
+
         // Right: what's playing, and nothing else (no gauges or driving numbers).
         // Android Auto lays its top row of buttons over the top of the picture when they show, so the player starts below that.
-        music.drawPanel(c, RectF(mapArea.right + gap, inner.top + h * 0.16f, inner.right, inner.bottom))
+        music.drawPanel(c, RectF(playerLeft, inner.top + h * 0.16f, inner.right, inner.bottom))
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {

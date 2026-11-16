@@ -10,9 +10,12 @@ class DashView(context: Context) : View(context) {
     private val painter = DashPainter(context)
     private val rect = RectF()
 
+    /** A screen to show instead of the one that's applied, for previews of a choice that hasn't been applied yet. */
+    var layoutOverride: Prefs.Layout? = null
+
     override fun onDraw(canvas: Canvas) {
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        painter.draw(canvas, rect, DriveEngine.snapshot(), Prefs.units(context), Prefs.layout(context))
+        painter.draw(canvas, rect, DriveEngine.snapshot(), Prefs.units(context), layoutOverride ?: Prefs.layout(context))
         postInvalidateDelayed(33)
     }
 }

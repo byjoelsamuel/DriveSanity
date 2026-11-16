@@ -137,7 +137,7 @@ With the countdown off, that first button just clears the last run.
 
 ![The 0–60 screen, with sample data](docs/launch-screen.png)
 
-**Music**: only what's playing. The whole screen takes the colours of the album cover as a soft blur,
+**Music**: only what's playing. The whole screen, right to its edges, takes the colours of the album cover as a soft blur,
 with the cover in a rounded square on top, then the music app's icon and name, the song and artist,
 and the song's length as a waveform that fills in as it plays (the bars near the playhead move while it
 plays). A song or artist name too long to fit slides sideways so you can read all of it. It reads
