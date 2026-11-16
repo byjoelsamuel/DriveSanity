@@ -176,7 +176,7 @@ class WalkthroughTest {
         drive(2)
         rule.onAllNodesWithText("Settings").onFirst().performClick()
         rule.mainClock.advanceTimeBy(600)
-        rule.onNodeWithText("None in the demo").assertExists()
+        rule.onNodeWithText("Tap to check the car").assertExists() // codes are only read when asked for
         rule.onAllNodesWithText("Trips").onFirst().performClick()
         drive(2)
         shot("phone-6-trips-one")

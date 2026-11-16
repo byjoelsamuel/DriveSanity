@@ -277,7 +277,7 @@ temperatures, battery voltage and fault codes.
   "Adapter stopped answering" points at the adapter or car; "Adapter disconnected" means
   Bluetooth dropped.
 
-The fault codes are on the OBD2 screen and in **Settings → Fault codes**.
+The fault codes are on the OBD2 screen and in **Settings → Fault codes**. They are only read when you ask: press **Read codes** (the first button on the OBD2 screen's top row, or the button in Settings). Until then the screen says so, and they're cleared again when you leave the screen.
 
 **Read-only.** The app only asks the car questions. Anything that could change something (clearing
 fault codes, writing a setting, starting a test, diagnostic sessions, security requests) is blocked

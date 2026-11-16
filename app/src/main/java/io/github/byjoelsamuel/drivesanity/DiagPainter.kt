@@ -86,13 +86,22 @@ class DiagPainter(context: Context) {
         val top = title(c, b, "FAULT CODES")
         val rowH = b.height() * 0.14f
         val report = Obd.dtcReport
-        if (Obd.status.link != Obd.Link.LIVE) {
+        val demo = io.github.byjoelsamuel.drivesanity.demo.Demo.active
+        if (Obd.status.link != Obd.Link.LIVE && !demo) {
             note(c, b, top, "Connect the adapter to read fault codes.")
             return
         }
+        // Nothing is read, or shown, until it's asked for with the Read codes button on the top row.
         if (report == null) {
-            // The demo drive has no car to ask, so "Reading…" would sit there for ever.
-            note(c, b, top, if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "The demo has no fault codes." else "Reading…")
+            note(
+                c, b, top,
+                when (Obd.codesState) {
+                    Obd.CodesState.NOT_ASKED -> "Press Read codes to check the car."
+                    Obd.CodesState.READING -> "Reading…"
+                    Obd.CodesState.FAILED -> "The car didn't answer. Press Read codes to try again."
+                    Obd.CodesState.DONE -> if (demo) "The demo has no fault codes." else "Reading…"
+                },
+            )
             return
         }
         // The check-engine lamp.

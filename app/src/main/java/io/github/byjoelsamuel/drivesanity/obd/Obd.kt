@@ -42,11 +42,25 @@ object Obd {
     private val diagnosticsOn get() = diagFromCar || diagFromPhone
 
     fun wantDiagnostics(from: String, on: Boolean) {
+        val was = if (from == "car") diagFromCar else diagFromPhone
         if (from == "car") diagFromCar = on else diagFromPhone = on
+        // Fault codes are only shown when asked for, so leaving a screen that showed them clears them.
+        if (was && !on) clearCodes()
     }
+
+    /** Where a fault-code check has got to. The codes are only read when someone asks. */
+    enum class CodesState { NOT_ASKED, READING, DONE, FAILED }
+
+    @Volatile var codesState = CodesState.NOT_ASKED
+        private set
 
     @Volatile var dtcReport: DtcReport? = null
         private set
+
+    fun clearCodes() {
+        dtcReport = null
+        codesState = CodesState.NOT_ASKED
+    }
     @Volatile var vin: String? = null
         private set
     @Volatile var protocol: String = ""
@@ -57,6 +71,13 @@ object Obd {
     @Volatile private var probeRequested = false
 
     fun requestReadCodes() {
+        if (demo) {
+            // There's no car to ask in the demo: it just has no codes.
+            dtcReport = null
+            codesState = CodesState.DONE
+            return
+        }
+        codesState = CodesState.READING
         readCodesRequested = true
     }
 
@@ -289,7 +310,6 @@ object Obd {
             .filter { s.supports(it) }
         var i = 0
         var slowAt = 0L
-        var codesAt = 0L
         var vinTried = false
         var misses = 0
         var quietSince = 0L
@@ -324,10 +344,12 @@ object Obd {
                 put("volts", tolerate { s.volts() })
                 slowAt = now + 10_000
             }
-            if (readCodesRequested || (diagnosticsOn && now - codesAt > 60_000)) {
+            // Fault codes are read when someone asks (the Read codes button), never by themselves.
+            if (readCodesRequested) {
                 readCodesRequested = false
-                codesAt = now
-                tolerate { s.readDtcReport() }?.let { dtcReport = it }
+                val report = tolerate { s.readDtcReport() }
+                dtcReport = report
+                codesState = if (report != null) CodesState.DONE else CodesState.FAILED
             }
             if (diagnosticsOn && vin == null && !vinTried) {
                 vinTried = true
