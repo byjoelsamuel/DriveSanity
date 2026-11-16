@@ -195,7 +195,7 @@ class WalkthroughTest {
         Demo.start(ctx)
         drive(50)
         val dir = System.getenv("SHOTS_DIR")
-        for ((label, w, h) in listOf(Triple("wide", 1280, 480), Triple("tall", 1920, 900))) {
+        for ((label, w, h) in listOf(Triple("wide", 1280, 480), Triple("tall", 1920, 900), Triple("ultra", 1920, 620))) {
             run {
                 for (layout in Prefs.Layout.entries) {
                     val pw = w

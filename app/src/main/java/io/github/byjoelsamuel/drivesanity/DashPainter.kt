@@ -89,6 +89,7 @@ class DashPainter(context: Context) {
     private val map = MapPainter(labels, numbers)
     private val retro = RetroPainter(context)
     private val cluster = ClusterPainter(context)
+    private val gauges = GaugesPainter(context)
 
 
 
@@ -161,7 +162,7 @@ class DashPainter(context: Context) {
                 Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units, full)
                 Prefs.Layout.LAUNCH -> cluster.drawLaunch(c, r, s, units)
                 Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units, full)
-                else -> cluster.drawGauges(c, r, s, units)
+                else -> gauges.draw(c, r, s, units)
             }
             return
         }
