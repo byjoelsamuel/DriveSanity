@@ -111,7 +111,7 @@ class SettingsTabTest {
         shot("home")
         val pages = listOf(
             "My car" to "Redline", "Calibration" to "Calibrate", "Units" to "km/h · °C · km",
-            "OBD2 adapter" to "Setting up", "Fault codes" to "Read codes again",
+            "OBD2 adapter" to "Setting up", "Fault codes" to "Read codes",
             "Battery and read-only" to "Let the car sleep", "Car screens" to "Preview",
             "Google Maps directions" to "no screen recording", "Alerts and shift light" to "banner for a hot engine",
             "Startup" to "Startup animation", "Music" to "How it works", "Storage and data" to "Map cache", "Demo and recordings" to "Start demo",

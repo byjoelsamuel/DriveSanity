@@ -279,8 +279,13 @@ private fun Home(
             SettingsRow(
                 SettingsIcon.CODES, "Fault codes",
                 when {
-                    link != Obd.Link.LIVE -> "Connect the adapter to read"
-                    report == null -> if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "None in the demo" else "Reading…"
+                    link != Obd.Link.LIVE && !io.github.byjoelsamuel.drivesanity.demo.Demo.active -> "Connect the adapter to read"
+                    report == null -> when (Obd.codesState) {
+                        Obd.CodesState.NOT_ASKED -> "Tap to check the car"
+                        Obd.CodesState.READING -> "Reading…"
+                        Obd.CodesState.FAILED -> "The car didn't answer"
+                        Obd.CodesState.DONE -> "None in the demo"
+                    }
                     report.all.isEmpty() -> "None"
                     else -> "${report.all.size} found"
                 },
@@ -527,12 +532,21 @@ private fun AdapterPage(obdName: String?, tick: Long, actions: PhoneActions) {
 private fun FaultsPage(tick: Long, actions: PhoneActions) {
     Live.beat() // redraw with the engine's live values
     val report = Obd.dtcReport
+    val demo = io.github.byjoelsamuel.drivesanity.demo.Demo.active
     val live = Obd.status.link == Obd.Link.LIVE
     SettingsGroup {
         GroupBody {
             when {
-                !live -> Text("Connect the adapter to read the car's fault codes.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
-                report == null -> Text(if (io.github.byjoelsamuel.drivesanity.demo.Demo.active) "The demo has no fault codes to read." else "Reading…", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                !live && !demo -> Text("Connect the adapter to read the car's fault codes.", style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+                report == null -> Text(
+                    when (Obd.codesState) {
+                        Obd.CodesState.NOT_ASKED -> "Not checked. The app only reads the car's fault codes when you ask."
+                        Obd.CodesState.READING -> "Reading…"
+                        Obd.CodesState.FAILED -> "The car didn't answer. Try again."
+                        Obd.CodesState.DONE -> "The demo has no fault codes to read."
+                    },
+                    style = MaterialTheme.typography.bodyMedium, color = Ui.dim,
+                )
                 else -> {
                     val lamp = when (report.milOn) { true -> "on"; false -> "off"; null -> "unknown" }
                     Text(
@@ -549,7 +563,7 @@ private fun FaultsPage(tick: Long, actions: PhoneActions) {
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Button(onClick = actions::readCodes, enabled = live) { Text("Read codes again") }
+            Button(onClick = actions::readCodes, enabled = live || demo) { Text(if (report == null) "Read codes" else "Read codes again") }
         }
     }
 }
