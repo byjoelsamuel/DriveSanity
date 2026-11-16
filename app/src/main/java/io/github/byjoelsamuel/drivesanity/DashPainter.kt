@@ -90,25 +90,18 @@ class DashPainter(context: Context) {
     private val retro = RetroPainter(context)
     private val cluster = ClusterPainter(context)
 
-    /** False while Android Auto is showing its own music buttons beside the picture, so they aren't drawn twice. */
-    var musicButtonsDrawn: Boolean
-        get() = cluster.musicButtonsDrawn
-        set(value) { cluster.musicButtonsDrawn = value }
 
-    /** Which map screen button a touch landed on (search, or the little music player's). */
-    fun mapHit(x: Float, y: Float): MapTouch? = cluster.mapHit(x, y)
 
-    /** Which Music screen button a touch landed on, if that screen is showing. */
-    fun musicHit(x: Float, y: Float): MusicControl? = cluster.musicHit(x, y)
     private val diag = DiagPainter(context)
 
     private val appContext = context.applicationContext
 
     private val smooth = Smoother()
 
-    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES) {
+    /** [r] is the area Android Auto says is clear; [full] is the whole surface, for backdrops that should reach its edges. */
+    fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout = Prefs.Layout.GAUGES, full: RectF = r) {
         smooth.frame()
-        drawScreen(c, r, eased(s), units, layout)
+        drawScreen(c, r, eased(s), units, layout, full)
         // Warnings go by the real readings, not the eased ones.
         if (Prefs.alerts(appContext)) drawAlerts(c, r, s, units, layout)
     }
@@ -160,14 +153,14 @@ class DashPainter(context: Context) {
         c.drawText(alert.text, r.centerX(), top + size * 1.3f, text)
     }
 
-    private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout) {
+    private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout, full: RectF) {
         if (layout == Prefs.Layout.RETRO) return retro.draw(c, r, s, units)
         if (layout == Prefs.Layout.DIAG) return diag.draw(c, r, s, units)
         if (r.width() > r.height() * 1.2f) {
             when (layout) {
-                Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units)
+                Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units, full)
                 Prefs.Layout.LAUNCH -> cluster.drawLaunch(c, r, s, units)
-                Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units)
+                Prefs.Layout.MUSIC -> cluster.drawMusic(c, r, s, units, full)
                 else -> cluster.drawGauges(c, r, s, units)
             }
             return

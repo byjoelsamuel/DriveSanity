@@ -18,8 +18,6 @@ import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.media.NowPlaying
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,7 +38,6 @@ class CarScreensTest {
     fun setUp() {
         car = TestCarContext.createCarContext(ctx)
         newAndroidAuto(7)
-        Prefs.setMusicButtonsAlways(ctx, true)
         MediaWatcher.now = null
     }
 
@@ -67,7 +64,6 @@ class CarScreensTest {
 
     private fun stripOf(t: Template): List<Action> = when (t) {
         is NavigationTemplate -> t.actionStrip!!.actions
-        is MapWithContentTemplate -> t.actionStrip!!.actions
         else -> error("unexpected ${t.javaClass.simpleName}")
     }
 
@@ -99,51 +95,34 @@ class CarScreensTest {
         assertTrue(manager.screensPushed.last() is SearchScreen)
     }
 
-    @Test
-    fun musicAndMapKeepAndroidAutosOwnButtonsOnScreen() {
-        for (layout in listOf(Prefs.Layout.MUSIC, Prefs.Layout.MAP)) {
-            val t = screen(layout)
-            assertTrue("$layout uses the template with content beside the picture", t is MapWithContentTemplate)
-            val grid = (t as MapWithContentTemplate).contentTemplate as GridTemplate
-            val items = grid.singleList!!.items.map { it as GridItem }
-            assertEquals(listOf(MusicPanel.PREVIOUS, MusicPanel.PLAY_PAUSE, MusicPanel.NEXT), items.map { it.title.toString() })
-            for (item in items) {
-                assertNotNull("${item.title} can be pressed", item.onClickDelegate)
-                item.onClickDelegate!!.sendClick(done) // with nothing playing this must simply do nothing
-            }
-        }
-    }
+    private fun cornerIcons(t: Template): Int = (t as NavigationTemplate).mapActionStrip?.actions?.size ?: 0
 
     @Test
-    fun theButtonsKeepTheirNamesSoPlayingAndPausingIsOnlyARefresh() {
-        fun names(): List<String> {
-            val grid = (screen(Prefs.Layout.MUSIC) as MapWithContentTemplate).contentTemplate as GridTemplate
-            assertNull("no title on the grid, so it can't change either", grid.title)
-            return grid.singleList!!.items.map { (it as GridItem).title.toString() }
-        }
-        MediaWatcher.now = song(playing = true)
-        val whilePlaying = names()
-        MediaWatcher.now = song(playing = false)
-        assertEquals(whilePlaying, names())
-        // And the same on the map screen, so going between the two is a refresh as well.
-        val map = (screen(Prefs.Layout.MAP) as MapWithContentTemplate).contentTemplate as GridTemplate
-        assertEquals(whilePlaying, map.singleList!!.items.map { (it as GridItem).title.toString() })
-    }
-
-    @Test
-    fun anOlderAndroidAutoGetsTheButtonsThatAppearOnAKnobTurn() {
-        newAndroidAuto(6)
+    fun musicHasPreviousPlayPauseAndNextAtTheCorner() {
         MediaWatcher.now = song(playing = true)
         val t = screen(Prefs.Layout.MUSIC)
-        assertTrue(t is NavigationTemplate)
-        assertEquals(3, (t as NavigationTemplate).mapActionStrip!!.actions.size)
+        assertTrue("one plain template, with no panel taking half the screen", t is NavigationTemplate)
+        val corner = (t as NavigationTemplate).mapActionStrip!!.actions
+        assertEquals(3, corner.size)
+        assertTrue("icons only, so they fit at the corner", corner.all { it.icon != null && it.title == null })
+        corner.forEach { it.onClickDelegate!!.sendClick(done) } // pressing them with nothing to control must not crash
     }
 
     @Test
-    fun choosingInThePictureGoesBackToDrawnButtons() {
-        Prefs.setMusicButtonsAlways(ctx, false)
-        assertTrue(screen(Prefs.Layout.MUSIC) is NavigationTemplate)
-        assertTrue(screen(Prefs.Layout.MAP) is NavigationTemplate)
+    fun theMapGetsSearchAndMusicButtonsOnlyWhileSomethingIsPlaying() {
+        MediaWatcher.now = null
+        assertEquals(1, cornerIcons(screen(Prefs.Layout.MAP)))
+        MediaWatcher.now = song(playing = true)
+        assertEquals(4, cornerIcons(screen(Prefs.Layout.MAP)))
+    }
+
+    @Test
+    fun playingAndPausingChangesOnlyTheIconNotTheShapeOfTheScreen() {
+        MediaWatcher.now = song(playing = true)
+        val a = (screen(Prefs.Layout.MUSIC) as NavigationTemplate).mapActionStrip!!.actions.size
+        MediaWatcher.now = song(playing = false)
+        val b = (screen(Prefs.Layout.MUSIC) as NavigationTemplate).mapActionStrip!!.actions.size
+        assertEquals(a, b)
     }
 
     @Test

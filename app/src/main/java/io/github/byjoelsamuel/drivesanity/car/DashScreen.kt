@@ -27,8 +27,6 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.RetroPainter
-import io.github.byjoelsamuel.drivesanity.MapTouch
-import io.github.byjoelsamuel.drivesanity.MusicControl
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.obd.Obd
@@ -84,10 +82,6 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         val onMusic = now == Prefs.Layout.MUSIC
         val onMap = now == Prefs.Layout.MAP
         val countdown = Prefs.launchCountdown(carContext)
-        // Android Auto's own music buttons, kept on screen, where the person wants that and the car's Android
-        // Auto is new enough. The picture then leaves its own buttons out, so nothing is there just for show.
-        val hostButtons = (onMusic || onMap) && Prefs.musicButtonsAlways(carContext) && MusicPanel.supported(carContext.carAppApiLevel)
-        painter.musicButtonsDrawn = !hostButtons
         val first = Action.Builder()
             .setTitle(
                 when {
@@ -142,7 +136,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             .setOnClickListener { press(); invalidate() }
             .build()
         val mapStrip = when {
-            // The music buttons are the car's own, down the right edge, so the knob and the screen can press them.
+            // The music buttons are Android Auto's own, which appear at the corner when the knob is turned or the screen touched; those are the ones a knob can press.
             onMusic -> ActionStrip.Builder()
                 .addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
                 .addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
@@ -159,19 +153,6 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             else -> null
         }
         val strip = ActionStrip.Builder().addAction(first).addAction(record).addAction(layout).build()
-        if (hostButtons) {
-            try {
-                return MusicPanel.template(
-                    carContext, strip, MediaWatcher.now?.playing == true,
-                    onPrevious = { MediaWatcher.previous(); invalidate() },
-                    onPlayPause = { MediaWatcher.playPause(); invalidate() },
-                    onNext = { MediaWatcher.next(); invalidate() },
-                )
-            } catch (_: RuntimeException) {
-                // A car that won't take it falls back to the buttons that appear on a knob turn.
-                painter.musicButtonsDrawn = true
-            }
-        }
         // A car whose screen won't take the side buttons still gets the three at the top.
         if (mapStrip != null) {
             try {
@@ -191,27 +172,6 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         }
         introPlayed = true
         draw()
-    }
-
-    /** A touch on a screen that takes them: the drawn buttons work like the car's own. */
-    override fun onClick(x: Float, y: Float) {
-        when (Prefs.layout(carContext)) {
-            Prefs.Layout.MUSIC -> when (painter.musicHit(x, y)) {
-                MusicControl.PREVIOUS -> MediaWatcher.previous()
-                MusicControl.PLAY_PAUSE -> MediaWatcher.playPause()
-                MusicControl.NEXT -> MediaWatcher.next()
-                null -> return
-            }
-            Prefs.Layout.MAP -> when (painter.mapHit(x, y)) {
-                MapTouch.SEARCH -> screenManager.push(SearchScreen(carContext))
-                MapTouch.PREVIOUS -> MediaWatcher.previous()
-                MapTouch.PLAY_PAUSE -> MediaWatcher.playPause()
-                MapTouch.NEXT -> MediaWatcher.next()
-                null -> return
-            }
-            else -> return
-        }
-        invalidate()
     }
 
     override fun onVisibleAreaChanged(visibleArea: Rect) {
@@ -249,10 +209,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             // Android Auto's "visible area" leaves room at the top for the button strip even while it's
             // hidden, which left a blank band. Draw up to the top edge; the buttons float over it when shown.
             val area = if (visible.isEmpty) full else Rect(visible.left, full.top, visible.right, visible.bottom)
-            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext))
+            painter.draw(canvas, RectF(area), DriveEngine.snapshot(), Prefs.units(carContext), Prefs.layout(carContext), RectF(full))
             introStartMs?.let { start ->
                 val t = (SystemClock.elapsedRealtime() - start) / 1000f
-                if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(area), t)
+                if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(full), t)
             }
         } finally {
             s.unlockCanvasAndPost(canvas)

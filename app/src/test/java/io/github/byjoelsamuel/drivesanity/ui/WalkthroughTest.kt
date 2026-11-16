@@ -11,6 +11,7 @@ import android.os.SystemClock
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
@@ -173,6 +174,9 @@ class WalkthroughTest {
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("Start recording").assertExists()
         drive(2)
+        rule.onAllNodesWithText("Settings").onFirst().performClick()
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("None in the demo").assertExists()
         rule.onAllNodesWithText("Trips").onFirst().performClick()
         drive(2)
         shot("phone-6-trips-one")
@@ -192,22 +196,22 @@ class WalkthroughTest {
         drive(50)
         val dir = System.getenv("SHOTS_DIR")
         for ((label, w, h) in listOf(Triple("wide", 1280, 480), Triple("tall", 1920, 900))) {
-            for (buttons in listOf(true, false)) {
+            run {
                 for (layout in Prefs.Layout.entries) {
-                    val isMusicish = layout == Prefs.Layout.MUSIC || layout == Prefs.Layout.MAP
-                    if (!buttons && !isMusicish) continue
-                    // With Android Auto's buttons beside it, the picture gets roughly the right-hand 60%.
-                    val pw = if (!buttons) (w * 0.6f).toInt() else w
+                    val pw = w
                     val painter = DashPainter(ctx)
-                    painter.musicButtonsDrawn = buttons
                     val bmp = Bitmap.createBitmap(pw, h, Bitmap.Config.ARGB_8888)
                     val c = Canvas(bmp)
-                    c.drawColor(Color.rgb(18, 20, 22))
+                    c.drawColor(if (layout == Prefs.Layout.RETRO) io.github.byjoelsamuel.drivesanity.RetroPainter.BG else Color.rgb(18, 20, 22)) // as DashScreen does
                     // A few frames, so the smoothed numbers settle.
-                    repeat(40) { painter.draw(c, RectF(0f, 0f, pw.toFloat(), h.toFloat()), DriveEngine.snapshot(), Prefs.units(ctx), layout) }
+                    // The way Android Auto hands it over: the whole surface, and a smaller area it says is clear
+                    // (not the strip at the right or the bottom edge).
+                    val whole = RectF(0f, 0f, pw.toFloat(), h.toFloat())
+                    val clear = RectF(pw * 0.03f, 0f, pw * 0.9f, h * 0.94f)
+                    repeat(40) { painter.draw(c, clear, DriveEngine.snapshot(), Prefs.units(ctx), layout, whole) }
                     if (dir != null) {
                         File(dir).mkdirs()
-                        val name = "car-$label-${layout.name.lowercase()}${if (!buttons) "-with-aa-buttons" else ""}.png"
+                        val name = "car-$label-${layout.name.lowercase()}.png"
                         File(dir, name).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     }
                 }
@@ -224,12 +228,15 @@ class WalkthroughTest {
         rule.onNodeWithText("Calibrate").performClick()
         rule.onNodeWithText("Navigate").performClick()
         rule.onNodeWithText("No location access").performClick()
+        // The empty state offers one way to do each thing, not two: Calibrate once, and no dead "– km/h".
+        rule.onAllNodesWithText("Calibrate").assertCountEquals(1)
+        rule.onNodeWithText("Not calibrated").assertDoesNotExist()
+        rule.onNodeWithText("Allow location").performClick()
         rule.onNodeWithText("OBD2 not connected").performClick()
         rule.onNodeWithText("Start recording").performClick()
         rule.mainClock.advanceTimeBy(300)
-        org.junit.Assert.assertEquals(listOf("calibrate", "navigate", "askLocation", "pickObd", "toggleRecording"), asked)
-        // "Not calibrated" takes you to Settings.
-        rule.onNodeWithText("Not calibrated").performClick()
+        org.junit.Assert.assertEquals(listOf("calibrate", "navigate", "askLocation", "askLocation", "pickObd", "toggleRecording"), asked)
+        rule.onAllNodesWithText("Settings").onFirst().performClick()
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("Car and sensors", ignoreCase = true).assertExists()
 
@@ -249,7 +256,7 @@ class WalkthroughTest {
         Demo.start(ctx)
         record(false) // the Start recording press above began one with nothing in it
         record(true)
-        drive(8)
+        drive(20) // long enough to be kept
         record(false)
         rule.onAllNodesWithText("Trips").onFirst().performClick()
         drive(2)

@@ -23,9 +23,6 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sin
 
-/** The three buttons drawn on the Music screen. */
-enum class MusicControl { PREVIOUS, PLAY_PAUSE, NEXT }
-
 /**
  * The Music screen. The cover's own colours fill the whole screen as a soft blur behind everything. In front
  * of that: the cover in a rounded square, the app's icon and name, the song and artist, the song's length drawn
@@ -57,37 +54,30 @@ class MusicPainter(context: Context) {
     private var lookAspect = 0f
     private var look: CoverLook.Look? = null
 
-    /** False when Android Auto is showing its own buttons beside the picture: the drawn ones are left out and the rest spreads into the room. */
-    var buttonsDrawn = true
-
-    private val hits = ArrayList<Pair<RectF, MusicControl>>()
-
-    /** Which button a touch at ([x], [y]) landed on, in the surface's own pixels, or null. */
-    fun hit(x: Float, y: Float): MusicControl? = hits.firstOrNull { it.first.contains(x, y) }?.second
-
-    fun draw(c: Canvas, r: RectF, @Suppress("UNUSED_PARAMETER") s: Snapshot, @Suppress("UNUSED_PARAMETER") units: Units) {
+    /** [r] is where the words and the cover may go; [full] is the whole surface, which the backdrop fills right to its edges. */
+    fun draw(c: Canvas, r: RectF, @Suppress("UNUSED_PARAMETER") s: Snapshot, @Suppress("UNUSED_PARAMETER") units: Units, full: RectF = r) {
         MediaWatcher.poll(app)
-        render(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis())
+        render(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis(), full)
     }
 
-    internal fun render(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
+    internal fun render(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long, backdrop: RectF = r) {
         val h = r.height()
         val w = r.width()
-        hits.clear()
 
-        // The backdrop: the cover's colours, blurred, darkened enough to keep the words readable.
-        val cover = np?.art?.let { lookOf(it, w / h) }
+        // The backdrop: the cover's colours, blurred, darkened enough to keep the words readable. It runs to the
+        // edges of the whole surface, so there's no box where the safe area ends.
+        val cover = np?.art?.let { lookOf(it, backdrop.width() / backdrop.height()) }
         fill.shader = null
         fill.color = Colors.BG
-        c.drawRect(r, fill)
+        c.drawRect(backdrop, fill)
         if (cover != null) {
-            c.drawBitmap(cover.backdrop, null, r, backdropPaint)
+            c.drawBitmap(cover.backdrop, null, backdrop, backdropPaint)
             fill.shader = LinearGradient(
-                r.left, r.top, r.left, r.bottom,
+                backdrop.left, backdrop.top, backdrop.left, backdrop.bottom,
                 intArrayOf(Color.argb(120, 8, 10, 12), Color.argb(150, 8, 10, 12), Color.argb(205, 8, 10, 12)),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(backdrop, fill)
             fill.shader = null
         }
         val accent = cover?.palette?.get(0) ?: np?.accent ?: Colors.ACCENT
@@ -104,7 +94,7 @@ class MusicPainter(context: Context) {
                 artRect.centerX(), artRect.centerY(), h * 0.95f,
                 intArrayOf((accent and 0x00FFFFFF) or (0x34 shl 24), 0x00000000), floatArrayOf(0f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(backdrop, fill)
             fill.shader = null
         }
 
@@ -156,40 +146,13 @@ class MusicPainter(context: Context) {
         }
         // Sized from the cover as well as the screen, so in a narrow space the lines don't run into each other.
         number(min(h * 0.105f, art * 0.15f), Colors.FG)
-        // Without the buttons underneath, the words and the waveform sit lower and get more room.
-        val low = if (buttonsDrawn) 0f else art * 0.07f
+        // The words and the waveform sit in the middle of the cover's height, with room to read.
+        val low = art * 0.07f
         marquee(c, np.title, tx, top + art * 0.32f + low, tw, clockMs)
         label(min(h * 0.066f, art * 0.095f), soft)
         marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, top + art * 0.46f + low, tw, clockMs)
 
-        waves(c, np, tx, tw, top + art * 0.595f + low * 2.6f, art * (if (buttonsDrawn) 0.085f else 0.11f), h, accent, clockMs)
-        if (!buttonsDrawn) return
-
-        // The three buttons, centred under the words.
-        val cy = top + art * 0.905f
-        val mid = tx + tw / 2
-        val gap = min(tw * 0.28f, art * 0.34f)
-        val big = art * 0.095f
-        control(c, MusicControl.PREVIOUS, mid - gap, cy, art * 0.07f)
-        // Play or pause: a filled disc in the cover's colour with the symbol cut out of it.
-        fill.color = Colors.mix(accent, Color.WHITE, 0.35f)
-        c.drawCircle(mid, cy, big, fill)
-        fill.color = Color.rgb(14, 16, 18)
-        if (np.playing) {
-            val bw = big * 0.2f
-            val bh = big * 0.62f
-            c.drawRoundRect(RectF(mid - big * 0.3f - bw / 2, cy - bh / 2, mid - big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
-            c.drawRoundRect(RectF(mid + big * 0.3f - bw / 2, cy - bh / 2, mid + big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
-        } else {
-            glyphPath.reset()
-            glyphPath.moveTo(mid - big * 0.26f, cy - big * 0.4f)
-            glyphPath.lineTo(mid + big * 0.46f, cy)
-            glyphPath.lineTo(mid - big * 0.26f, cy + big * 0.4f)
-            glyphPath.close()
-            c.drawPath(glyphPath, fill)
-        }
-        hits += RectF(mid - big * 1.2f, cy - big * 1.2f, mid + big * 1.2f, cy + big * 1.2f) to MusicControl.PLAY_PAUSE
-        control(c, MusicControl.NEXT, mid + gap, cy, art * 0.07f)
+        waves(c, np, tx, tw, top + art * 0.595f + low * 2.6f, art * 0.11f, h, accent, clockMs)
     }
 
     /**
@@ -234,22 +197,6 @@ class MusicPainter(context: Context) {
         }
     }
 
-    /** A previous or next button: a triangle and a bar, drawn in the pale text colour. */
-    private fun control(c: Canvas, which: MusicControl, cx: Float, cy: Float, size: Float) {
-        val dir = if (which == MusicControl.PREVIOUS) -1f else 1f
-        fill.color = Colors.FG
-        glyphPath.reset()
-        glyphPath.moveTo(cx - dir * size * 0.35f, cy - size * 0.55f)
-        glyphPath.lineTo(cx + dir * size * 0.65f, cy)
-        glyphPath.lineTo(cx - dir * size * 0.35f, cy + size * 0.55f)
-        glyphPath.close()
-        c.drawPath(glyphPath, fill)
-        // The bar goes on the side the triangle points to: |< for previous, >| for next.
-        val barX = cx + dir * size * 0.95f
-        c.drawRoundRect(RectF(barX - size * 0.09f, cy - size * 0.55f, barX + size * 0.09f, cy + size * 0.55f), size * 0.06f, size * 0.06f, fill)
-        hits += RectF(cx - size * 1.45f, cy - size * 1.45f, cx + size * 1.45f, cy + size * 1.45f) to which
-    }
-
     /** The player as a tall card, for the right-hand side of the map screen: cover, song, artist, waveform and buttons. */
     fun drawPanel(c: Canvas, r: RectF) {
         MediaWatcher.poll(app)
@@ -257,7 +204,6 @@ class MusicPainter(context: Context) {
     }
 
     internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
-        hits.clear()
         val w = r.width()
         val h = r.height()
         val radius = min(w, h) * 0.07f
@@ -321,36 +267,8 @@ class MusicPainter(context: Context) {
         label(min(w * 0.058f, h * 0.036f), soft)
         marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, artRect.bottom + h * 0.085f + h * 0.058f, inner, clockMs)
 
-        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * (if (buttonsDrawn) 0.085f else 0.13f)
-        waves(c, np, tx, inner, wavesY, h * (if (buttonsDrawn) 0.032f else 0.045f), h, accent, clockMs)
-        if (!buttonsDrawn) {
-            c.restore()
-            return
-        }
-
-        // Buttons along the bottom.
-        val big = min(w * 0.11f, h * 0.065f)
-        val cy = r.bottom - p - big
-        val gap = min(w * 0.27f, big * 3.4f)
-        control(c, MusicControl.PREVIOUS, r.centerX() - gap, cy, big * 0.72f)
-        fill.color = Colors.mix(accent, Color.WHITE, 0.35f)
-        c.drawCircle(r.centerX(), cy, big, fill)
-        fill.color = Color.rgb(14, 16, 18)
-        if (np.playing) {
-            val bw = big * 0.2f
-            val bh = big * 0.62f
-            c.drawRoundRect(RectF(r.centerX() - big * 0.3f - bw / 2, cy - bh / 2, r.centerX() - big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
-            c.drawRoundRect(RectF(r.centerX() + big * 0.3f - bw / 2, cy - bh / 2, r.centerX() + big * 0.3f + bw / 2, cy + bh / 2), bw * 0.3f, bw * 0.3f, fill)
-        } else {
-            glyphPath.reset()
-            glyphPath.moveTo(r.centerX() - big * 0.26f, cy - big * 0.4f)
-            glyphPath.lineTo(r.centerX() + big * 0.46f, cy)
-            glyphPath.lineTo(r.centerX() - big * 0.26f, cy + big * 0.4f)
-            glyphPath.close()
-            c.drawPath(glyphPath, fill)
-        }
-        hits += RectF(r.centerX() - big * 1.2f, cy - big * 1.2f, r.centerX() + big * 1.2f, cy + big * 1.2f) to MusicControl.PLAY_PAUSE
-        control(c, MusicControl.NEXT, r.centerX() + gap, cy, big * 0.72f)
+        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * 0.13f
+        waves(c, np, tx, inner, wavesY, h * 0.045f, h, accent, clockMs)
         c.restore()
     }
 

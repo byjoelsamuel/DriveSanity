@@ -8,7 +8,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
-import io.github.byjoelsamuel.drivesanity.MusicControl
 import io.github.byjoelsamuel.drivesanity.MusicPainter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -88,26 +87,20 @@ class MusicPainterTest {
     }
 
     @Test
-    fun buttonsAreDrawnAndFindable() {
-        val w = 1600
-        val h = 640
-        val painter = shot("music-playing-1600x640", w, h, playing(cover()))
-        // Somewhere in the lower middle of the text column there are three buttons, in order.
-        val found = (0 until w step 6).mapNotNull { x -> painter.hit(x.toFloat(), h * 0.86f) }.distinct()
-        assertEquals(listOf(MusicControl.PREVIOUS, MusicControl.PLAY_PAUSE, MusicControl.NEXT), found)
-        assertNull(painter.hit(5f, 5f))
+    fun theMusicScreenDrawsWithNothingToPress() {
+        // The previous, play/pause and next buttons are Android Auto's own, at the corner, so the picture has none.
+        shot("music-playing-1600x640", 1600, 640, playing(cover()))
     }
 
     @Test
     fun pausedAndEmptyScreensDraw() {
         shot("music-paused-800x400", 800, 400, playing(cover(), 20_000, isPlaying = false))
-        val empty = shot("music-nothing-800x400", 800, 400, null, access = false)
-        assertNull("no buttons when nothing is playing", empty.hit(400f, 340f))
+        shot("music-nothing-800x400", 800, 400, null, access = false)
         shot("music-nocover-1600x640", 1600, 640, playing(null))
     }
 
     @Test
-    fun thePanelForTheMapScreenDrawsAndHasThreeButtons() {
+    fun thePanelForTheMapScreenDraws() {
         val painter = MusicPainter(ctx)
         val bmp = Bitmap.createBitmap(640, 700, Bitmap.Config.ARGB_8888)
         painter.renderPanel(Canvas(bmp), RectF(0f, 0f, 640f, 700f), playing(cover()), true, 1_000L)
@@ -115,11 +108,7 @@ class MusicPainterTest {
             File(dir).mkdirs()
             File(dir, "music-panel.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
-        val found = (0 until 640 step 6).mapNotNull { x -> painter.hit(x.toFloat(), 700f * 0.9f) }.distinct()
-        assertEquals(listOf(MusicControl.PREVIOUS, MusicControl.PLAY_PAUSE, MusicControl.NEXT), found)
-        val empty = MusicPainter(ctx)
-        empty.renderPanel(Canvas(Bitmap.createBitmap(640, 700, Bitmap.Config.ARGB_8888)), RectF(0f, 0f, 640f, 700f), null, true, 0L)
-        assertNull(empty.hit(320f, 630f))
+        MusicPainter(ctx).renderPanel(Canvas(Bitmap.createBitmap(640, 700, Bitmap.Config.ARGB_8888)), RectF(0f, 0f, 640f, 700f), null, true, 0L)
     }
 
     @Test
@@ -148,5 +137,24 @@ class MusicPainterTest {
             return px
         }
         assertTrue(shortStrip(0L).contentEquals(shortStrip(9_000L)))
+    }
+
+    @Test
+    fun theBackdropRunsToTheEdgesOfTheWholeSurfaceNotJustTheSafeArea() {
+        val w = 1600
+        val h = 640
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        val safe = RectF(60f, 0f, w - 180f, h - 40f) // what Android Auto says is clear: not the right-hand strip or the bottom
+        val bg = Color.rgb(18, 20, 22)
+        fun corners(backdrop: RectF): List<Int> {
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            bmp.eraseColor(bg)
+            MusicPainter(ctx).render(Canvas(bmp), safe, playing(cover()), true, 1_000L, backdrop)
+            return listOf(bmp.getPixel(w - 3, 3), bmp.getPixel(w - 3, h - 3), bmp.getPixel(w - 3, h / 2), bmp.getPixel(safe.centerX().toInt(), h - 3))
+        }
+        // Painted over just the safe area, the strip and the bottom stay plain: that's the box.
+        assertTrue("old way left the edges plain", corners(safe).all { it == bg })
+        // Painted over the whole surface, they're the cover's colours.
+        assertTrue("every edge now has the backdrop: ${corners(full)}", corners(full).none { it == bg })
     }
 }

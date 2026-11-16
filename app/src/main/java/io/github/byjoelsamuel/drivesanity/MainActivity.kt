@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity(), PhoneActions {
     override fun toggleRecording() {
         val wasRecording = DriveEngine.recording
         DriveEngine.toggleRecording(this)
-        if (wasRecording) toast("Saved. It's in the Trips tab.")
+        if (wasRecording) toast(if (DriveEngine.lastRecordingKept) "Saved. It's in the Trips tab." else "Too short to keep (under 15 seconds), so it wasn't saved")
     }
 
     override fun swapUnits() = Prefs.toggleUnits(this)
