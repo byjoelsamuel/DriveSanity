@@ -116,8 +116,13 @@ The phone app has four tabs: **Drive**, **0–60**, **Trips**
 full-screen dashboards. Pick it in Settings → Car screens, or with the **Screens** button at the top of the
 car screen, which lists all six.
 
-**Gauges**: bar gauges for RPM, throttle, coolant and fuel (or economy) on the left, a huge
-gear and the speed in the middle, g-force, battery, intake air and tires on the right.
+**Gauges**: built like a sports car's display, with no round dials. One long rev bar of leaning ticks
+runs across the top, growing taller towards the redline, with a marker that holds your highest recent
+revs. In the middle: the gear in a leaning frame, a very large speed, and the trip and fuel economy.
+Along the bottom: the throttle and the engine load as two wide bars, then coolant, intake air, battery,
+fuel and the four tire pressures. Everything on it comes from the car and the GPS speed; nothing from the
+phone's motion sensor. Everything is sized from the space it's given, so it fills
+any shape of screen. The numbers meant for restyling it are together at the top of `GaugesPainter.kt`.
 
 ![The Gauges screen, with sample data](docs/car-screen.png)
 
