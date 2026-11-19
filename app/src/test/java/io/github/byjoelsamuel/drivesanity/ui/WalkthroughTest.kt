@@ -17,6 +17,9 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
@@ -151,7 +154,7 @@ class WalkthroughTest {
         shot("phone-2-drive-demo")
         shot("phone-2-drive-demo-full", 2300)
 
-        rule.onAllNodesWithText("0–60").onFirst().performClick()
+        rule.onAllNodesWithText("0–60").onLast().performClick()
         shot("phone-3-launch")
         // The 0–60 result can be turned into a picture.
         rule.onNodeWithText("Make a picture").performClick()
@@ -162,7 +165,7 @@ class WalkthroughTest {
         shot("phone-4-trips-empty")
 
         // Record a short trip, then look at Trips and open it.
-        rule.onAllNodesWithText("Drive").onFirst().performClick()
+        rule.onAllNodesWithText("Home").onFirst().performClick()
         rule.waitForIdle()
         record(true)
         drive(70)
@@ -225,14 +228,14 @@ class WalkthroughTest {
         rule.mainClock.advanceTimeBy(300)
 
         // Drive, before anything is set up.
-        rule.onNodeWithText("Calibrate").performClick()
-        rule.onNodeWithText("Navigate").performClick()
-        rule.onNodeWithText("No location access").performClick()
+        rule.onNodeWithText("Calibrate").performSemanticsAction(SemanticsActions.OnClick) // a direct press: scrolling it into view can park it under the Record bar
+        rule.onNodeWithText("Navigate").performSemanticsAction(SemanticsActions.OnClick) // a direct press: scrolling it into view can park it under the Record bar
+        rule.onNodeWithText("No location access").performSemanticsAction(SemanticsActions.OnClick) // a direct press: scrolling it into view can park it under the Record bar
         // The empty state offers one way to do each thing, not two: Calibrate once, and no dead "– km/h".
         rule.onAllNodesWithText("Calibrate").assertCountEquals(1)
         rule.onNodeWithText("Not calibrated").assertDoesNotExist()
-        rule.onNodeWithText("Allow location").performClick()
-        rule.onNodeWithText("OBD2 not connected").performClick()
+        rule.onNodeWithText("Allow location").performSemanticsAction(SemanticsActions.OnClick) // a direct press: scrolling it into view can park it under the Record bar
+        rule.onNodeWithText("OBD2 not connected").performSemanticsAction(SemanticsActions.OnClick) // a direct press: scrolling it into view can park it under the Record bar
         rule.onNodeWithText("Start recording").performClick()
         rule.mainClock.advanceTimeBy(300)
         org.junit.Assert.assertEquals(listOf("calibrate", "navigate", "askLocation", "askLocation", "pickObd", "toggleRecording"), asked)
@@ -241,7 +244,7 @@ class WalkthroughTest {
         rule.onNodeWithText("Car and sensors", ignoreCase = true).assertExists()
 
         // 0–60: the countdown switch brings up the Start button, and both buttons press.
-        rule.onAllNodesWithText("0–60").onFirst().performClick()
+        rule.onAllNodesWithText("0–60").onLast().performClick()
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("On").performClick()
         rule.mainClock.advanceTimeBy(300)

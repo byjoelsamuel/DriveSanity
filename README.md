@@ -98,9 +98,9 @@ one. The ones that matter most:
 ## First drive
 
 1. Mount the phone firmly, facing you or lying flat with its top pointing forward.
-2. Stop on level ground and tap **Calibrate** (Drive tab, or in Settings). The app uses this to
+2. Stop on level ground and tap **Calibrate** (Home tab, or in Settings). The app uses this to
    find which way is forward. Do it again if you move the mount.
-3. Drive. To record, tap **Start recording** on the Drive tab. Recordings show up in **Trips**:
+3. Drive. To record, tap **Start recording** on the Home tab. Recordings show up in **Trips**:
    tap one to see its path and graphs, or share it as a spreadsheet (CSV).
 
 Without an OBD2 adapter you still get speed, braking, g-force and trip stats.
@@ -111,8 +111,10 @@ everything first.
 
 ## The screens
 
-The phone app has four tabs: **Drive**, **0–60**, **Trips**
-(your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. What you tap on a page shows at once, but nothing takes effect until you press **Apply** on the bar at the bottom and confirm; **Discard** drops it, each page has **Reset to default**, and **Reset all settings** at the foot of the list puts everything back. **Storage and data** shows what trips, raw recordings and the map cache take up, and clears them. The car shows one of six
+The phone app has four tabs: **Home**, **0–60**, **Trips**
+(your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. What you tap on a page shows at once, but nothing takes effect until you press **Apply** on the bar at the bottom and confirm; **Discard** drops it, each page has **Reset to default**, and **Reset all settings** at the foot of the list puts everything back. **Storage and data** shows what trips, raw recordings and the map cache take up, and clears them. **Home** is the main screen. At the top it shows the screen the car is showing, live, with a chip for each screen so you can switch it right there (the car's own Screens button does the same). Under that: speed and gear, anything the car is warning about, "Where to?", the engine readings, this trip, your last drive, and the Record button.
+
+The car shows one of six
 full-screen dashboards. Pick it in Settings → Car screens, or with the **Screens** button at the top of the
 car screen, which lists all six.
 
@@ -399,7 +401,7 @@ are Google's own figures, which include traffic. The roads on the map aren't col
 Google doesn't publish what that notification looks like, so if a Google Maps update changes it the box
 simply doesn't show. Turn it off in **Settings → Google Maps directions**.
 
-**On the phone**, tap **Where to?** on the Drive tab and type an address.
+**On the phone**, tap **Where to?** on the Home tab and type an address.
 
 **On the car screen**, show the Map screen and tap the magnifying glass over the map. Android
 Auto opens its keyboard (only while you're parked) and a microphone, so you can type or say the
