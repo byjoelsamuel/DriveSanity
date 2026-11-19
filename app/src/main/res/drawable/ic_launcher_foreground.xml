@@ -1,20 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A row of thin thin ticks like the app's bars: lit up to the taller copper one. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:strokeColor="#E8E6E1"
-        android:strokeWidth="3"
-        android:fillColor="#00000000"
-        android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
-    <path
-        android:strokeColor="#80848A"
-        android:strokeWidth="2"
-        android:fillColor="#00000000"
-        android:pathData="M54,42a12,12 0,1 1,0 24a12,12 0,1 1,0 -24z M30,54h48 M54,30v48" />
+        android:fillColor="#E8E6E1"
+        android:pathData="M24.00,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM31.50,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM39.00,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM46.50,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM54.00,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM61.50,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3z" />
     <path
         android:fillColor="#D08B63"
-        android:pathData="M60,61a6,6 0,1 1,0 12a6,6 0,1 1,0 -12z" />
+        android:pathData="M69.00,32.00a2.3,2.3 0,0 1,2.3,2.3v39.40a2.3,2.3 0,0 1,-4.6,0v-39.40a2.3,2.3 0,0 1,2.3,-2.3z" />
+    <path
+        android:fillColor="#4A4E54"
+        android:pathData="M76.50,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3zM84.00,39.00a2.3,2.3 0,0 1,2.3,2.3v25.40a2.3,2.3 0,0 1,-4.6,0v-25.40a2.3,2.3 0,0 1,2.3,-2.3z" />
 </vector>
