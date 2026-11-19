@@ -301,12 +301,14 @@ class ClusterPainter(context: Context) {
         val gap = w * 0.025f
 
         // Left: the map. Only the side that meets the player fades out; the others are the edge of the screen.
-        val playerLeft = inner.left + w * 0.63f + gap
+        // The player gets nearly half the width, so the cover and the song are easy to read.
+        val mapW = w * 0.52f
+        val playerLeft = inner.left + mapW + gap
         val mapArea = RectF(full.left, full.top, playerLeft - gap * 0.6f, full.bottom)
         map.draw(c, mapArea, s, units, fadeLeft = false, fadeTop = false, fadeBottom = false)
         // Google Maps' own directions, when it's navigating on the phone; otherwise this app's.
         val google = GoogleNav.current()
-        val banner = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.top + h * 0.32f)
+        val banner = RectF(inner.left, inner.top, inner.left + mapW, inner.top + h * 0.32f)
         if (google != null) {
             map.drawGoogleDirections(c, banner, google, 238)
         } else if (Nav.route != null || Nav.message != null) {
@@ -315,7 +317,9 @@ class ClusterPainter(context: Context) {
 
         // Right: what's playing, and nothing else (no gauges or driving numbers).
         // Android Auto lays its top row of buttons over the top of the picture when they show, so the player starts below that.
-        music.drawPanel(c, RectF(playerLeft, inner.top + h * 0.16f, inner.right, inner.bottom))
+        val player = RectF(playerLeft, inner.top + h * 0.14f, inner.right, inner.bottom)
+        music.drawPanelGlow(c, player, w * 0.2f)
+        music.drawPanel(c, player)
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {

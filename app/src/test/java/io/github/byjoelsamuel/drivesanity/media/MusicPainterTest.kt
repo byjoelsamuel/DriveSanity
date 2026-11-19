@@ -157,4 +157,24 @@ class MusicPainterTest {
         // Painted over the whole surface, they're the cover's colours.
         assertTrue("every edge now has the backdrop: ${corners(full)}", corners(full).none { it == bg })
     }
+
+    @Test
+    fun thePlayerCardFitsEveryShapeOfSpaceWithoutSpillingOut() {
+        // From a tall narrow card to a short wide one: nothing may be drawn outside the card's own rectangle.
+        val shapes = listOf(400 to 560, 600 to 560, 800 to 520, 900 to 420, 520 to 300)
+        for ((w, h) in shapes) {
+            val pad = 40
+            val bmp = Bitmap.createBitmap(w + 2 * pad, h + 2 * pad, Bitmap.Config.ARGB_8888)
+            val marker = Color.rgb(1, 2, 3)
+            bmp.eraseColor(marker)
+            val long = playing(cover()).copy(title = "A title long enough that it has to scroll rather than fit on one line", artist = "An Artist With A Long Name", album = "And A Long Album Too")
+            MusicPainter(ctx).renderPanel(Canvas(bmp), RectF(pad.toFloat(), pad.toFloat(), (pad + w).toFloat(), (pad + h).toFloat()), long, true, 3_000L)
+            val px = IntArray(bmp.width * bmp.height).also { bmp.getPixels(it, 0, bmp.width, 0, 0, bmp.width, bmp.height) }
+            fun outside(x: Int, y: Int) = x < pad - 1 || x > pad + w || y < pad - 1 || y > pad + h
+            val strays = px.indices.count { outside(it % bmp.width, it / bmp.width) && px[it] != marker }
+            assertEquals("${w}x$h: drew $strays pixels outside the card", 0, strays)
+            // And the card isn't empty: the cover, words and waveform are in it.
+            assertTrue("${w}x$h: something is drawn", px.indices.count { !outside(it % bmp.width, it / bmp.width) && px[it] != marker } > w * h / 2)
+        }
+    }
 }
