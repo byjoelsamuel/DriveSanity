@@ -319,9 +319,12 @@ class ClusterPainter(context: Context) {
 
         // Right: what's playing, and nothing else (no gauges or driving numbers).
         // Android Auto lays its top row of buttons over the top of the picture when they show, so the player starts below that.
+        // The card runs the full height of the screen, like the map beside it, and out to the right edge; the cover
+        // and the words stay inside the clear area, below where Android Auto's top buttons show.
+        val card = RectF(playerLeft, full.top, full.right, full.bottom)
         val player = RectF(playerLeft, inner.top + h * 0.12f, inner.right, inner.bottom)
-        music.drawPanelGlow(c, player, w * 0.2f)
-        music.drawPanel(c, player)
+        music.drawPanelGlow(c, card, w * 0.2f)
+        music.drawPanel(c, player, card)
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {

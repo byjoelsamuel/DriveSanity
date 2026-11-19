@@ -300,6 +300,14 @@ class WalkthroughTest {
             val cardEnd = xs.last()
             val card = cardEnd - cardStart
             org.junit.Assert.assertTrue("${w}x$h: the player (${card}px) should be at least as wide as the map (${cardStart}px)", card >= cardStart * 0.97f)
+            // And as tall as the map, which runs from the top of the screen to the bottom.
+            val mid = (cardStart + cardEnd) / 2
+            fun busyAt(y: Int): Boolean {
+                val p = bmp.getPixel(mid, y)
+                return kotlin.math.abs(Color.red(p) - Color.red(plain)) + kotlin.math.abs(Color.green(p) - Color.green(plain)) + kotlin.math.abs(Color.blue(p) - Color.blue(plain)) > 12
+            }
+            org.junit.Assert.assertTrue("${w}x$h: the player card reaches the top of the screen", busyAt(1))
+            org.junit.Assert.assertTrue("${w}x$h: the player card reaches the bottom of the screen", busyAt(h - 2))
         }
     }
 }

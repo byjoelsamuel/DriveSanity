@@ -199,31 +199,36 @@ class MusicPainter(context: Context) {
     }
 
     /** The player as a tall card, for the right-hand side of the map screen: cover, song, artist, waveform and buttons. */
-    fun drawPanel(c: Canvas, r: RectF) {
+    /**
+     * [r] is where the words and the cover may go; [backdrop], when given, is the card itself, which can be taller
+     * and wider than that (it runs from the top of the screen to the bottom, like the map beside it).
+     */
+    fun drawPanel(c: Canvas, r: RectF, backdrop: RectF = r) {
         MediaWatcher.poll(app)
-        renderPanel(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis())
+        renderPanel(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis(), backdrop)
     }
 
-    internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
+    internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long, card: RectF = r) {
         val w = r.width()
         val h = r.height()
-        val radius = min(w, h) * 0.07f
+        // A card of its own has rounded corners; one that fills its side of the screen is square, edge to edge.
+        val radius = if (card == r) min(w, h) * 0.07f else 0f
         c.save()
         clip.reset()
-        clip.addRoundRect(r, radius, radius, Path.Direction.CW)
+        clip.addRoundRect(card, radius, radius, Path.Direction.CW)
         c.clipPath(clip)
         fill.shader = null
         fill.color = Color.rgb(16, 18, 20)
-        c.drawRect(r, fill)
-        val cover = np?.art?.let { lookOf(it, w / h) }
+        c.drawRect(card, fill)
+        val cover = np?.art?.let { lookOf(it, card.width() / card.height()) }
         if (cover != null) {
-            c.drawBitmap(cover.backdrop, null, r, backdropPaint)
+            c.drawBitmap(cover.backdrop, null, card, backdropPaint)
             fill.shader = LinearGradient(
-                r.left, r.top, r.left, r.bottom,
+                card.left, card.top, card.left, card.bottom,
                 intArrayOf(Color.argb(110, 8, 10, 12), Color.argb(150, 8, 10, 12), Color.argb(210, 8, 10, 12)),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(card, fill)
             fill.shader = null
         }
         val accent = cover?.palette?.get(0) ?: np?.accent ?: Colors.ACCENT
