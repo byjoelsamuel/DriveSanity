@@ -30,9 +30,10 @@ class LauncherIconTest {
         c.clipPath(Path().apply { addCircle(s / 2f, s / 2f, s / 2f, Path.Direction.CW) })
         icon.setBounds(0, 0, s, s)
         icon.draw(c)
-        val centre = bmp.getPixel(s / 2, s / 2)
-        val corner = bmp.getPixel(s / 2, s / 12)
-        assertTrue("icon is blank", (centre ushr 24) == 255 && (corner ushr 24) == 255 && centre != corner)
+        val pixels = IntArray(s * s).also { bmp.getPixels(it, 0, s, 0, 0, s, s) }
+        val background = bmp.getPixel(s / 2, s / 12)
+        val drawn = pixels.count { it != background && (it ushr 24) == 255 }
+        assertTrue("icon is blank", (background ushr 24) == 255 && drawn > s * s / 50)
         System.getenv("SHOTS_DIR")?.let { dir ->
             File(dir).mkdirs()
             File(dir, "launcher-icon.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }

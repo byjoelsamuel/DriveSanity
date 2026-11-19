@@ -467,3 +467,8 @@ include one that plays the whole demo through the app (`DemoFlowTest`) and check
 
 The font is [Poppins](https://fonts.google.com/specimen/Poppins), used under the SIL Open Font
 License (see `licenses/Poppins-OFL.txt`).
+
+The app icon is an outline traced from a photo of a Mazda 3 sedan by Kalmarle
+([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Mazda_MAZDA3_Sedan_1th_gen_BP_1.png),
+CC BY 4.0), redrawn with the app's ring-and-crosshair wheels and tick row. DriveSanity isn't
+affiliated with Mazda.
