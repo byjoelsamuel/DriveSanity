@@ -91,7 +91,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             containerColor = Ui.bg,
             bottomBar = {
                 NavigationBar(containerColor = Ui.card) {
-                    listOf("Drive" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
+                    listOf("Home" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
                         val on = tab == i
                         NavigationBarItem(
                             selected = on,
@@ -111,7 +111,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
             Box(Modifier.fillMaxSize().padding(pad)) {
                 Crossfade(targetState = tab, animationSpec = tween(180), label = "tab") { t ->
                     when (t) {
-                        0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 })
+                        0 -> DriveTab(s, units, tick, actions, openSetup = { tab = 3 }, recordings = recordings, openTrips = { tab = 2 })
                         1 -> LaunchTab(s, units)
                         2 -> TripsTab(units, recordings, tick, actions)
                         else -> SettingsTab(s, settings, Prefs.obdDevice(ctx)?.name, tick, actions)
