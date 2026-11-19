@@ -276,4 +276,30 @@ class WalkthroughTest {
         rule.mainClock.advanceTimeBy(300)
         org.junit.Assert.assertEquals(listOf("share", "delete"), asked)
     }
+
+    @Test
+    fun theMapScreensPlayerIsAtLeastAsWideAsTheMap() {
+        Demo.start(ctx)
+        drive(40)
+        for ((w, h) in listOf(1280 to 480, 1920 to 720, 1920 to 900)) {
+            val painter = DashPainter(ctx)
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            val whole = RectF(0f, 0f, w.toFloat(), h.toFloat())
+            val clear = RectF(w * 0.03f, 0f, w * 0.9f, h * 0.94f)
+            c.drawColor(Color.rgb(18, 20, 22))
+            repeat(30) { painter.draw(c, clear, DriveEngine.snapshot(), Prefs.units(ctx), Prefs.Layout.MAP, whole) }
+            // Along the middle of the screen, find where the player card starts and ends: it's the stretch that isn't plain background.
+            val plain = Color.rgb(18, 20, 22)
+            fun busy(x: Int): Boolean {
+                val p = bmp.getPixel(x, h / 2)
+                return kotlin.math.abs(Color.red(p) - Color.red(plain)) + kotlin.math.abs(Color.green(p) - Color.green(plain)) + kotlin.math.abs(Color.blue(p) - Color.blue(plain)) > 40
+            }
+            val xs = (w / 3 until w).filter { busy(it) }
+            val cardStart = xs.first()
+            val cardEnd = xs.last()
+            val card = cardEnd - cardStart
+            org.junit.Assert.assertTrue("${w}x$h: the player (${card}px) should be at least as wide as the map (${cardStart}px)", card >= cardStart * 0.97f)
+        }
+    }
 }
