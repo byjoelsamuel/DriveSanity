@@ -160,7 +160,7 @@ class MusicPainter(context: Context) {
      * played part is in the cover's colour, the rest pale; with the song playing, the bars around the
      * playhead rise and fall.
      */
-    private fun waves(c: Canvas, np: NowPlaying, x: Float, width: Float, cy: Float, maxHalf: Float, h: Float, accent: Int, clockMs: Long) {
+    private fun waves(c: Canvas, np: NowPlaying, x: Float, width: Float, cy: Float, maxHalf: Float, h: Float, accent: Int, clockMs: Long, showTimes: Boolean = true) {
         val n = (width / (h * 0.019f)).toInt().coerceIn(28, 96)
         val pitch = width / n
         val seed = np.title.hashCode() xor np.artist.hashCode()
@@ -190,6 +190,7 @@ class MusicPainter(context: Context) {
             stroke.strokeWidth = pitch * 0.62f
             val px = x + f * width
             c.drawLine(px, cy - maxHalf * 1.3f, px, cy + maxHalf * 1.3f, stroke)
+            if (!showTimes) return
             label(h * 0.046f, Color.argb(215, 236, 236, 236))
             c.drawText(clock(np.positionNow()), x, cy + maxHalf * 1.3f + h * 0.055f, text)
             label(h * 0.046f, Color.argb(215, 236, 236, 236), Paint.Align.RIGHT)
@@ -198,31 +199,36 @@ class MusicPainter(context: Context) {
     }
 
     /** The player as a tall card, for the right-hand side of the map screen: cover, song, artist, waveform and buttons. */
-    fun drawPanel(c: Canvas, r: RectF) {
+    /**
+     * [r] is where the words and the cover may go; [backdrop], when given, is the card itself, which can be taller
+     * and wider than that (it runs from the top of the screen to the bottom, like the map beside it).
+     */
+    fun drawPanel(c: Canvas, r: RectF, backdrop: RectF = r) {
         MediaWatcher.poll(app)
-        renderPanel(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis())
+        renderPanel(c, r, MediaWatcher.now, MediaWatcher.access, SystemClock.uptimeMillis(), backdrop)
     }
 
-    internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long) {
+    internal fun renderPanel(c: Canvas, r: RectF, np: NowPlaying?, access: Boolean, clockMs: Long, card: RectF = r) {
         val w = r.width()
         val h = r.height()
-        val radius = min(w, h) * 0.07f
+        // A card of its own has rounded corners; one that fills its side of the screen is square, edge to edge.
+        val radius = if (card == r) min(w, h) * 0.07f else 0f
         c.save()
         clip.reset()
-        clip.addRoundRect(r, radius, radius, Path.Direction.CW)
+        clip.addRoundRect(card, radius, radius, Path.Direction.CW)
         c.clipPath(clip)
         fill.shader = null
         fill.color = Color.rgb(16, 18, 20)
-        c.drawRect(r, fill)
-        val cover = np?.art?.let { lookOf(it, w / h) }
+        c.drawRect(card, fill)
+        val cover = np?.art?.let { lookOf(it, card.width() / card.height()) }
         if (cover != null) {
-            c.drawBitmap(cover.backdrop, null, r, backdropPaint)
+            c.drawBitmap(cover.backdrop, null, card, backdropPaint)
             fill.shader = LinearGradient(
-                r.left, r.top, r.left, r.bottom,
+                card.left, card.top, card.left, card.bottom,
                 intArrayOf(Color.argb(110, 8, 10, 12), Color.argb(150, 8, 10, 12), Color.argb(210, 8, 10, 12)),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
             )
-            c.drawRect(r, fill)
+            c.drawRect(card, fill)
             fill.shader = null
         }
         val accent = cover?.palette?.get(0) ?: np?.accent ?: Colors.ACCENT
@@ -241,9 +247,9 @@ class MusicPainter(context: Context) {
             return
         }
 
-        // The cover, centred at the top.
-        val art = min(inner, h * 0.4f)
-        val artRect = RectF(r.centerX() - art / 2, r.top + p, r.centerX() + art / 2, r.top + p + art)
+        // Top: the cover on the left; beside it the app, the time in big numbers, and whether it's playing.
+        val art = min(h * 0.47f, inner * 0.5f)
+        val artRect = RectF(r.left + p, r.top + p, r.left + p + art, r.top + p + art)
         fill.setShadowLayer(art * 0.08f, 0f, art * 0.03f, Color.argb(150, 0, 0, 0))
         fill.color = Colors.BOX
         val cr = art * 0.12f
@@ -260,16 +266,76 @@ class MusicPainter(context: Context) {
             glyph(c, noteGlyph, RectF(artRect).apply { inset(art * 0.3f, art * 0.3f) }, Colors.DIM)
         }
 
-        // Song and artist, left-aligned to the card; long ones scroll.
-        val tx = r.left + p
-        number(min(w * 0.082f, h * 0.05f), Colors.FG)
-        marquee(c, np.title, tx, artRect.bottom + h * 0.085f, inner, clockMs)
-        label(min(w * 0.058f, h * 0.036f), soft)
-        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, artRect.bottom + h * 0.085f + h * 0.058f, inner, clockMs)
+        val x0 = artRect.right + p
+        val colW = r.right - p - x0
+        val icon = art * 0.15f
+        if (np.appIcon != null) {
+            val ir = RectF(x0, artRect.top, x0 + icon, artRect.top + icon)
+            c.save()
+            clip.reset()
+            clip.addRoundRect(ir, icon * 0.24f, icon * 0.24f, Path.Direction.CW)
+            c.clipPath(clip)
+            c.drawBitmap(np.appIcon, null, ir, bmpPaint)
+            c.restore()
+        } else {
+            fill.color = Colors.BOX
+            c.drawRoundRect(RectF(x0, artRect.top, x0 + icon, artRect.top + icon), icon * 0.24f, icon * 0.24f, fill)
+            glyph(c, noteGlyph, RectF(x0, artRect.top, x0 + icon, artRect.top + icon).apply { inset(icon * 0.2f, icon * 0.2f) }, Colors.DIM)
+        }
+        // The app's name beside its icon, when it fits whole; a clipped "YOUTUBE MU…" is worse than the icon alone.
+        label(art * 0.085f, soft)
+        val appName = np.appName.uppercase()
+        if (text.measureText(appName) <= colW - icon * 1.3f) c.drawText(appName, x0 + icon * 1.3f, artRect.top + icon * 0.7f, text)
 
-        val wavesY = artRect.bottom + h * 0.085f + h * 0.058f + h * 0.13f
-        waves(c, np, tx, inner, wavesY, h * 0.045f, h, accent, clockMs)
+        // The time, big, so it can be read across the car; the length of the song under it.
+        if (np.durationMs > 0) {
+            number(min(art * 0.36f, colW / 3.1f), Colors.FG)
+            c.drawText(clock(np.positionNow()), x0, artRect.top + art * 0.66f, text)
+            label(art * 0.1f, soft)
+            c.drawText("of ${clock(np.durationMs)}", x0, artRect.top + art * 0.8f, text)
+        }
+        // Playing or paused, since the buttons aren't on the picture.
+        val stateY = artRect.bottom - art * 0.02f
+        val sg = art * 0.1f
+        fill.color = accent
+        if (np.playing) {
+            c.drawRoundRect(RectF(x0, stateY - sg, x0 + sg * 0.34f, stateY), sg * 0.08f, sg * 0.08f, fill)
+            c.drawRoundRect(RectF(x0 + sg * 0.62f, stateY - sg, x0 + sg * 0.96f, stateY), sg * 0.08f, sg * 0.08f, fill)
+        } else {
+            glyphPath.reset()
+            glyphPath.moveTo(x0, stateY - sg)
+            glyphPath.lineTo(x0 + sg * 0.95f, stateY - sg / 2)
+            glyphPath.lineTo(x0, stateY)
+            glyphPath.close()
+            c.drawPath(glyphPath, fill)
+        }
+        label(art * 0.095f, accent)
+        c.drawText(if (np.playing) "PLAYING" else "PAUSED", x0 + sg * 1.35f, stateY - sg * 0.1f, text)
+
+        // Below: the song and artist across the whole card, then the waveform. Long names scroll.
+        val tx = r.left + p
+        val titleY = artRect.bottom + h * 0.1f
+        number(min(w * 0.075f, h * 0.068f), Colors.FG)
+        marquee(c, np.title, tx, titleY, inner, clockMs)
+        label(min(w * 0.052f, h * 0.042f), soft)
+        marquee(c, if (np.album.isNotEmpty() && np.artist.isNotEmpty()) "${np.artist} · ${np.album}" else np.artist.ifEmpty { np.album }, tx, titleY + h * 0.07f, inner, clockMs)
+        val maxHalf = h * 0.06f
+        waves(c, np, tx, inner, titleY + h * 0.07f + h * 0.05f + maxHalf * 1.4f, maxHalf, h, accent, clockMs, showTimes = false)
         c.restore()
+    }
+
+    /** A soft glow in the cover's colour, spilling from the player's edge onto whatever is beside it (the map). */
+    fun drawPanelGlow(c: Canvas, r: RectF, reach: Float) {
+        val np = MediaWatcher.now ?: return
+        val art = np.art ?: return
+        val accent = lookOf(art, r.width() / r.height())?.palette?.get(0) ?: np.accent
+        fill.shader = RadialGradient(
+            r.left, r.centerY(), reach,
+            intArrayOf((accent and 0x00FFFFFF) or (0x5A shl 24), (accent and 0x00FFFFFF) or (0x1E shl 24), 0x00000000),
+            floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP,
+        )
+        c.drawRect(r.left - reach, r.top - reach * 0.2f, r.left, r.bottom + reach * 0.2f, fill)
+        fill.shader = null
     }
 
     // When each long line was first drawn, so its scrolling starts from the beginning for a new song.

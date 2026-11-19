@@ -301,12 +301,16 @@ class ClusterPainter(context: Context) {
         val gap = w * 0.025f
 
         // Left: the map. Only the side that meets the player fades out; the others are the edge of the screen.
-        val playerLeft = inner.left + w * 0.63f + gap
+        // The split is measured from the left edge of the screen (where the map starts) to the right edge of
+        // the clear area (where the player ends), so the player gets just over half of what's there, a bit
+        // more than the map, and the cover and the song are easy to read.
+        val playerLeft = full.left + (inner.right - full.left) * 0.47f
+        val mapW = playerLeft - gap - inner.left
         val mapArea = RectF(full.left, full.top, playerLeft - gap * 0.6f, full.bottom)
         map.draw(c, mapArea, s, units, fadeLeft = false, fadeTop = false, fadeBottom = false)
         // Google Maps' own directions, when it's navigating on the phone; otherwise this app's.
         val google = GoogleNav.current()
-        val banner = RectF(inner.left, inner.top, inner.left + w * 0.63f, inner.top + h * 0.32f)
+        val banner = RectF(inner.left, inner.top, inner.left + mapW, inner.top + h * 0.32f)
         if (google != null) {
             map.drawGoogleDirections(c, banner, google, 238)
         } else if (Nav.route != null || Nav.message != null) {
@@ -315,7 +319,12 @@ class ClusterPainter(context: Context) {
 
         // Right: what's playing, and nothing else (no gauges or driving numbers).
         // Android Auto lays its top row of buttons over the top of the picture when they show, so the player starts below that.
-        music.drawPanel(c, RectF(playerLeft, inner.top + h * 0.16f, inner.right, inner.bottom))
+        // The card runs the full height of the screen, like the map beside it, and out to the right edge; the cover
+        // and the words stay inside the clear area, below where Android Auto's top buttons show.
+        val card = RectF(playerLeft, full.top, full.right, full.bottom)
+        val player = RectF(playerLeft, inner.top + h * 0.12f, inner.right, inner.bottom)
+        music.drawPanelGlow(c, card, w * 0.2f)
+        music.drawPanel(c, player, card)
     }
 
     private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {

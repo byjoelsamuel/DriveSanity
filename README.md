@@ -126,9 +126,13 @@ any shape of screen. The numbers meant for restyling it are together at the top 
 
 ![The Gauges screen, with sample data](docs/car-screen.png)
 
-**Map**: the map takes the left side of the screen, with the next turn in a box over its top edge and
-a search button in its corner. On the right is the music player: the cover, the song and artist, a
-waveform of how far through you are, and previous, play/pause and next. No gauges or driving numbers.
+**Map**: the map takes the left half of the screen, with the next turn in a box over its top edge. On
+the right is a large player card, laid out differently from the Music screen but in the same style: the
+cover's colours as a blurred backdrop (which also spills as a soft glow onto the map), the cover on the
+left with the time in big numbers beside it and whether it's playing, then the song and artist across the
+card and the waveform under them. Long names slide sideways. **Search** is the first button on the top
+row, and previous, play/pause and next appear at the corner when you turn the knob. No gauges or driving
+numbers.
 
 ![The map screen, with sample data](docs/map-screen.png)
 
