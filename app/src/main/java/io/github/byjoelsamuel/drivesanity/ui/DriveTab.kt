@@ -1,6 +1,22 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
 import android.os.SystemClock
+import java.io.File
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import io.github.byjoelsamuel.drivesanity.hms
+import io.github.byjoelsamuel.drivesanity.Session
+import io.github.byjoelsamuel.drivesanity.Prefs
+import io.github.byjoelsamuel.drivesanity.DashView
+import io.github.byjoelsamuel.drivesanity.CarProfiles
+import io.github.byjoelsamuel.drivesanity.Alerts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,7 +68,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 @Composable
-fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openSetup: () -> Unit) {
+/** The phone's home screen: what the car is showing (and a way to change it), then what matters right now. */
+fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openSetup: () -> Unit, recordings: List<File> = emptyList(), openTrips: () -> Unit = {}) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -61,9 +78,16 @@ fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openS
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(Modifier.height(12.dp))
-            Text("DriveSanity", style = MaterialTheme.typography.titleLarge, color = Ui.fg)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("DriveSanity", style = MaterialTheme.typography.titleLarge, color = Ui.fg, modifier = Modifier.weight(1f))
+                Text(CarProfiles.byId(Prefs.carId(LocalContext.current)).name, style = MaterialTheme.typography.bodySmall, color = Ui.dim, modifier = Modifier.padding(bottom = 3.dp))
+            }
             Spacer(Modifier.height(10.dp))
             StatusRow(s, actions, openSetup)
+
+            // What the car is showing, live, and a way to change it without opening Settings.
+            Spacer(Modifier.height(12.dp))
+            CarScreenCard(actions)
 
             if (!s.calibrated || s.calibrating) {
                 Spacer(Modifier.height(12.dp))
@@ -71,23 +95,123 @@ fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openS
             }
             Spacer(Modifier.height(12.dp))
             SpeedCard(s, units, actions)
+            AttentionCard(s, units)
             Spacer(Modifier.height(12.dp))
             NavCard(units, tick, actions)
+
+            SectionTitle("Engine")
+            if (s.obdLive) EngineCards(s, units) else ConnectObdCard(actions)
+
+            SectionTitle("This trip")
+            TripGlance(units, openTrips)
+            LastDriveCard(recordings, units, openTrips)
 
             SectionTitle("Driving")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 BrakeCard(s, Modifier.weight(1f))
                 GForceCard(s, Modifier.weight(1f))
             }
-
-            SectionTitle("Engine")
-            if (s.obdLive) EngineCards(s, units) else ConnectObdCard(actions)
             Spacer(Modifier.height(100.dp)) // room for the record button
         }
         RecordButton(
             Modifier.align(Alignment.BottomCenter).padding(16.dp),
             tick,
             actions,
+        )
+    }
+}
+
+/** The screen the car is showing, drawn live, with a chip for each screen so it can be changed right here. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CarScreenCard(actions: PhoneActions) {
+    Live.beat() // follows the car's own Screens button too
+    val ctx = LocalContext.current
+    val current = Prefs.layout(ctx)
+    InfoCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("On the car screen", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
+                Text(current.title, style = MaterialTheme.typography.titleMedium, color = Ui.fg)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        AndroidView(
+            factory = { DashView(it) },
+            modifier = Modifier.fillMaxWidth().aspectRatio(2.3f).clip(RoundedCornerShape(14.dp)),
+        )
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (l in Prefs.Layout.entries) {
+                FilterChip(selected = l == current, onClick = { actions.setCarLayout(l) }, label = { Text(l.title) })
+            }
+        }
+        Text(
+            "This is what Android Auto shows. Tap another screen to switch to it; the car's own Screens button does the same.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Ui.dim,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+}
+
+/** Anything the car is warning about (a hot engine, a low battery or tire), so it isn't only a flash on the car screen. */
+@Composable
+private fun AttentionCard(s: Snapshot, units: Units) {
+    val ctx = LocalContext.current
+    if (!Prefs.alerts(ctx)) return
+    val alerts = Alerts.active(s, units, SpeedLimit.current)
+    if (alerts.isEmpty()) return
+    Spacer(Modifier.height(12.dp))
+    InfoCard(title = "Needs attention") {
+        for (a in alerts) {
+            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(if (a.severe) Ui.red else Ui.clay))
+                Spacer(Modifier.width(10.dp))
+                Text(a.text.lowercase().replaceFirstChar { it.uppercase() }.replace(Regex("\\s{2,}"), " · "), style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
+            }
+        }
+    }
+}
+
+/** This trip so far, at a glance; tap for the rest on the Trips tab. */
+@Composable
+private fun TripGlance(units: Units, openTrips: () -> Unit) {
+    Live.beat()
+    val st = DriveEngine.stats
+    InfoCard(onClick = openTrips) {
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Column {
+                Text("Distance", style = MaterialTheme.typography.labelMedium, color = Ui.dim)
+                BigValue(oneDecimal(units.distance(st.distanceM)), units.distanceLabel)
+            }
+            Column {
+                Text("Driving time", style = MaterialTheme.typography.labelMedium, color = Ui.dim)
+                BigValue(hms(st.movingSec), "")
+            }
+            Column {
+                Text("Top speed", style = MaterialTheme.typography.labelMedium, color = Ui.dim)
+                BigValue("${units.speed(st.topSpeedMps).toInt()}", units.label)
+            }
+        }
+        Text("More on the Trips tab", style = MaterialTheme.typography.bodySmall, color = Ui.accent, modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+/** The latest recording, summarised; tap to open the Trips tab. */
+@Composable
+private fun LastDriveCard(recordings: List<File>, units: Units, openTrips: () -> Unit) {
+    val f = recordings.firstOrNull() ?: return
+    val session by produceState<Session?>(null, f) { value = withContext(Dispatchers.IO) { Session.read(f) } }
+    Spacer(Modifier.height(12.dp))
+    InfoCard(onClick = openTrips, title = "Last drive") {
+        Text(prettyName(f), style = MaterialTheme.typography.titleSmall, color = Ui.fg)
+        val ses = session
+        Text(
+            if (ses == null || ses.points.isEmpty()) "Reading…" else
+                "${oneDecimal(units.distance(ses.distanceM))} ${units.distanceLabel} · ${hms(ses.durationS)} · top ${units.speed(ses.topKmh / 3.6f).roundToInt()} ${units.label}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ui.dim,
         )
     }
 }
@@ -344,9 +468,6 @@ private fun EngineCards(s: Snapshot, units: Units) {
                 BigValue(temp(s.intakeC)?.toString() ?: "–", tUnit)
                 Text("Air going into the engine", style = MaterialTheme.typography.bodySmall, color = Ui.dim)
             }
-        }
-        InfoCard(title = "Trip") {
-            BigValue(oneDecimal(units.distance(s.tripM)), units.distanceLabel)
         }
         InfoCard(title = "Fuel economy (estimate)") {
             BigValue(units.economyText(s.fuelLper100, s.fuelLph), "")
