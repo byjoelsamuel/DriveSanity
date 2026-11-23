@@ -10,6 +10,7 @@ import androidx.car.app.validation.HostValidator
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import io.github.byjoelsamuel.drivesanity.BuildConfig
+import io.github.byjoelsamuel.drivesanity.CarHealth
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.nav.GeoTarget
@@ -56,7 +57,12 @@ class DriveSession : Session() {
     }
 
     override fun onCreateScreen(intent: Intent): Screen {
-        handleNavigate(intent)
+        CarHealth.sessionStarted(carContext)
+        try {
+            handleNavigate(intent)
+        } catch (e: Exception) {
+            CarHealth.error(carContext, "navigate request", e)
+        }
         DriveEngine.hold(carContext, DriveEngine.CAR)
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onDestroy(owner: LifecycleOwner) = DriveEngine.release(DriveEngine.CAR)

@@ -66,7 +66,13 @@ Nearby devices for Bluetooth, and battery set to unrestricted), ticks what's fin
 button to fix each thing that isn't. It also says whether the app was installed with the Play
 mark that Android Auto wants. Phone makers add their own battery savers on top of Android's, so
 the check shows steps for Samsung, OnePlus, Oppo, Realme, Xiaomi, Huawei and Vivo when it sees
-one. The ones that matter most:
+one.
+
+Below it, a **Car** section says how the car side is doing: whether Android Auto and UnknownAuto are on
+the phone, when Android Auto last opened DriveSanity (and how many times), and the last error the car
+screen hit. If a car screen ever fails to draw, it says so on the screen and carries on instead of
+closing the app; the error shows here, with a **Clear** button. If the copy was installed without the
+Play mark, Home also shows a warning with a button that opens UnknownAuto. The ones that matter most:
 
 - **Samsung:** Settings → Battery → Background usage limits → turn off "Put unused apps to
   sleep" and add DriveSanity to "Never sleeping apps".
@@ -378,8 +384,10 @@ that off in **Settings → About and updates**). If there is one, a box offers *
 GitHub published, and then hands it to Android to install; an app can't install itself silently. A copy is
 also saved in your Downloads folder.
 
-**With Android Auto,** install it the way you did before, with UnknownAuto: pick UnknownAuto when Android
-asks what to open the file with, or use **Send to another app**. Installing through Android's own
+**With Android Auto,** install it the way you did before, with UnknownAuto. When UnknownAuto is on the phone,
+the button says **Open in UnknownAuto** and hands the file straight to it, so you only tap Install there
+(Shizuku needs to be running). If it isn't on the phone, pick UnknownAuto when Android asks what to open
+the file with, or use **Send to another app**. Installing through Android's own
 installer replaces the app fine, but Android Auto stops listing it until it's installed with UnknownAuto
 again. **Check for updates** in the same place looks by hand.
 

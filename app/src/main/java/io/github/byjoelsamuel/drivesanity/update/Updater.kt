@@ -1,6 +1,7 @@
 package io.github.byjoelsamuel.drivesanity.update
 
 import android.content.ContentValues
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -12,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import io.github.byjoelsamuel.drivesanity.BuildConfig
+import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.nav.Http
 import org.json.JSONObject
@@ -274,6 +276,24 @@ object Updater {
             .setDataAndType(uri, "application/vnd.android.package-archive")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         ctx.startActivity(Intent.createChooser(view, "Install DriveSanity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /**
+     * Opens the APK straight in UnknownAuto, which installs it with the Play mark Android Auto needs.
+     * False if UnknownAuto isn't there, so the caller can fall back to the usual chooser.
+     */
+    fun installWithUnknownAuto(ctx: Context, file: File): Boolean {
+        val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.files", file)
+        val view = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, "application/vnd.android.package-archive")
+            .setPackage(PhoneCheck.UNKNOWN_AUTO)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            ctx.startActivity(view)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
     }
 
     /** Sends the APK file to another app, for the people who install with one that takes shared files. */

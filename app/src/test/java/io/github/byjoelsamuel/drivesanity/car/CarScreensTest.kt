@@ -131,4 +131,23 @@ class CarScreensTest {
             assertTrue("$layout", screen(layout) is NavigationTemplate)
         }
     }
+
+    @Test
+    fun aFrameThatFailsIsRecordedAndTheCarScreenKeepsGoing() {
+        ctx.getSharedPreferences("car_health", Context.MODE_PRIVATE).edit().clear().commit()
+        io.github.byjoelsamuel.drivesanity.CarHealth.clearError(ctx)
+        val dash = DashScreen(car)
+        dash.faultForTest = { throw IllegalStateException("bad frame") }
+        val surface = android.view.Surface(android.graphics.SurfaceTexture(0))
+        // Neither of these may throw: Android Auto calls both, and a throw would end the app.
+        dash.onSurfaceAvailable(androidx.car.app.SurfaceContainer(surface, 800, 480, 160))
+        dash.onVisibleAreaChanged(android.graphics.Rect(0, 0, 800, 480))
+        val err = io.github.byjoelsamuel.drivesanity.CarHealth.read(ctx).lastError
+        assertTrue("the error should be recorded, was $err", err != null && err.contains("bad frame"))
+        // And with the fault gone, the screen draws again without recording anything new.
+        dash.faultForTest = null
+        io.github.byjoelsamuel.drivesanity.CarHealth.clearError(ctx)
+        dash.onVisibleAreaChanged(android.graphics.Rect(0, 0, 800, 480))
+        assertEquals(null, io.github.byjoelsamuel.drivesanity.CarHealth.read(ctx).lastError)
+    }
 }

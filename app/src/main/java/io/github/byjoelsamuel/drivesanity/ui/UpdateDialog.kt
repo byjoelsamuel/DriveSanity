@@ -16,11 +16,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.byjoelsamuel.drivesanity.BuildConfig
+import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.update.Updater
 import io.github.byjoelsamuel.drivesanity.update.Updater.Status
 
@@ -80,19 +82,30 @@ fun UpdateDialog() {
             )
         }
 
-        is Status.Ready -> UpdateBox(
-            title = "Ready to install",
-            onDismiss = later,
-            confirm = "Install" to { Updater.install(ctx, status.file) },
-            dismiss = "Later" to later,
-            extra = "Send to another app…" to { Updater.share(ctx, status.file) },
-        ) {
-            Text("DriveSanity ${status.release.version} is downloaded.", style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Using Android Auto? Install it with UnknownAuto, the way you did before, so Android Auto keeps listing the app: pick UnknownAuto when Android asks, or use \"Send to another app\". A copy is also in your Downloads folder.",
-                style = MaterialTheme.typography.bodySmall, color = Ui.dim,
-            )
+        is Status.Ready -> {
+            val viaUnknownAuto = remember { PhoneCheck.unknownAutoInstalled(ctx) }
+            UpdateBox(
+                title = "Ready to install",
+                onDismiss = later,
+                confirm = if (viaUnknownAuto) {
+                    "Open in UnknownAuto" to { if (!Updater.installWithUnknownAuto(ctx, status.file)) Updater.install(ctx, status.file) }
+                } else {
+                    "Install" to { Updater.install(ctx, status.file) }
+                },
+                dismiss = "Later" to later,
+                extra = if (viaUnknownAuto) "Install another way…" to { Updater.install(ctx, status.file) } else "Send to another app…" to { Updater.share(ctx, status.file) },
+            ) {
+                Text("DriveSanity ${status.release.version} is downloaded.", style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    if (viaUnknownAuto) {
+                        "Tap Install in UnknownAuto. That keeps the Play mark, so Android Auto keeps listing the app. Installing it another way works on the phone, but the car stops showing it. A copy is also in your Downloads folder."
+                    } else {
+                        "Using Android Auto? Install it with UnknownAuto, the way you did before, so Android Auto keeps listing the app: pick UnknownAuto when Android asks, or use \"Send to another app\". A copy is also in your Downloads folder."
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = Ui.dim,
+                )
+            }
         }
 
         is Status.Failed -> UpdateBox(

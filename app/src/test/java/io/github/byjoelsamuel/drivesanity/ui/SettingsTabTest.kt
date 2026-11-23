@@ -94,6 +94,16 @@ class SettingsTabTest {
     }
 
     @Test
+    fun phoneCheckShowsTheCarSideToo() {
+        show()
+        rule.onAllNodesWithText("Phone check").onFirst().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Car connection").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Car screen errors").assertExists()
+        shot("page-phone-check")
+    }
+
+    @Test
     fun systemBackReturnsToTheList() {
         show()
         rule.onNodeWithText("Units").performClick()

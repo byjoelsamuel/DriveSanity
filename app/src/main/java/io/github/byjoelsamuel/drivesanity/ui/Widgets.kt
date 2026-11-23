@@ -1,6 +1,14 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** A rounded card with an optional small title. */
+/** One corner radius for every card, so they all match. */
+val CardShape = RoundedCornerShape(16.dp)
+
+/** A rounded card with a hairline edge and an optional small title. */
 @Composable
 fun InfoCard(
     modifier: Modifier = Modifier,
@@ -42,14 +53,15 @@ fun InfoCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().then(if (onClick != null) Modifier.clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.fillMaxWidth().then(if (onClick != null) Modifier.clip(CardShape).clickable(onClick = onClick) else Modifier),
+        shape = CardShape,
         color = Ui.card,
+        border = BorderStroke(1.dp, Ui.line),
     ) {
         Column(Modifier.padding(16.dp)) {
             if (title != null) {
-                Text(title, style = MaterialTheme.typography.labelLarge, color = Ui.dim)
-                Spacer(Modifier.height(6.dp))
+                Text(title, style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.6.sp), color = Ui.dim)
+                Spacer(Modifier.height(8.dp))
             }
             content()
         }
@@ -60,9 +72,9 @@ fun InfoCard(
 fun SectionTitle(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleSmall.copy(letterSpacing = 0.3.sp),
         color = Ui.fg,
-        modifier = Modifier.padding(top = 20.dp, bottom = 8.dp, start = 4.dp),
+        modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp),
     )
 }
 
@@ -70,7 +82,7 @@ fun SectionTitle(text: String) {
 @Composable
 fun BigValue(value: String, unit: String, color: Color = Ui.fg, size: Int = 30) {
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(value, fontSize = size.sp, fontWeight = FontWeight.SemiBold, color = color, lineHeight = size.sp)
+        Text(value, fontSize = size.sp, fontWeight = FontWeight.SemiBold, color = color, lineHeight = size.sp, style = TextStyle(fontFeatureSettings = "tnum"))
         if (unit.isNotEmpty()) {
             Spacer(Modifier.width(4.dp))
             Text(unit, style = MaterialTheme.typography.bodyMedium, color = Ui.dim, modifier = Modifier.padding(bottom = 3.dp))
@@ -89,20 +101,25 @@ fun Bar(fraction: Float, color: Color, modifier: Modifier = Modifier) {
     }
 }
 
-/** A small status pill: a coloured dot and a word or two. */
+/** A small status pill: a coloured dot and a word or two. One you can press still has a 48dp touch area. */
 @Composable
 fun StatusPill(text: String, color: Color, onClick: (() -> Unit)? = null) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(Ui.card)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+    Box(
+        contentAlignment = Alignment.CenterStart,
+        modifier = if (onClick != null) Modifier.minimumInteractiveComponentSize().clip(CircleShape).clickable(role = Role.Button, onClick = onClick) else Modifier,
     ) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(7.dp))
-        Text(text, style = MaterialTheme.typography.labelMedium, color = Ui.fg)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Ui.card)
+                .border(1.dp, Ui.line, CircleShape)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+        ) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.width(7.dp))
+            Text(text, style = MaterialTheme.typography.labelMedium, color = Ui.fg)
+        }
     }
 }
 
@@ -110,7 +127,7 @@ fun StatusPill(text: String, color: Color, onClick: (() -> Unit)? = null) {
 @Composable
 fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.bg).padding(4.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.bg).border(1.dp, Ui.line, RoundedCornerShape(14.dp)).padding(4.dp).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         options.forEachIndexed { i, label ->
@@ -120,7 +137,8 @@ fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (on) Ui.raised else Color.Transparent)
-                    .clickable { onSelect(i) }
+                    .selectable(selected = on, onClick = { onSelect(i) }, role = Role.RadioButton)
+                    .heightIn(min = 40.dp)
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {

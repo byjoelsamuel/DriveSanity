@@ -1,5 +1,7 @@
 package io.github.byjoelsamuel.drivesanity.car
 
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
@@ -21,6 +23,7 @@ import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import io.github.byjoelsamuel.drivesanity.CarHealth
 import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
@@ -52,7 +55,12 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
     private val tick = object : Runnable {
         override fun run() {
             val started = SystemClock.uptimeMillis()
-            draw()
+            // One bad frame must never take the car screen (and the whole app) down with it.
+            try {
+                draw()
+            } catch (e: Exception) {
+                CarHealth.error(carContext, "car screen", e)
+            }
             // About 30 frames a second on every screen, counting the time the drawing took.
             handler.postDelayed(this, maxOf(4L, FRAME_MS - (SystemClock.uptimeMillis() - started)))
         }
@@ -72,7 +80,21 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         })
     }
 
-    override fun onGetTemplate(): Template {
+    override fun onGetTemplate(): Template = try {
+        buildTemplate()
+    } catch (e: Exception) {
+        // If the full set of buttons can't be built, still show a working screen with the one that matters.
+        CarHealth.error(carContext, "car buttons", e)
+        NavigationTemplate.Builder()
+            .setActionStrip(
+                ActionStrip.Builder()
+                    .addAction(Action.Builder().setTitle("Screens").setOnClickListener { screenManager.push(ScreenPickerScreen(carContext)) }.build())
+                    .build(),
+            )
+            .build()
+    }
+
+    private fun buildTemplate(): Template {
         shownRecording = DriveEngine.recording
         val now = Prefs.layout(carContext)
         shownLayout = now
@@ -168,7 +190,11 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         full = Rect(0, 0, container.width, container.height)
         if (!introPlayed) {
             if (Prefs.startupAnim(carContext)) introStartMs = SystemClock.elapsedRealtime()
-            StartupSound.play(carContext)
+            try {
+                StartupSound.play(carContext)
+            } catch (e: Exception) {
+                CarHealth.error(carContext, "start-up sound", e)
+            }
         }
         introPlayed = true
         draw()
@@ -189,7 +215,16 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         const val FRAME_MS = 33L
     }
 
+    /** Every way into drawing goes through here, so a failure is recorded, not fatal. */
     private fun draw() {
+        try {
+            drawNow()
+        } catch (e: Exception) {
+            CarHealth.error(carContext, "car screen", e)
+        }
+    }
+
+    private fun drawNow() {
         // The phone changed something the buttons show.
         if (DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout ||
             ((Prefs.layout(carContext) == Prefs.Layout.MUSIC || Prefs.layout(carContext) == Prefs.Layout.MAP) && MediaWatcher.now?.playing != shownPlaying)
@@ -205,6 +240,27 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             return
         }
         try {
+            drawFrame(canvas)
+        } catch (e: Exception) {
+            // Say so on the screen, and in Settings → Phone check, instead of crashing.
+            CarHealth.error(carContext, "${Prefs.layout(carContext).title} screen", e)
+            canvas.drawColor(Colors.BG)
+            canvas.drawText("DriveSanity couldn't draw this screen.", full.width() * 0.06f, full.height() * 0.45f, errorPaint)
+            canvas.drawText("Pick another one with Screens. Details are in Settings → Phone check.", full.width() * 0.06f, full.height() * 0.55f, errorPaintSmall)
+        } finally {
+            s.unlockCanvasAndPost(canvas)
+        }
+    }
+
+    private val errorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Colors.FG; textSize = 44f }
+    private val errorPaintSmall = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Colors.DIM; textSize = 30f }
+
+    /** Lets a test make a frame fail, to check the car screen carries on. */
+    internal var faultForTest: (() -> Unit)? = null
+
+    private fun drawFrame(canvas: Canvas) {
+        faultForTest?.invoke()
+        run {
             canvas.drawColor(if (Prefs.layout(carContext) == Prefs.Layout.RETRO) RetroPainter.BG else Colors.BG)
             // Android Auto's "visible area" leaves room at the top for the button strip even while it's
             // hidden, which left a blank band. Draw up to the top edge; the buttons float over it when shown.
@@ -214,8 +270,6 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 val t = (SystemClock.elapsedRealtime() - start) / 1000f
                 if (t >= StartupPainter.DURATION) introStartMs = null else intro.draw(canvas, RectF(full), t)
             }
-        } finally {
-            s.unlockCanvasAndPost(canvas)
         }
     }
 }

@@ -151,7 +151,11 @@ fun SettingsTab(
                         Page.ADAPTER -> AdapterPage(obdName, tick, actions)
                         Page.FAULTS -> FaultsPage(tick, actions)
                         Page.BATTERY -> BatteryPage(draft)
-                        Page.PHONE_CHECK -> PhoneCheckCard(tick)
+                        Page.PHONE_CHECK -> {
+                            PhoneCheckCard(tick)
+                            Spacer(Modifier.height(12.dp))
+                            CarCheckCard(tick)
+                        }
                         Page.SCREENS -> ScreensPage(draft)
                         Page.NAVIGATION -> NavigationPage(draft)
                         Page.ALERTS -> AlertsPage(draft)
