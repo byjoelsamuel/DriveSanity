@@ -13,7 +13,14 @@ import io.github.byjoelsamuel.drivesanity.Alerts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import io.github.byjoelsamuel.drivesanity.BuildConfig
+import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
@@ -85,6 +92,17 @@ fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openS
             Spacer(Modifier.height(10.dp))
             StatusRow(s, actions, openSetup)
 
+            val ctx = LocalContext.current
+            // A debug build is always installed by hand, so only a release build says anything here.
+            val playMark = remember { if (BuildConfig.DEBUG) null else PhoneCheck.hasPlayMark(ctx) }
+            val hasUnknownAuto = remember { PhoneCheck.unknownAutoInstalled(ctx) }
+            if (playMark == false) Spacer(Modifier.height(12.dp))
+            CarInstallBanner(
+                playMark, hasUnknownAuto,
+                onOpenUnknownAuto = { PhoneCheck.openUnknownAuto(ctx) },
+                onSteps = { PhoneCheck.fix(ctx, PhoneCheck.Fix.INSTALL_HELP) },
+            )
+
             // What the car is showing, live, and a way to change it without opening Settings.
             Spacer(Modifier.height(12.dp))
             CarScreenCard(actions)
@@ -113,11 +131,16 @@ fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openS
             }
             Spacer(Modifier.height(100.dp)) // room for the record button
         }
-        RecordButton(
-            Modifier.align(Alignment.BottomCenter).padding(16.dp),
-            tick,
-            actions,
-        )
+        // A soft fade under the button, so the cards slide away behind it instead of cutting off.
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Ui.bg.copy(alpha = 0.94f))))
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 28.dp),
+        ) {
+            RecordButton(Modifier, tick, actions)
+        }
     }
 }
 
@@ -138,12 +161,24 @@ private fun CarScreenCard(actions: PhoneActions) {
         Spacer(Modifier.height(10.dp))
         AndroidView(
             factory = { DashView(it) },
-            modifier = Modifier.fillMaxWidth().aspectRatio(2.3f).clip(RoundedCornerShape(14.dp)),
+            modifier = Modifier.fillMaxWidth().aspectRatio(2.3f).clip(RoundedCornerShape(12.dp)).border(1.dp, Ui.line, RoundedCornerShape(12.dp)),
         )
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (l in Prefs.Layout.entries) {
-                FilterChip(selected = l == current, onClick = { actions.setCarLayout(l) }, label = { Text(l.title) })
+                FilterChip(
+                    selected = l == current,
+                    onClick = { actions.setCarLayout(l) },
+                    label = { Text(l.title, style = MaterialTheme.typography.labelMedium) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Ui.bg, labelColor = Ui.dim,
+                        selectedContainerColor = Ui.raised, selectedLabelColor = Ui.fg,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true, selected = l == current,
+                        borderColor = Ui.line, selectedBorderColor = Ui.accent,
+                    ),
+                )
             }
         }
         Text(
@@ -540,6 +575,8 @@ private fun RecordButton(modifier: Modifier, tick: Long, actions: PhoneActions) 
         onClick = actions::toggleRecording,
         modifier = modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(28.dp),
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
+        border = BorderStroke(1.dp, if (rec) Ui.red else Ui.line),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (rec) Ui.red else Ui.raised,
             contentColor = Ui.fg,

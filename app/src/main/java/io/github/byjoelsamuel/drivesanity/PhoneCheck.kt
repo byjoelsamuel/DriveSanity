@@ -18,11 +18,14 @@ import io.github.byjoelsamuel.drivesanity.obd.Obd
  * what usually stops the app from running with the screen off or in the background.
  */
 object PhoneCheck {
-    enum class Fix { APP_SETTINGS, NOTIFICATIONS, BATTERY, INSTALL_HELP }
+    enum class Fix { APP_SETTINGS, NOTIFICATIONS, BATTERY, INSTALL_HELP, GET_UNKNOWN_AUTO, CLEAR_CAR_ERROR }
 
     data class Item(val ok: Boolean, val title: String, val detail: String, val fix: Fix?, val fixLabel: String = "Fix")
 
     private const val PLAY = "com.android.vending"
+    const val UNKNOWN_AUTO = "com.mag.unknownauto"
+    const val ANDROID_AUTO = "com.google.android.projection.gearhead"
+    const val UNKNOWN_AUTO_URL = "https://github.com/GitMag/UnknownAuto/releases/latest"
     const val INSTALL_HELP_URL = "https://github.com/byjoelsamuel/DriveSanity#on-the-phone-and-in-the-car-android-auto"
 
     /** Whether the app was installed so Android Auto will list it (the Play mark). Null if it can't be told. */
@@ -36,6 +39,70 @@ object PhoneCheck {
         }
         installer == PLAY
     }.getOrNull()
+
+    /** The version of an installed app, or null if it isn't there (or Android hides it from this app). */
+    fun versionOf(ctx: Context, pkg: String): String? = runCatching {
+        ctx.packageManager.getPackageInfo(pkg, 0).versionName ?: "installed"
+    }.getOrNull()
+
+    fun unknownAutoInstalled(ctx: Context): Boolean = versionOf(ctx, UNKNOWN_AUTO) != null
+
+    /** Opens UnknownAuto, if it's installed. */
+    fun openUnknownAuto(ctx: Context): Boolean {
+        val launch = ctx.packageManager.getLaunchIntentForPackage(UNKNOWN_AUTO) ?: return false
+        return try {
+            ctx.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
+
+    /**
+     * How the car side is doing, one line each: Android Auto itself, the tool that installs the app for it,
+     * whether Android Auto has ever opened the app, and the last error the car screen hit.
+     */
+    fun carItems(ctx: Context, now: Long = System.currentTimeMillis()): List<Item> = buildList {
+        val aa = versionOf(ctx, ANDROID_AUTO)
+        add(
+            Item(
+                aa != null, "Android Auto",
+                if (aa != null) "Version $aa." else "Not found on this phone, or Android is hiding it from the app.",
+                null,
+            ),
+        )
+        val ua = versionOf(ctx, UNKNOWN_AUTO)
+        val mark = hasPlayMark(ctx)
+        add(
+            Item(
+                ua != null || mark == true, "UnknownAuto",
+                when {
+                    ua != null -> "Version $ua. Install DriveSanity updates with it so the car keeps listing the app."
+                    mark == true -> "Not on this phone, but DriveSanity already has the Play mark."
+                    else -> "Not on this phone. It installs DriveSanity so Android Auto accepts it."
+                },
+                Fix.GET_UNKNOWN_AUTO, "Get UnknownAuto",
+            ),
+        )
+        val h = CarHealth.read(ctx)
+        if (h.sessions == 0) {
+            add(
+                Item(
+                    false, "Car connection",
+                    "Android Auto hasn't opened DriveSanity yet. Connect to the car and pick DriveSanity from its app list. If it isn't listed, check the steps.",
+                    Fix.INSTALL_HELP, "Show the steps",
+                ),
+            )
+        } else {
+            add(Item(true, "Car connection", "Last opened ${CarHealth.ago(h.lastSessionMs, now)} (${h.sessions} ${if (h.sessions == 1) "time" else "times"} in all).", null))
+        }
+        val err = h.lastError
+        if (err == null) {
+            add(Item(true, "Car screen errors", "None so far.", null))
+        } else {
+            add(Item(false, "Car screen error", "$err, ${CarHealth.ago(h.lastErrorMs, now)}. The car screen kept going.", Fix.CLEAR_CAR_ERROR, "Clear"))
+        }
+    }
 
     fun items(ctx: Context): List<Item> = buildList {
         when (hasPlayMark(ctx)) {
@@ -112,6 +179,8 @@ object PhoneCheck {
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg),
             )
             Fix.INSTALL_HELP -> listOf(Intent(Intent.ACTION_VIEW, Uri.parse(INSTALL_HELP_URL)))
+            Fix.GET_UNKNOWN_AUTO -> listOf(Intent(Intent.ACTION_VIEW, Uri.parse(UNKNOWN_AUTO_URL)))
+            Fix.CLEAR_CAR_ERROR -> { CarHealth.clearError(ctx); return }
         }
         for (i in tries) {
             try {

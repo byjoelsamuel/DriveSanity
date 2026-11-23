@@ -44,6 +44,9 @@
         <package android:name="com.apple.android.music" />
         <package android:name="com.amazon.mp3" />
         <package android:name="com.google.android.youtube" />
+        <!-- So Settings can tell whether Android Auto and UnknownAuto are there, and updates can go straight to UnknownAuto. -->
+        <package android:name="com.google.android.projection.gearhead" />
+        <package android:name="com.mag.unknownauto" />
     </queries>
 
     <application

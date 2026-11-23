@@ -3,8 +3,10 @@ package io.github.byjoelsamuel.drivesanity.ui
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -22,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
@@ -90,7 +93,9 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
         Scaffold(
             containerColor = Ui.bg,
             bottomBar = {
-                NavigationBar(containerColor = Ui.card) {
+              Column {
+                HorizontalDivider(color = Ui.line)
+                NavigationBar(containerColor = Ui.bg, tonalElevation = 0.dp) {
                     listOf("Home" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
                         val on = tab == i
                         NavigationBarItem(
@@ -106,6 +111,7 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
                         )
                     }
                 }
+              }
             },
         ) { pad ->
             Box(Modifier.fillMaxSize().padding(pad)) {

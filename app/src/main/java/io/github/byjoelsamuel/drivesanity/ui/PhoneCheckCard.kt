@@ -35,27 +35,47 @@ fun PhoneCheckCard(tick: Long) {
             style = MaterialTheme.typography.bodyMedium,
             color = if (allGood) Ui.good else Ui.sand,
         )
-        for (item in items) {
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Text(if (item.ok) "✓" else "✕", color = if (item.ok) Ui.good else Ui.red, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(item.title, style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
-                    Text(item.detail, style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
-                    val fix = item.fix
-                    if (!item.ok && fix != null) {
-                        Spacer(Modifier.height(6.dp))
-                        OutlinedButton(onClick = { PhoneCheck.fix(ctx, fix) }) { Text(item.fixLabel) }
-                    }
-                }
-            }
-        }
+        for (item in items) CheckRow(item)
         if (tip != null) {
             Spacer(Modifier.height(14.dp))
             Column(Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("On this phone", style = MaterialTheme.typography.labelLarge, color = Ui.dim)
                 Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ui.fg)
+            }
+        }
+    }
+}
+
+/** How the car side is doing: Android Auto, UnknownAuto, whether the car has opened the app, and any error it hit. */
+@Composable
+fun CarCheckCard(tick: Long) {
+    val ctx = LocalContext.current
+    val items = remember(tick / 10) { PhoneCheck.carItems(ctx) }
+    val allGood = items.all { it.ok }
+    InfoCard(title = "Car") {
+        Text(
+            if (allGood) "The car side looks fine." else "Something on the car side needs a look.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (allGood) Ui.good else Ui.sand,
+        )
+        for (item in items) CheckRow(item)
+    }
+}
+
+@Composable
+private fun CheckRow(item: PhoneCheck.Item) {
+    val ctx = LocalContext.current
+    Spacer(Modifier.height(12.dp))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(if (item.ok) "✓" else "✕", color = if (item.ok) Ui.good else Ui.red, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.title, style = MaterialTheme.typography.bodyLarge, color = Ui.fg)
+            Text(item.detail, style = MaterialTheme.typography.bodyMedium, color = Ui.dim)
+            val fix = item.fix
+            if (!item.ok && fix != null) {
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(onClick = { PhoneCheck.fix(ctx, fix) }) { Text(item.fixLabel) }
             }
         }
     }
