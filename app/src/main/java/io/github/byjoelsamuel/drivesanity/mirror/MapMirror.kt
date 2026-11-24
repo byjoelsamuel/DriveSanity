@@ -48,7 +48,7 @@ object MapMirror {
 
     /** Where a [w] by [h] picture goes inside [into]: as large as fits, centred, never stretched or cut. */
     fun fit(w: Int, h: Int, into: RectF): RectF {
-        if (w <= 0 || h <= 0 || into.width() <= 0f || into.height() <= 0f) return RectF(into.centerX(), into.centerY(), into.centerX(), into.centerY())
+        if (w <= 0 || h <= 0 || into.isEmpty) return RectF(into.centerX(), into.centerY(), into.centerX(), into.centerY())
         val k = minOf(into.width() / w, into.height() / h)
         val dw = w * k
         val dh = h * k

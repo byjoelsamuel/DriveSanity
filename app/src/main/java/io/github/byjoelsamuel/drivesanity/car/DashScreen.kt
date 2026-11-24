@@ -28,11 +28,11 @@ import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.R
-import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
+import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.track.Launch
 
@@ -102,7 +102,6 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         shownPlaying = MediaWatcher.now?.playing
         val onDiag = now == Prefs.Layout.DIAG
         val onLaunch = now == Prefs.Layout.LAUNCH
-        val onMusic = now == Prefs.Layout.MUSIC
         val onMap = now == Prefs.Layout.MAP
         val onMirror = now == Prefs.Layout.MIRROR && MapMirror.state is MapMirror.State.Sharing
         val countdown = Prefs.launchCountdown(carContext)
@@ -154,32 +153,7 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             .setTitle("Screens")
             .setOnClickListener { screenManager.push(ScreenPickerScreen(carContext)) }
             .build()
-        // On the map, a search button over the map opens "Where to?" (keyboard and voice).
-        val search = Action.Builder()
-            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_search)).build())
-            .setOnClickListener { screenManager.push(SearchScreen(carContext)) }
-            .build()
-        fun iconAction(res: Int, press: () -> Unit) = Action.Builder()
-            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, res)).build())
-            .setOnClickListener { press(); invalidate() }
-            .build()
-        val mapStrip = when {
-            // The music buttons are Android Auto's own, which appear at the corner when the knob is turned or the screen touched; those are the ones a knob can press.
-            onMusic -> ActionStrip.Builder()
-                .addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
-                .addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
-                .addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
-                .build()
-            // The map keeps search, and the music buttons while something is playing, for the knob.
-            now == Prefs.Layout.MAP -> ActionStrip.Builder().addAction(search).apply {
-                if (MediaWatcher.now != null) {
-                    addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
-                    addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
-                    addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
-                }
-            }.build()
-            else -> null
-        }
+        val mapStrip = mapActionStrip(now)
         val strip = ActionStrip.Builder().addAction(first).addAction(record).addAction(layout).build()
         // A car whose screen won't take the side buttons still gets the three at the top.
         if (mapStrip != null) {
@@ -189,6 +163,36 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
             }
         }
         return NavigationTemplate.Builder().setActionStrip(strip).build()
+    }
+
+    /**
+     * The icon buttons over the map, which a knob can press: search on the map, and the music controls on the
+     * Music screen, or on the map while something is playing. They are Android Auto's own and appear at the
+     * corner when the knob is turned or the screen touched.
+     */
+    private fun mapActionStrip(now: Prefs.Layout): ActionStrip? {
+        fun iconAction(res: Int, press: () -> Unit) = Action.Builder()
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, res)).build())
+            .setOnClickListener { press(); invalidate() }
+            .build()
+
+        fun ActionStrip.Builder.addMusicButtons() = apply {
+            addAction(iconAction(R.drawable.ic_skip_previous) { MediaWatcher.previous() })
+            addAction(iconAction(if (MediaWatcher.now?.playing == true) R.drawable.ic_pause else R.drawable.ic_play) { MediaWatcher.playPause() })
+            addAction(iconAction(R.drawable.ic_skip_next) { MediaWatcher.next() })
+        }
+        return when (now) {
+            Prefs.Layout.MUSIC -> ActionStrip.Builder().addMusicButtons().build()
+            Prefs.Layout.MAP -> {
+                // "Where to?" (keyboard and voice) over the map.
+                val search = Action.Builder()
+                    .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_search)).build())
+                    .setOnClickListener { screenManager.push(SearchScreen(carContext)) }
+                    .build()
+                ActionStrip.Builder().addAction(search).apply { if (MediaWatcher.now != null) addMusicButtons() }.build()
+            }
+            else -> null
+        }
     }
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {

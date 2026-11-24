@@ -69,7 +69,7 @@ class MirrorService : Service() {
 
     private fun begin(code: Int, data: Intent) {
         val manager = getSystemService(MediaProjectionManager::class.java)
-        val p = manager.getMediaProjection(code, data) ?: throw IllegalStateException("no projection")
+        val p = manager.getMediaProjection(code, data) ?: error("no projection")
         projection = p
         val worker = HandlerThread("map-mirror").also { it.start() }
         thread = worker

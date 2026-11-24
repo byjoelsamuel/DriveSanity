@@ -28,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -62,6 +61,7 @@ import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
 import io.github.byjoelsamuel.drivesanity.map.Tiles
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
+import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd

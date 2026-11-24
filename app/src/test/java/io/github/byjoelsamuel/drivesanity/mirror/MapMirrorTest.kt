@@ -22,8 +22,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Google Maps on the car screen: the picture maths, what the car screen draws, and the manifest entries Android insists on. */
 @RunWith(RobolectricTestRunner::class)
