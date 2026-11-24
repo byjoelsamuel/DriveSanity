@@ -34,7 +34,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       # Robolectric downloads its Android jar from Maven Central, which sometimes refuses busy networks and fails
       # the tests for no reason of ours. Keeping the jar between runs means that download happens once.
