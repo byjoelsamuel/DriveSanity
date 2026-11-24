@@ -84,7 +84,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.12.4")
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is a stub in plain unit tests; this is the real one.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     // Runs the app's own code, the Android parts included, in plain unit tests (see DemoFlowTest).
     testImplementation("org.robolectric:robolectric:4.16")
     // Taps through the phone screens in tests (see SettingsTabTest).
