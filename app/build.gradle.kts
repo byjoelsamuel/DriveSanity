@@ -86,7 +86,7 @@ dependencies {
     // Android's org.json is a stub in plain unit tests; this is the real one.
     testImplementation("org.json:json:20240303")
     // Runs the app's own code, the Android parts included, in plain unit tests (see DemoFlowTest).
-    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation("org.robolectric:robolectric:4.18.1")
     // Taps through the phone screens in tests (see SettingsTabTest).
     testImplementation("androidx.compose.ui:ui-test-junit4")
     // A stand-in Android Auto, to build the car screens and press their buttons in tests.
