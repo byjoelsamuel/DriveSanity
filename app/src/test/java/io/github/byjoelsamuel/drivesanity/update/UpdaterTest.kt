@@ -3,6 +3,9 @@ package io.github.byjoelsamuel.drivesanity.update
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import io.github.byjoelsamuel.drivesanity.Prefs
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.security.MessageDigest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,9 +17,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.net.InetAddress
-import java.net.ServerSocket
-import java.security.MessageDigest
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

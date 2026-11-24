@@ -15,7 +15,9 @@ import java.io.File
  */
 object ShareBackground {
     private const val MAX_SIDE = 2400
+
     @Volatile private var cached: Bitmap? = null
+
     @Volatile private var cachedStamp = 0L
 
     private fun file(ctx: Context) = File(ctx.filesDir, "share_background.jpg")

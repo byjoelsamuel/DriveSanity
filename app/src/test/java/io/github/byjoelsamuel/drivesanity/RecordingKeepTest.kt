@@ -1,6 +1,7 @@
 package io.github.byjoelsamuel.drivesanity
 
 import androidx.test.core.app.ApplicationProvider
+import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -9,7 +10,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowSystemClock
-import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

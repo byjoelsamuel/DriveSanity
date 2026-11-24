@@ -1,7 +1,7 @@
 package io.github.byjoelsamuel.drivesanity.update
 
-import android.content.ContentValues
 import android.content.ActivityNotFoundException
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -16,12 +16,12 @@ import io.github.byjoelsamuel.drivesanity.BuildConfig
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.nav.Http
-import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import org.json.JSONObject
 
 /**
  * Finds out whether a newer DriveSanity has been released on GitHub, and downloads it. The only thing

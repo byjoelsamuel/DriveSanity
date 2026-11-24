@@ -5,13 +5,13 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,14 +49,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.byjoelsamuel.drivesanity.BuildConfig
 import io.github.byjoelsamuel.drivesanity.CarProfiles
-import io.github.byjoelsamuel.drivesanity.DriveEngine
-import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.DashView
+import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.PhoneCheck
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.StartupSound
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
+import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.demo.RawRecorder
 import io.github.byjoelsamuel.drivesanity.map.Tiles
@@ -65,9 +65,9 @@ import io.github.byjoelsamuel.drivesanity.nav.GoogleNav
 import io.github.byjoelsamuel.drivesanity.obd.Dtc
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.update.Updater
-import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /** The pages of Settings. HOME is the list; every other one opens from a row on it. */
 private enum class Page(val title: String) {

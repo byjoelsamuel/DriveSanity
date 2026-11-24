@@ -1,0 +1,32 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{kt,kts}]
+indent_size = 4
+ktlint_code_style = android_studio
+# The painters and Compose screens have long lines on purpose; wrapping them hurts more than it helps.
+max_line_length = off
+# Composable functions are named like types.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Style rules that fight how this code is written (short one-line ifs, aligned comments, compact calls).
+# The rules left on are the ones that catch real slips: import order, indentation, stray blank lines, spacing.
+ktlint_standard_statement-wrapping = disabled
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+ktlint_standard_argument-list-wrapping = disabled
+ktlint_standard_no-multi-spaces = disabled
+ktlint_standard_multiline-if-else = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_wrapping = disabled
+ktlint_standard_multiline-loop = disabled
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-literal = disabled
+ktlint_standard_filename = disabled
+ktlint_standard_kdoc = disabled
+ktlint_standard_property-naming = disabled

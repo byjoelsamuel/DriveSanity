@@ -459,6 +459,9 @@ secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_AL
 
 To build it yourself, open the project in Android Studio, or run `./gradlew assembleDebug`
 with JDK 17 and the Android SDK. `./gradlew testDebugUnitTest` runs the tests.
+`tools/lint.sh` runs the Kotlin style check (ktlint) and static analysis (detekt); `tools/lint.sh format` fixes
+style. GitHub also runs Android lint and CodeQL on every change, and Dependabot opens pull requests for outdated
+libraries. See `SECURITY.md` for reporting a problem.
 
 | Folder or file | What's in it |
 |---|---|

@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:DashScreen.kt$DashScreen$DriveEngine.recording != shownRecording || Prefs.layout(carContext) != shownLayout || ((Prefs.layout(carContext) == Prefs.Layout.MUSIC || Prefs.layout(carContext) == Prefs.Layout.MAP) &amp;&amp; MediaWatcher.now?.playing != shownPlaying)</ID>
+    <ID>ComplexCondition:DriveEngine.kt$DriveEngine$who == CAR &amp;&amp; recording &amp;&amp; !serviceOn &amp;&amp; PHONE !in holders</ID>
+    <ID>ComplexCondition:Session.kt$Session$a != null &amp;&amp; a.lat != null &amp;&amp; a.lon != null &amp;&amp; p.lat != null &amp;&amp; p.lon != null &amp;&amp; p.t - a.t &lt;= 30.0</ID>
+    <ID>ComplexCondition:SpeedLimit.kt$SpeedLimit$!busy &amp;&amp; now - askedMs &gt; 30_000 &amp;&amp; (center == null || Geo.distanceM(center, p) &gt; REFETCH_FROM_M)</ID>
+    <ID>CyclomaticComplexMethod:LaunchPainter.kt$LaunchPainter$fun draw(c: Canvas, r: RectF, s: Snapshot, units: Units)</ID>
+    <ID>CyclomaticComplexMethod:Obd.kt$Obd$private fun poll(s: ObdSession)</ID>
+    <ID>CyclomaticComplexMethod:SettingsKit.kt$private fun DrawScope.drawSettingsIcon(icon: SettingsIcon, c: Color)</ID>
+    <ID>InstanceOfCheckForException:Obd.kt$Obd$e is CarAsleepException</ID>
+    <ID>LongMethod:SettingsKit.kt$private fun DrawScope.drawSettingsIcon(icon: SettingsIcon, c: Color)</ID>
+    <ID>MemberNameEqualsClassName:Prefs.kt$Prefs$private fun prefs(ctx: Context)</ID>
+    <ID>UnusedParameter:SettingsTab.kt$actions: PhoneActions</ID>
+    <ID>UnusedParameter:SettingsTab.kt$tick: Long</ID>
+    <ID>UseRequire:CommandGuard.kt$CommandGuard$throw IllegalArgumentException("Blocked: $c is not a read-only request")</ID>
+  </CurrentIssues>
+</SmellBaseline>

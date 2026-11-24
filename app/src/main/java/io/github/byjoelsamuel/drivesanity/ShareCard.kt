@@ -94,7 +94,7 @@ object ShareCard {
         }
         top += 26f
 
-        val panels = ORDER.mapNotNull { panel(p, data, config, it, format, w - 2 * M) }
+        val panels = ORDER.mapNotNull { panel(p, data, config, it, format) }
         val avail = (h - 130f) - top
         val total = panels.sumOf { it.height.toDouble() }.toFloat() + GAP * max(0, panels.size - 1)
         val k = if (total > avail && total > 0f) avail / total else 1f
@@ -153,11 +153,10 @@ object ShareCard {
     // One panel per genre
     // ---------------------------------------------------------------------------------------
 
-    private fun panel(p: Pens, d: CardData, cfg: ShareConfig, genre: Genre, f: Format, width: Float): Panel? {
+    private fun panel(p: Pens, d: CardData, cfg: ShareConfig, genre: Genre, f: Format): Panel? {
         val blocks = Block.of(genre).filter { it in cfg.blocks && d.has(it) }
         if (blocks.isEmpty()) return null
         val story = f == Format.STORY
-        val inner = width - 2 * PAD
         val title = genre.label.uppercase()
         fun frame(contentH: Float, draw: (Canvas, Float, Float, Float) -> Unit) = Panel(genre, PAD * 2 + GENRE_H + contentH) { c, x, y, w ->
             p.label(30f)

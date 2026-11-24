@@ -106,6 +106,7 @@ class BleTransport(context: Context, device: BluetoothDevice) : ObdTransport {
     private val ready = CountDownLatch(1)
     private val descriptorWritten = CountDownLatch(1)
     private val writeDone = Semaphore(0)
+
     @Volatile private var disconnected = false
     private lateinit var writeChar: BluetoothGattCharacteristic
 

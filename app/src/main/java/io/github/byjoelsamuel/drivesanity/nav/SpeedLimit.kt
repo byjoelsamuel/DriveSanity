@@ -3,10 +3,10 @@ package io.github.byjoelsamuel.drivesanity.nav
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.map.Geo
 import io.github.byjoelsamuel.drivesanity.map.LatLon
-import org.json.JSONObject
 import java.net.URLEncoder
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import org.json.JSONObject
 
 /** A posted limit, in the units the sign uses. */
 data class Limit(val value: Int, val mph: Boolean) {
@@ -31,9 +31,11 @@ object SpeedLimit {
 
     @Volatile var current: Limit? = null
         private set
+
     @Volatile private var roads: List<Road> = emptyList()
     private var areaCenter: LatLon? = null
     private var askedMs = 0L
+
     @Volatile private var busy = false
     private var lastMatch: LatLon? = null
 

@@ -16,6 +16,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.Units
+import java.lang.reflect.Proxy
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -24,7 +25,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.lang.reflect.Proxy
 
 /** What you tap in Settings shows at once, waits for Apply, and Discard and Reset work. */
 @RunWith(RobolectricTestRunner::class)

@@ -17,10 +17,9 @@ import androidx.car.app.SurfaceContainer
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarIcon
-import androidx.core.graphics.drawable.IconCompat
-import io.github.byjoelsamuel.drivesanity.R
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import io.github.byjoelsamuel.drivesanity.CarHealth
@@ -28,10 +27,11 @@ import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
-import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
+import io.github.byjoelsamuel.drivesanity.R
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
+import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.obd.Obd
 import io.github.byjoelsamuel.drivesanity.track.Launch
 

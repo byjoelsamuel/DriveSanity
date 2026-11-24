@@ -33,11 +33,13 @@ object Obd {
     /** How many times the link dropped and was set up again since the app started, and why the last time. */
     @Volatile var reconnects = 0
         private set
+
     @Volatile var lastProblem: String? = null
         private set
 
     // The OBD2 screen's extra readings and fault codes are only asked for while something shows them.
     @Volatile private var diagFromCar = false
+
     @Volatile private var diagFromPhone = false
     private val diagnosticsOn get() = diagFromCar || diagFromPhone
 
@@ -61,13 +63,18 @@ object Obd {
         dtcReport = null
         codesState = CodesState.NOT_ASKED
     }
+
     @Volatile var vin: String? = null
         private set
+
     @Volatile var protocol: String = ""
         private set
+
     @Volatile var probeResult: String? = null
         private set
+
     @Volatile private var readCodesRequested = false
+
     @Volatile private var probeRequested = false
 
     fun requestReadCodes() {
@@ -115,15 +122,20 @@ object Obd {
     // (the adapter's own voltage reading doesn't touch the car), and it wakes when the app is opened,
     // the car moves, or the voltage shows the engine is running.
     @Volatile private var wakeRequested = false
+
     @Volatile private var retryDelayMs = RETRY_MS
 
     fun wake() {
         wakeRequested = true
     }
     private lateinit var app: Context
+
     @Volatile private var running = false
+
     @Volatile private var worker: Thread? = null
+
     @Volatile private var link: ObdTransport? = null
+
     @Volatile private var live: ObdSession? = null
 
     fun start(context: Context) {
@@ -175,8 +187,10 @@ object Obd {
 
     // The pedal: the car's own pedal reading when it has one, otherwise the throttle valve rescaled.
     private val pedalPids = listOf(Pid.PEDAL_REL, Pid.PEDAL_D, Pid.PEDAL_E, Pid.THROTTLE_REL)
+
     @Volatile var pedalSource: String = "not known yet"
         private set
+
     @Volatile private var pedalPid: Pid? = null
     private val valve = Rescale()
 

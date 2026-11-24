@@ -141,6 +141,7 @@ object DriveEngine : SensorEventListener, LocationListener {
     val stats = TripStats()
     private var log: TripLog? = null
     val recording get() = log != null
+
     /** When the current recording started (elapsedRealtime), or null. */
     var recordingSinceMs: Long? = null
         private set
@@ -574,6 +575,7 @@ object DriveEngine : SensorEventListener, LocationListener {
     // Older Android versions (before 11) call these and crash if they're missing.
     override fun onProviderEnabled(provider: String) {}
     override fun onProviderDisabled(provider: String) {}
+
     @Deprecated("Deprecated in Java")
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 }

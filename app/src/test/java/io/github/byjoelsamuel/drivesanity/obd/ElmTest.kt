@@ -1,11 +1,11 @@
 package io.github.byjoelsamuel.drivesanity.obd
 
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.IOException
 
 /** Answers like an ELM327 clone would, echo and all. */
 private class FakeElm(private val replies: Map<String, String>) : ObdTransport {

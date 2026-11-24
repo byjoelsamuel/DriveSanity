@@ -13,6 +13,7 @@ import java.util.Locale
  */
 object RawRecorder {
     @Volatile private var out: BufferedWriter? = null
+
     @Volatile var file: File? = null
         private set
     private var startMs = 0L

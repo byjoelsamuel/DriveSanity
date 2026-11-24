@@ -1,30 +1,10 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
 import android.os.SystemClock
-import java.io.File
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
-import io.github.byjoelsamuel.drivesanity.hms
-import io.github.byjoelsamuel.drivesanity.Session
-import io.github.byjoelsamuel.drivesanity.Prefs
-import io.github.byjoelsamuel.drivesanity.DashView
-import io.github.byjoelsamuel.drivesanity.CarProfiles
-import io.github.byjoelsamuel.drivesanity.Alerts
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import io.github.byjoelsamuel.drivesanity.BuildConfig
-import io.github.byjoelsamuel.drivesanity.PhoneCheck
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,43 +20,62 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import io.github.byjoelsamuel.drivesanity.Alerts
 import io.github.byjoelsamuel.drivesanity.BrakeLevel
+import io.github.byjoelsamuel.drivesanity.BuildConfig
+import io.github.byjoelsamuel.drivesanity.CarProfiles
 import io.github.byjoelsamuel.drivesanity.Colors
+import io.github.byjoelsamuel.drivesanity.DashView
 import io.github.byjoelsamuel.drivesanity.DriveEngine
+import io.github.byjoelsamuel.drivesanity.PhoneCheck
+import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.Revs
+import io.github.byjoelsamuel.drivesanity.Session
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Tpms
 import io.github.byjoelsamuel.drivesanity.Units
+import io.github.byjoelsamuel.drivesanity.hms
 import io.github.byjoelsamuel.drivesanity.map.MapPainter
 import io.github.byjoelsamuel.drivesanity.map.MapView
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 import io.github.byjoelsamuel.drivesanity.nav.SpeedLimit
 import io.github.byjoelsamuel.drivesanity.oneDecimal
+import java.io.File
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-@Composable
 /** The phone's home screen: what the car is showing (and a way to change it), then what matters right now. */
+@Composable
 fun DriveTab(s: Snapshot, units: Units, tick: Long, actions: PhoneActions, openSetup: () -> Unit, recordings: List<File> = emptyList(), openTrips: () -> Unit = {}) {
     Box(Modifier.fillMaxSize()) {
         Column(

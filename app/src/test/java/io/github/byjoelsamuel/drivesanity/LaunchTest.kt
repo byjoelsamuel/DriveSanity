@@ -3,6 +3,7 @@ package io.github.byjoelsamuel.drivesanity
 import android.os.SystemClock
 import io.github.byjoelsamuel.drivesanity.track.Launch
 import io.github.byjoelsamuel.drivesanity.track.Phase
+import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -13,7 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import java.time.Duration
 
 /** The 0–60 screen's logic: what it says when, the optional 3-2-1, and a jump start. */
 @RunWith(RobolectricTestRunner::class)
