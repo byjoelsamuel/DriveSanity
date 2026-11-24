@@ -1,10 +1,10 @@
 package io.github.byjoelsamuel.drivesanity.nav
 
 import io.github.byjoelsamuel.drivesanity.map.LatLon
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.io.IOException
 
 class NavParsingTest {
     @Test

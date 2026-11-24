@@ -2,6 +2,7 @@ package io.github.byjoelsamuel.drivesanity
 
 import android.os.Looper
 import io.github.byjoelsamuel.drivesanity.demo.Demo
+import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -11,7 +12,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

@@ -30,6 +30,7 @@ enum class Units(val perMps: Float, val label: String) {
 /** Small things kept between launches: the units, and the calibration (the phone usually stays in its mount). */
 object Prefs {
     private const val FILE = "drive"
+
     @Volatile private var units: Units? = null
 
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -94,6 +95,7 @@ object Prefs {
     }
 
     /** Flashing warnings and the shift light. */
+
     /** How the share pictures are put together (see ShareConfig); kept so the next one starts the same way. */
     fun shareConfig(ctx: Context): String? = prefs(ctx).getString("share_config", null)
 

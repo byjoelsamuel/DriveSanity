@@ -35,13 +35,13 @@ import io.github.byjoelsamuel.drivesanity.SessionPoint
 import io.github.byjoelsamuel.drivesanity.Units
 import io.github.byjoelsamuel.drivesanity.hms
 import io.github.byjoelsamuel.drivesanity.oneDecimal
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * One recording opened up: the numbers, the path on a plain map coloured by speed, speed and RPM

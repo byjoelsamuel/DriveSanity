@@ -199,6 +199,7 @@ class MusicPainter(context: Context) {
     }
 
     /** The player as a tall card, for the right-hand side of the map screen: cover, song, artist, waveform and buttons. */
+
     /**
      * [r] is where the words and the cover may go; [backdrop], when given, is the card itself, which can be taller
      * and wider than that (it runs from the top of the screen to the bottom, like the map beside it).

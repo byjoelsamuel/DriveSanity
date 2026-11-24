@@ -10,8 +10,9 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.View
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
@@ -19,7 +20,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
@@ -28,6 +28,9 @@ import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.demo.Demo
 import io.github.byjoelsamuel.drivesanity.media.MediaWatcher
 import io.github.byjoelsamuel.drivesanity.media.NowPlaying
+import java.io.File
+import java.lang.reflect.Proxy
+import java.time.Duration
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -37,9 +40,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.io.File
-import java.lang.reflect.Proxy
-import java.time.Duration
 
 /**
  * A walk through the app with the demo drive running: every phone tab and every car screen is drawn, and
@@ -98,6 +98,7 @@ class WalkthroughTest {
     )
 
     /** The phone's actions, wired to the real engine wherever that doesn't need an activity. */
+
     /** Every action a screen asked for, by name, so a test can check a button did something. */
     private val asked = ArrayList<String>()
 

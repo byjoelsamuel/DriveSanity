@@ -1,9 +1,9 @@
 package io.github.byjoelsamuel.drivesanity.nav
 
 import io.github.byjoelsamuel.drivesanity.map.LatLon
+import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
 
 enum class Arrow { STRAIGHT, LEFT, RIGHT, SLIGHT_LEFT, SLIGHT_RIGHT, UTURN, ARRIVE }
 

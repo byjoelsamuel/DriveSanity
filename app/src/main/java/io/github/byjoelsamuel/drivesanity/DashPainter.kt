@@ -91,8 +91,6 @@ class DashPainter(context: Context) {
     private val cluster = ClusterPainter(context)
     private val gauges = GaugesPainter(context)
 
-
-
     private val diag = DiagPainter(context)
 
     private val appContext = context.applicationContext
@@ -171,7 +169,6 @@ class DashPainter(context: Context) {
         if (layout == Prefs.Layout.MAP) drawMapTall(c, r, s, units) else drawTall(c, r, s, units)
     }
 
-
     /** The map screen on a tall phone: map on top, then gear and speed, brake, RPM, boxes, fuel. */
     private fun drawMapTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
         val pad = r.width() * 0.05f
@@ -214,9 +211,6 @@ class DashPainter(context: Context) {
         text.color = when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG }
         c.drawText(s.gearText, b.centerX(), b.top + b.height() * 0.86f, text)
     }
-
-
-
 
     private fun drawTall(c: Canvas, r: RectF, s: Snapshot, units: Units) {
         val pad = r.width() * 0.05f
@@ -516,9 +510,6 @@ class DashPainter(context: Context) {
         c.drawLine(x + w * 1.35f, baseline - h * 0.55f, x + w * 1.35f, baseline - h * 0.15f, stroke)
     }
 
-
-
-
     private fun drawGMeter(c: Canvas, b: RectF, s: Snapshot) {
         val cx = b.centerX()
         val cy = b.centerY()
@@ -592,6 +583,7 @@ internal fun hms(sec: Double): String {
 /** Poppins, bundled in res/font (SIL Open Font License, see licenses/Poppins-OFL.txt). */
 object Fonts {
     @Volatile private var medium: Typeface? = null
+
     @Volatile private var semibold: Typeface? = null
 
     /** The type the dashboards use: Poppins, the same as the rest of the app. */

@@ -4,14 +4,14 @@ import io.github.byjoelsamuel.drivesanity.demo.RawEvent
 import io.github.byjoelsamuel.drivesanity.demo.RawPlayer
 import io.github.byjoelsamuel.drivesanity.obd.CommandGuard
 import io.github.byjoelsamuel.drivesanity.track.AccelTimer
+import kotlin.math.cos
+import kotlin.math.sin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.cos
-import kotlin.math.sin
 
 class TrackLogicTest {
     @Test
@@ -145,7 +145,7 @@ class SessionTest {
         assertEquals(10.0, s.durationS, 0.0)
         // 0.002 degrees of longitude at 40 N is about 170 m.
         assertEquals(170.0, s.distanceM, 8.0)
-            }
+    }
 
     @Test
     fun stillReadsTheOlderFormat() {
@@ -228,7 +228,7 @@ class ShareConfigTest {
         val d = CardData.ofSession(s, "Drive", "1 JAN", "Car", Units.MPH, hideEnds = false)
         org.junit.Assert.assertTrue(d.has(Block.TOP_SPEED))
         org.junit.Assert.assertTrue(d.has(Block.PATH))
-                org.junit.Assert.assertFalse(d.has(Block.ZERO_60))  // no run
+        org.junit.Assert.assertFalse(d.has(Block.ZERO_60))  // no run
         org.junit.Assert.assertFalse(d.has(Block.DRIVES))   // only on a profile
     }
 

@@ -180,7 +180,6 @@ class ClusterPainter(context: Context) {
 
     fun drawMusic(c: Canvas, r: RectF, s: Snapshot, units: Units, full: RectF = r) = music.draw(c, r, s, units, full)
 
-
     /** A caption and a big value on one line, and a row of bar segments under them. */
     private fun barRow(c: Canvas, b: RectF, name: String, value: String, frac: Float?, n: Int, colorOf: (Float) -> Int) {
         val h = b.height()
@@ -327,20 +326,6 @@ class ClusterPainter(context: Context) {
         music.drawPanel(c, player, card)
     }
 
-    private fun speedAndGear(c: Canvas, b: RectF, s: Snapshot, units: Units) {
-        val h = b.height()
-        // The gear gets a column of its own at the right; the speed, its units and the other units fit in what's left.
-        val gearW = b.width() * 0.2f
-        val speedW = b.width() - gearW - b.width() * 0.03f
-        val size = min(h * 0.78f, speedW / 3.1f)
-        speedGroup(c, RectF(b.left, b.top, b.left + speedW, b.bottom), s, units, size = size, baseline = b.top + h * 0.84f, centred = false)
-        val gx = b.right - gearW
-        label(h * 0.11f)
-        c.drawText("GEAR", gx, b.top + h * 0.2f, text)
-        number(h * (if (s.gear == null) 0.3f else 0.62f), when { s.gearless -> Colors.DIM; s.gear == null -> Colors.GRID; else -> Colors.FG })
-        c.drawText(s.gearText, gx, b.top + h * 0.84f, text)
-    }
-
     /**
      * The speed as rolling digits with the units beside them: [centred] in [b], or from its left
      * edge. The digits sit in a fixed three-digit slot so the units don't wander as it changes.
@@ -371,88 +356,6 @@ class ClusterPainter(context: Context) {
         label(unitSize * 0.85f)
         val other = units.other
         c.drawText("${s.speedMps?.let { other.speed(it).roundToInt() } ?: "–"} ${other.label}", ux, baseline, text)
-    }
-
-    private fun rpmBar(c: Canvas, b: RectF, s: Snapshot) {
-        val h = b.height()
-        val rpm = s.rpm
-        label(h * 0.24f)
-        c.drawText("RPM", b.left, b.top + h * 0.28f, text)
-        number(h * 0.34f, if (rpm == null) Colors.DIM else Colors.rpm(rpm), Paint.Align.RIGHT)
-        c.drawText(rpm?.let { "%,d".format((it / 50f).roundToInt() * 50) } ?: if (s.obdLive) "–" else "no OBD2", b.right, b.top + h * 0.33f, text)
-        val step = 125f
-        val n = (Revs.MAX / step).toInt()
-        val bar = RectF(b.left, b.top + h * 0.45f, b.right, b.top + h * 0.78f)
-        val seg = bar.width() / n
-        for (i in 0 until n) {
-            val from = i * step
-            val off = if (from + step > Revs.REDLINE) Colors.RED_DIM else Colors.GRID
-            val part = if (rpm == null) 0f else ((rpm - from) / step).coerceIn(0f, 1f)
-            fill.color = if (part >= 0.98f) Colors.rpm(from + step / 2) else if (part > 0.02f) Colors.mix(off, Colors.rpm(from + step / 2), part) else off
-            val x = bar.left + i * seg
-            c.drawRect(x + seg * 0.2f, bar.top, x + seg * 0.8f, bar.bottom, fill)
-        }
-        label(h * 0.17f, Colors.DIM, Paint.Align.CENTER)
-        for (k in 0..8) {
-            val x = (bar.left + k * 1000f / Revs.MAX * bar.width()).coerceIn(bar.left + h * 0.08f, bar.right - h * 0.08f)
-            text.color = if (k * 1000f >= Revs.REDLINE) Colors.RED else Colors.DIM
-            c.drawText(k.toString(), x, b.top + h * 0.98f, text)
-        }
-    }
-
-    /** A name, a value, and a rounded bar that fills left to right. */
-    private fun levelBar(c: Canvas, b: RectF, name: String, value: String, frac: Float?, color: Int) {
-        val h = b.height()
-        label(h * 0.3f)
-        c.drawText(name, b.left, b.top + h * 0.38f, text)
-        number(h * 0.44f, if (frac == null) Colors.DIM else color, Paint.Align.RIGHT)
-        c.drawText(value, b.right, b.top + h * 0.42f, text)
-        segments(c, RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f), frac, 48, { color })
-    }
-
-    private fun brakeBar(c: Canvas, b: RectF, s: Snapshot) {
-        val h = b.height()
-        val brake = s.g?.brake ?: 0f
-        val level = BrakeLevel.of(brake)
-        val color = Colors.brake(level)
-        label(h * 0.3f)
-        c.drawText("BRAKE", b.left, b.top + h * 0.38f, text)
-        number(h * 0.44f, color, Paint.Align.RIGHT)
-        c.drawText(
-            when {
-                s.g == null -> "–"
-                level == BrakeLevel.NONE -> "NONE"
-                else -> "${level.label}  %.2f g".format(brake)
-            },
-            b.right, b.top + h * 0.42f, text,
-        )
-        segments(c, RectF(b.left, b.top + h * 0.6f, b.right, b.top + h * 0.88f), (brake / 0.8f).coerceIn(0f, 1f), 48, { color })
-    }
-
-    /** Coolant, battery and intake boxes. */
-    private fun temperatures(c: Canvas, b: RectF, s: Snapshot, units: Units) {
-        val gap = b.width() * 0.03f
-        val bw = (b.width() - gap * 2) / 3f
-        val cool = s.coolantC
-        val v = s.volts
-        box(c, RectF(b.left, b.top, b.left + bw, b.bottom), "COOLANT", tempText(cool, units),
-            when { cool == null -> Colors.DIM; cool > 105f -> Colors.RED; cool < 60f -> Colors.ACCENT; else -> Colors.FG }, Colors.COOLANT)
-        box(c, RectF(b.left + bw + gap, b.top, b.left + 2 * bw + gap, b.bottom), "BATTERY", v?.let { "%.1f V".format(it) } ?: "–",
-            when { v == null -> Colors.DIM; v < 11.8f || v > 15.2f -> Colors.RED; v < 12.2f -> Colors.SAND; else -> Colors.FG }, Colors.BATTERY)
-        box(c, RectF(b.left + 2 * (bw + gap), b.top, b.right, b.bottom), "INTAKE", tempText(s.intakeC, units), Colors.FG, Colors.INTAKE)
-    }
-
-    private fun box(c: Canvas, b: RectF, name: String, value: String, color: Int, tint: Int) {
-        val h = b.height()
-        fill.color = Colors.BOX
-        c.drawRoundRect(b, h * 0.12f, h * 0.12f, fill)
-        val inset = b.width() * 0.08f
-        fill.color = tint
-        c.drawRoundRect(RectF(b.left + inset, b.top + h * 0.19f, b.left + inset + h * 0.1f, b.top + h * 0.29f), h * 0.025f, h * 0.025f, fill)
-        label(h * 0.16f)
-        c.drawText(name, b.left + inset + h * 0.16f, b.top + h * 0.3f, text)
-        number(h * 0.36f, if (value == "–") Colors.DIM else color)
-        c.drawText(value, b.left + inset, b.bottom - h * 0.2f, text)
     }
 
     // ---------------------------------------------------------------------------------------

@@ -30,8 +30,8 @@ import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.StartupSoundMode
 import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.update.Updater
-import kotlinx.coroutines.delay
 import java.io.File
+import kotlinx.coroutines.delay
 
 /** Everything the phone screens can ask the activity to do. */
 interface PhoneActions {
@@ -93,25 +93,25 @@ fun PhoneApp(actions: PhoneActions, startTab: Int = 0) {
         Scaffold(
             containerColor = Ui.bg,
             bottomBar = {
-              Column {
-                HorizontalDivider(color = Ui.line)
-                NavigationBar(containerColor = Ui.bg, tonalElevation = 0.dp) {
-                    listOf("Home" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
-                        val on = tab == i
-                        NavigationBarItem(
-                            selected = on,
-                            onClick = { tab = i },
-                            icon = { TabGlyph(icon, if (on) Ui.fg else Ui.dim) },
-                            label = { Text(label, style = MaterialTheme.typography.labelMedium) },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = Ui.raised,
-                                selectedTextColor = Ui.fg,
-                                unselectedTextColor = Ui.dim,
-                            ),
-                        )
+                Column {
+                    HorizontalDivider(color = Ui.line)
+                    NavigationBar(containerColor = Ui.bg, tonalElevation = 0.dp) {
+                        listOf("Home" to TabIcon.DRIVE, "0–60" to TabIcon.LAUNCH, "Trips" to TabIcon.TRIPS, "Settings" to TabIcon.SETUP).forEachIndexed { i, (label, icon) ->
+                            val on = tab == i
+                            NavigationBarItem(
+                                selected = on,
+                                onClick = { tab = i },
+                                icon = { TabGlyph(icon, if (on) Ui.fg else Ui.dim) },
+                                label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = Ui.raised,
+                                    selectedTextColor = Ui.fg,
+                                    unselectedTextColor = Ui.dim,
+                                ),
+                            )
+                        }
                     }
                 }
-              }
             },
         ) { pad ->
             Box(Modifier.fillMaxSize().padding(pad)) {

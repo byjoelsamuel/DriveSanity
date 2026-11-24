@@ -122,6 +122,5 @@ class Session(val points: List<SessionPoint>) {
             }
             return out
         }
-
     }
 }

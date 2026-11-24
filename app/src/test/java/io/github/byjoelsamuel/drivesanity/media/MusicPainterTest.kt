@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import io.github.byjoelsamuel.drivesanity.MusicPainter
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -18,7 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

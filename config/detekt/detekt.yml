@@ -1,0 +1,62 @@
+# detekt, on top of its default rules. Only what doesn't suit this code is changed, and why.
+# Run it with tools/lint.sh. Findings that existed when it was added are in baseline.xml, so only new ones fail.
+build:
+  maxIssues: 0
+
+complexity:
+  LongParameterList:
+    # Composables and painters take many parameters with defaults, and drawing helpers pass a canvas, a box and a few numbers.
+    functionThreshold: 10
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    active: false
+  LargeClass:
+    active: false
+  CyclomaticComplexMethod:
+    # Drawing code is long and branchy by nature; this still catches the truly tangled.
+    threshold: 25
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    threshold: 120
+    ignoreAnnotated: ['Composable']
+  NestedBlockDepth:
+    threshold: 6
+
+naming:
+  MatchingDeclarationName:
+    active: false
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Za-z][_A-Za-z0-9]*'
+
+empty-blocks:
+  EmptyFunctionBlock:
+    # Listener interfaces with callbacks nobody needs (GPS provider changes, for one).
+    ignoreOverridden: true
+
+style:
+  MagicNumber:
+    # Pixel and ratio constants are the point of a painter.
+    active: false
+  MaxLineLength:
+    active: false
+  ReturnCount:
+    active: false
+  ThrowsCount:
+    active: false
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+  LoopWithTooManyJumpStatements:
+    active: false
+  ForbiddenComment:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    # The car screen and the OBD2 link catch Exception on purpose: one bad frame or read must not end the app.
+    active: false
+  SwallowedException:
+    active: false

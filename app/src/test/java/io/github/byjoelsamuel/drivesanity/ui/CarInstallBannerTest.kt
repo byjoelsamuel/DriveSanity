@@ -11,8 +11,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** The warning on Home for a copy Android Auto won't list. */
 @RunWith(RobolectricTestRunner::class)

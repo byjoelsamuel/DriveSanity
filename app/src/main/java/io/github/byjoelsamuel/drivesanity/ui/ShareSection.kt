@@ -40,8 +40,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.byjoelsamuel.drivesanity.Block
-import io.github.byjoelsamuel.drivesanity.CardData
 import io.github.byjoelsamuel.drivesanity.CarProfiles
+import io.github.byjoelsamuel.drivesanity.CardData
 import io.github.byjoelsamuel.drivesanity.Genre
 import io.github.byjoelsamuel.drivesanity.PanelStyle
 import io.github.byjoelsamuel.drivesanity.Place
@@ -53,13 +53,13 @@ import io.github.byjoelsamuel.drivesanity.ShareConfig
 import io.github.byjoelsamuel.drivesanity.ShareImage
 import io.github.byjoelsamuel.drivesanity.TripLog
 import io.github.byjoelsamuel.drivesanity.Units
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Makes a picture of a recording, or of all of them together, to post. */
 @Composable
@@ -201,7 +201,6 @@ private fun ShareEditor(data: CardData?, name: String, extras: @Composable Colum
                 }
             }
         }
-
     }
 }
 

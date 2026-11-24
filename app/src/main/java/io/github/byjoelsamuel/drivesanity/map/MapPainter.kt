@@ -4,14 +4,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
-import android.text.TextUtils
 import android.text.TextPaint
+import android.text.TextUtils
 import io.github.byjoelsamuel.drivesanity.Colors
 import io.github.byjoelsamuel.drivesanity.Snapshot
 import io.github.byjoelsamuel.drivesanity.Units
@@ -298,7 +298,6 @@ class MapPainter(private val labels: Typeface, private val numbers: Typeface) {
     }
 
     companion object {
-        private val MAP_BG = Color.rgb(22, 24, 27)
 
         fun distance(m: Double, units: Units): String = if (units == Units.MPH) {
             val ft = m * 3.28084

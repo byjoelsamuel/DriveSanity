@@ -23,6 +23,7 @@ object Nav {
         private set
     var route: Route? = null
         private set
+
     /** Index of the next manoeuvre in the route's steps. */
     var next = 0
         private set
@@ -32,6 +33,7 @@ object Nav {
         private set
     var remainingS = 0.0
         private set
+
     /** A short message instead of directions: "Finding a route…", "Arrived", an error. */
     var message: String? = null
         private set

@@ -1,7 +1,13 @@
 package io.github.byjoelsamuel.drivesanity.ui
 
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -9,23 +15,17 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.background
-import androidx.compose.ui.Modifier
 import androidx.test.core.app.ApplicationProvider
-import android.content.Context
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
+import java.io.File
+import java.lang.reflect.Proxy
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.io.File
-import java.lang.reflect.Proxy
 
 /** Opens Settings, taps through to a page and back. Set SHOTS_DIR to also save pictures of each page. */
 @RunWith(RobolectricTestRunner::class)

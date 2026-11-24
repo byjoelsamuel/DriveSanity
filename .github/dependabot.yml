@@ -1,0 +1,28 @@
+# Opens a pull request when a library or a GitHub Action has a newer version, so known-vulnerable or old
+# versions don't sit unnoticed. Nothing is merged for you: each one goes through the same tests as any change.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "org.jetbrains.kotlinx*", "com.android.tools.build*", "com.android.application"]
+      testing:
+        patterns: ["org.robolectric*", "junit*", "org.junit*"]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
