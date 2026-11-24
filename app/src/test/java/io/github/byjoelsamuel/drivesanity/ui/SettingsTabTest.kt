@@ -20,6 +20,7 @@ import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import java.io.File
 import java.lang.reflect.Proxy
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,9 +36,12 @@ class SettingsTabTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
 
+    private val called = mutableListOf<String>()
+
     private val actions: PhoneActions = Proxy.newProxyInstance(
         PhoneActions::class.java.classLoader, arrayOf(PhoneActions::class.java),
     ) { p, m, a ->
+        called += m.name
         when (m.name) {
             "equals" -> p === a?.firstOrNull()
             "hashCode" -> 0
@@ -101,6 +105,22 @@ class SettingsTabTest {
         rule.onNodeWithText("Car connection").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Car screen errors").assertExists()
         shot("page-phone-check")
+    }
+
+    @Test
+    fun googleMapsCanBeSharedAndStoppedFromItsPage() {
+        show()
+        rule.onAllNodesWithText("Google Maps directions").onFirst().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Not sharing.").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Share Google Maps").performScrollTo().performClick()
+        assertTrue("startMapMirror" in called)
+        shot("page-google-maps-sharing-off")
+        io.github.byjoelsamuel.drivesanity.mirror.MapMirror.state = io.github.byjoelsamuel.drivesanity.mirror.MapMirror.State.Sharing(0)
+        rule.waitForIdle()
+        rule.onNodeWithText("Stop sharing").performScrollTo().performClick()
+        assertTrue("stopMapMirror" in called)
+        io.github.byjoelsamuel.drivesanity.mirror.MapMirror.state = io.github.byjoelsamuel.drivesanity.mirror.MapMirror.State.Off
     }
 
     @Test

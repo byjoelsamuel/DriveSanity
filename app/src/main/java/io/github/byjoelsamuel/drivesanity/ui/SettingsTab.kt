@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -157,7 +158,7 @@ fun SettingsTab(
                             CarCheckCard(tick)
                         }
                         Page.SCREENS -> ScreensPage(draft)
-                        Page.NAVIGATION -> NavigationPage(draft)
+                        Page.NAVIGATION -> NavigationPage(draft, actions)
                         Page.ALERTS -> AlertsPage(draft)
                         Page.STARTUP -> StartupPage(draft, actions)
                         Page.MUSIC -> MusicPage(tick)
@@ -638,16 +639,17 @@ private fun layoutNote(l: Prefs.Layout) = when (l) {
     Prefs.Layout.DIAG -> "The check-engine lamp, fault codes, live engine readings and car info. For parked moments."
     Prefs.Layout.LAUNCH -> "READY, an optional 3-2-1, then your 0–60 mph and 0–100 km/h time. The countdown is on the 0–60 tab."
     Prefs.Layout.MUSIC -> "The cover's colours as a soft backdrop, the song, and a waveform of how far through you are."
+    Prefs.Layout.MIRROR -> "Google Maps itself, copied from the phone's screen (experimental). Start it under Google Maps directions."
 }
 
 @Composable
-private fun NavigationPage(draft: SettingsDraft) {
+private fun NavigationPage(draft: SettingsDraft, actions: PhoneActions) {
     Live.beat() // redraw with the engine's live values
     val ctx = LocalContext.current
     val granted = MediaWatcher.hasAccess(ctx)
     val now = GoogleNav.current()
     SettingsGroup(
-        footer = "Needs notification access, the same switch as the Music screen. This only reads the words of Google Maps' own navigation notification, so there's no screen recording, no Google account and no key. The arrival time and minutes left are Google's own figures, so they include traffic. Roads aren't coloured for traffic on this map.",
+        footer = "Needs notification access, the same switch as the Music screen. This option only reads the words of Google Maps' own navigation notification, so it needs no screen recording, no Google account and no key. The arrival time and minutes left are Google's own figures, so they include traffic. Roads aren't coloured for traffic on this map.",
     ) {
         SwitchRow("Show Google Maps' next turn", "On the map screen, in place of this app's own directions", draft.values.googleDirections) { on -> draft.edit { it.copy(googleDirections = on) } }
     }
@@ -670,7 +672,43 @@ private fun NavigationPage(draft: SettingsDraft) {
             }
         }
     }
+    MirrorGroup(actions)
     ResetGroup(draft, SettingsDraft.Group.NAV)
+}
+
+/** Starting and stopping Google Maps on the car screen. Not a saved setting: Android asks each time you start. */
+@Composable
+private fun MirrorGroup(actions: PhoneActions) {
+    val state = MapMirror.state
+    SettingsGroup(
+        "Google Maps on the car screen (experimental)",
+        footer = "Copies the phone's screen to the car's Google Maps screen. It's view-only: taps on the car can't reach Google Maps, so search and change the route on the phone. " +
+            "When Android asks what to share, choose \"A single app\" and Google Maps, not the whole screen, or your notifications and messages would show on the car screen too. " +
+            "Android shows its own recording indicator while this runs, and Google Maps has to stay open on the phone. Turn the phone sideways to fill the car screen; held upright, the picture is a narrow strip. Only use it while parked or as a passenger-set route, and keep your eyes on the road.",
+    ) {
+        GroupBody {
+            Text(
+                when (state) {
+                    MapMirror.State.Off -> "Not sharing."
+                    MapMirror.State.Asking -> "Waiting for you to answer Android's question…"
+                    is MapMirror.State.Sharing -> "Sharing. Pick the Google Maps screen on the car, and keep Google Maps open on the phone."
+                    is MapMirror.State.Failed -> state.message
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (state) {
+                    is MapMirror.State.Sharing -> Ui.good
+                    is MapMirror.State.Failed -> Ui.red
+                    else -> Ui.dim
+                },
+            )
+            Spacer(Modifier.height(12.dp))
+            if (state is MapMirror.State.Sharing) {
+                OutlinedButton(onClick = actions::stopMapMirror) { Text("Stop sharing") }
+            } else {
+                Button(onClick = actions::startMapMirror, enabled = state != MapMirror.State.Asking) { Text("Share Google Maps") }
+            }
+        }
+    }
 }
 
 @Composable

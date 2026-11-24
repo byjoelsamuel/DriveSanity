@@ -136,6 +136,10 @@ class MainActivity : ComponentActivity(), PhoneActions {
 
     override fun navigate() = showNavigate(this)
 
+    override fun startMapMirror() = startActivity(Intent(this, io.github.byjoelsamuel.drivesanity.mirror.MirrorConsentActivity::class.java))
+
+    override fun stopMapMirror() = io.github.byjoelsamuel.drivesanity.mirror.MapMirror.stop(this)
+
     override fun endRoute() = Nav.stop()
 
     override fun askLocation() {

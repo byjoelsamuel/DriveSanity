@@ -13,6 +13,7 @@ import io.github.byjoelsamuel.drivesanity.BuildConfig
 import io.github.byjoelsamuel.drivesanity.CarHealth
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
+import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import io.github.byjoelsamuel.drivesanity.nav.GeoTarget
 import io.github.byjoelsamuel.drivesanity.nav.Nav
 
@@ -65,7 +66,11 @@ class DriveSession : Session() {
         }
         DriveEngine.hold(carContext, DriveEngine.CAR)
         lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) = DriveEngine.release(DriveEngine.CAR)
+            override fun onDestroy(owner: LifecycleOwner) {
+                DriveEngine.release(DriveEngine.CAR)
+                // The car is gone, so there's nobody to show Google Maps to: stop copying the phone's screen.
+                MapMirror.stop(carContext)
+            }
         })
         return DashScreen(carContext)
     }

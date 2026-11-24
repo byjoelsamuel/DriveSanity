@@ -28,6 +28,7 @@ import io.github.byjoelsamuel.drivesanity.DashPainter
 import io.github.byjoelsamuel.drivesanity.DriveEngine
 import io.github.byjoelsamuel.drivesanity.Prefs
 import io.github.byjoelsamuel.drivesanity.R
+import io.github.byjoelsamuel.drivesanity.mirror.MapMirror
 import io.github.byjoelsamuel.drivesanity.RetroPainter
 import io.github.byjoelsamuel.drivesanity.StartupPainter
 import io.github.byjoelsamuel.drivesanity.StartupSound
@@ -103,11 +104,13 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
         val onLaunch = now == Prefs.Layout.LAUNCH
         val onMusic = now == Prefs.Layout.MUSIC
         val onMap = now == Prefs.Layout.MAP
+        val onMirror = now == Prefs.Layout.MIRROR && MapMirror.state is MapMirror.State.Sharing
         val countdown = Prefs.launchCountdown(carContext)
         val first = Action.Builder()
             .setTitle(
                 when {
                     onMap -> "Search"
+                    onMirror -> "Stop sharing"
                     onDiag -> "Read codes"
                     onLaunch -> if (countdown) "Start 3-2-1" else "Clear run"
                     DriveEngine.snapshot().calibrating -> "Calibrating…"
@@ -115,7 +118,10 @@ class DashScreen(carContext: CarContext) : Screen(carContext), SurfaceCallback {
                 },
             )
             .setOnClickListener {
-                if (onMap) {
+                if (onMirror) {
+                    MapMirror.stop(carContext)
+                    CarToast.makeText(carContext, "Stopped sharing Google Maps", CarToast.LENGTH_SHORT).show()
+                } else if (onMap) {
                     // The map has no gauges to calibrate; its first button is "Where to?" (keyboard and voice).
                     screenManager.push(SearchScreen(carContext))
                 } else if (onDiag) {

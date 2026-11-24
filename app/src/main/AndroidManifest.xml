@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Google Maps on the car screen: copying the phone's screen, which Android asks about every time. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- So Setup can ask Android not to put the app to sleep while you drive. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -47,6 +49,7 @@
         <!-- So Settings can tell whether Android Auto and UnknownAuto are there, and updates can go straight to UnknownAuto. -->
         <package android:name="com.google.android.projection.gearhead" />
         <package android:name="com.mag.unknownauto" />
+        <package android:name="com.google.android.apps.maps" />
     </queries>
 
     <application
@@ -87,6 +90,19 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".mirror.MirrorService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <!-- See-through screen that shows Android's "start sharing?" question for Google Maps on the car screen. -->
+        <activity
+            android:name=".mirror.MirrorConsentActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.DriveSanity.Translucent" />
 
         <service
             android:name=".car.DriveCarAppService"
