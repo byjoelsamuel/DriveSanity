@@ -36,6 +36,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Robolectric downloads its Android jar from Maven Central, which sometimes refuses busy networks and fails
+      # the tests for no reason of ours. Keeping the jar between runs means that download happens once.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('app/build.gradle.kts') }}
+
       - name: Unpack signing key
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
