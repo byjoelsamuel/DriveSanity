@@ -59,10 +59,11 @@ class CarProfilesTest {
     }
 
     @Test
-    fun `the screen switcher goes round all six screens`() {
-        assertEquals(6, Prefs.Layout.entries.size)
+    fun `the screen switcher goes round all seven screens`() {
+        assertEquals(7, Prefs.Layout.entries.size)
         assertEquals(Prefs.Layout.LAUNCH, Prefs.Layout.DIAG.next)
         assertEquals(Prefs.Layout.MUSIC, Prefs.Layout.LAUNCH.next)
-        assertEquals(Prefs.Layout.GAUGES, Prefs.Layout.MUSIC.next)
+        assertEquals(Prefs.Layout.MIRROR, Prefs.Layout.MUSIC.next)
+        assertEquals(Prefs.Layout.GAUGES, Prefs.Layout.MIRROR.next)
     }
 }

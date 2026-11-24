@@ -92,6 +92,7 @@ class DashPainter(context: Context) {
     private val gauges = GaugesPainter(context)
 
     private val diag = DiagPainter(context)
+    private val mirror = MirrorPainter(context)
 
     private val appContext = context.applicationContext
 
@@ -155,6 +156,7 @@ class DashPainter(context: Context) {
     private fun drawScreen(c: Canvas, r: RectF, s: Snapshot, units: Units, layout: Prefs.Layout, full: RectF) {
         if (layout == Prefs.Layout.RETRO) return retro.draw(c, r, s, units)
         if (layout == Prefs.Layout.DIAG) return diag.draw(c, r, s, units)
+        if (layout == Prefs.Layout.MIRROR) return mirror.draw(c, r, s, units, full)
         if (r.width() > r.height() * 1.2f) {
             when (layout) {
                 Prefs.Layout.MAP -> cluster.drawMap(c, r, s, units, full)

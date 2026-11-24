@@ -54,6 +54,8 @@ interface PhoneActions {
     fun playRaw(file: File)
     fun forgetObd()
     fun navigate()
+    fun startMapMirror()
+    fun stopMapMirror()
     fun endRoute()
     fun askLocation()
     fun share(file: File)

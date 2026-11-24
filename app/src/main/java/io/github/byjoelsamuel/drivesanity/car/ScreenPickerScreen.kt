@@ -41,6 +41,7 @@ class ScreenPickerScreen(carContext: CarContext) : Screen(carContext) {
             Prefs.Layout.DIAG -> "Fault codes and live engine readings"
             Prefs.Layout.LAUNCH -> "0–60 timer"
             Prefs.Layout.MUSIC -> "What's playing"
+            Prefs.Layout.MIRROR -> "Google Maps, shared from the phone"
         }
     }
 }

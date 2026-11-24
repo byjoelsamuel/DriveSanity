@@ -54,7 +54,8 @@ object Prefs {
         RETRO("Retro"),
         DIAG("OBD2"),
         LAUNCH("0–60"),
-        MUSIC("Music");
+        MUSIC("Music"),
+        MIRROR("Google Maps");
 
         val next get() = entries[(ordinal + 1) % entries.size]
     }

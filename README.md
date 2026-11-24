@@ -120,9 +120,9 @@ everything first.
 The phone app has four tabs: **Home**, **0–60**, **Trips**
 (your recordings) and **Settings**, a list of grouped pages like a phone's own settings app: car and sensors, connection, the car screens, and more. What you tap on a page shows at once, but nothing takes effect until you press **Apply** on the bar at the bottom and confirm; **Discard** drops it, each page has **Reset to default**, and **Reset all settings** at the foot of the list puts everything back. **Storage and data** shows what trips, raw recordings and the map cache take up, and clears them. **Home** is the main screen. At the top it shows the screen the car is showing, live, with a chip for each screen so you can switch it right there (the car's own Screens button does the same). Under that: speed and gear, anything the car is warning about, "Where to?", the engine readings, this trip, your last drive, and the Record button.
 
-The car shows one of six
+The car shows one of seven
 full-screen dashboards. Pick it in Settings → Car screens, or with the **Screens** button at the top of the
-car screen, which lists all six.
+car screen, which lists all seven.
 
 **Gauges**: built like a sports car's display, with no round dials. One long rev bar of leaning ticks
 runs across the top, growing taller towards the redline, with a marker that holds your highest recent
@@ -408,6 +408,22 @@ so it isn't a screen recording and needs no Google account or key, and the arriv
 are Google's own figures, which include traffic. The roads on the map aren't coloured for traffic, and
 Google doesn't publish what that notification looks like, so if a Google Maps update changes it the box
 simply doesn't show. Turn it off in **Settings → Google Maps directions**.
+
+**Google Maps itself on the car screen (experimental).** There's no way to put Google Maps' own map inside
+this app, so the one trick left is copying the phone's screen. Under **Settings → Google Maps directions →
+Google Maps on the car screen**, tap **Share Google Maps**. Android asks what to share (choose **A single app**
+and Google Maps, not the whole screen, or your notifications would show on the car too), then opens Google
+Maps. Pick the **Google Maps** screen on the car and it shows what's on the phone. Things to know:
+
+- It's view-only. Taps on the car screen can't reach Google Maps, so search and change the route on the phone.
+- Google Maps has to stay open on the phone, with the screen on. Android shows its own recording indicator and
+  a notification with a Stop button while it runs. Nothing is saved or sent anywhere; the pictures only go to
+  the car screen.
+- Held upright, a phone's screen is a narrow strip on a wide car screen. Turn the phone sideways and the copy
+  follows, filling the car screen.
+- It stops when the car disconnects, when you tap Stop, or from the car's **Stop sharing** button.
+- It uses more battery, and it's untested in a real car. Only set it up while parked, and keep your eyes on
+  the road.
 
 **On the phone**, tap **Where to?** on the Home tab and type an address.
 
