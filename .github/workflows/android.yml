@@ -38,7 +38,7 @@ jobs:
 
       # Robolectric downloads its Android jar from Maven Central, which sometimes refuses busy networks and fails
       # the tests for no reason of ours. Keeping the jar between runs means that download happens once.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('app/build.gradle.kts') }}
